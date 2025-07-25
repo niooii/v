@@ -7,9 +7,6 @@
 [submodule "extern/imgui"]
 	path = extern/imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "extern/glfw"]
-	path = extern/glfw
-	url = https://github.com/glfw/glfw.git
 [submodule "extern/vma"]
 	path = extern/vma
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
@@ -22,3 +19,6 @@
 [submodule "extern/ser20"]
 	path = extern/ser20
 	url = https://github.com/royjacobson/ser20.git
+[submodule "extern/sdl3"]
+	path = extern/sdl3
+	url = https://github.com/libsdl-org/SDL.git
