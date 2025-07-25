@@ -1,0 +1,15 @@
+[submodule "extern/gdfe"]
+	path = extern/gdfe
+	url = https://github.com/niooii/gdfe.git
+[submodule "extern/spdlog"]
+	path = extern/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "extern/imgui"]
+	path = extern/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "extern/glfw"]
+	path = extern/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "extern/vma"]
+	path = extern/vma
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
