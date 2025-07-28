@@ -1,6 +1,3 @@
-[submodule "extern/gdfe"]
-	path = extern/gdfe
-	url = https://github.com/niooii/gdfe.git
 [submodule "extern/spdlog"]
 	path = extern/spdlog
 	url = https://github.com/gabime/spdlog.git
@@ -22,3 +19,6 @@
 [submodule "extern/sdl3"]
 	path = extern/sdl3
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "extern/glm"]
+	path = extern/glm
+	url = https://github.com/icaven/glm.git

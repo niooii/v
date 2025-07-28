@@ -1,20 +1,19 @@
 # Client-specific dependencies
 add_subdirectory(
-        ${CMAKE_SOURCE_DIR}/extern/glfw
-        ${CMAKE_BINARY_DIR}/extern/glfw
+        ${CMAKE_SOURCE_DIR}/extern/sdl3
+        ${CMAKE_BINARY_DIR}/extern/sdl3
 )
 
 # Add imgui as a library (header-only, needs manual setup)
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/extern/imgui)
 file(GLOB IMGUI_SOURCES 
     ${IMGUI_DIR}/*.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
     ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
 )
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
-# Fix GLFW include issue for imgui backends
-target_link_libraries(imgui PUBLIC glfw)
+target_link_libraries(imgui PUBLIC SDL3::SDL3)
 
 # VMA is header-only
 add_library(vma INTERFACE)
@@ -47,7 +46,7 @@ target_link_libraries(v_client
     PRIVATE
     v_common
     Vulkan::Vulkan
-    glfw
+    SDL3::SDL3
     imgui
     vma
 )

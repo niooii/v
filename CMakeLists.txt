@@ -14,11 +14,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_program(GLSLC glslc REQUIRED)
 
 # Common external dependencies used by both client and server
-add_subdirectory(extern/gdfe)
 add_subdirectory(extern/ser20)
 add_subdirectory(extern/entt)
 add_subdirectory(extern/hfsm2)
 add_subdirectory(extern/spdlog)
+add_subdirectory(extern/glm)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
@@ -30,12 +30,22 @@ endif()
 set(NO_WARNING_FLAGS "-Wno-unused-parameter -Wno-missing-braces -Wno-unused-variable -Wno-ignored-qualifiers -Wno-missing-field-initializers")
 
 set(CMAKE_CXX_FLAGS "-Wall -W -Wextra ${NO_WARNING_FLAGS} -ffast-math -march=native -mavx2 -fcolor-diagnostics")
+
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-#    set(PROFILE_DIR "release")
+    # release build
+
+    # prod spdlog conf
+    add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO)
+    add_compile_definitions(SPDLOG_NO_SOURCE_LOC)
+
+    # clang flags
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fno-plt -fuse-ld=lld -funroll-loops -finline-functions -fomit-frame-pointer -ftree-vectorize -fvectorize -fslp-vectorize -DNDEBUG -DGDF_RELEASE")
 else()
-#    set(PROFILE_DIR "debug")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 -fno-omit-frame-pointer -DDEBUG")
+    # debug build
+    add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+
+    # clang flags
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Og -fno-omit-frame-pointer -DDEBUG")
 endif()
 
 # Add subdirectories for each component

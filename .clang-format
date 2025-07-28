@@ -28,10 +28,10 @@ BraceWrapping:
 BreakBeforeBraces: Custom
 BreakConstructorInitializers: AfterColon
 BreakConstructorInitializersBeforeComma: false
-ColumnLimit: 100
+AlignAfterOpenBracket: AlwaysBreak
+ColumnLimit: 75
 IndentPPDirectives: BeforeHash
 PointerAlignment: Left
-AlignAfterOpenBracket: DontAlign
 ContinuationIndentWidth: 4
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 IncludeCategories:

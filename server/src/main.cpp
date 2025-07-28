@@ -3,8 +3,12 @@
 //
 
 #include <iostream>
+#include <prelude.h>
 
 int main() {
-    std::cout << "Hello World!\n";
+    v::init();
+
+    LOG_INFO("Starting simulation loop.. (not really)");
+
     return 0;
 }

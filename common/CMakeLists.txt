@@ -20,7 +20,6 @@ target_include_directories(v_common
 # Link common dependencies
 target_link_libraries(v_common
     PUBLIC
-    gdfe
     ser20
     EnTT::EnTT
     spdlog::spdlog
