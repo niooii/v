@@ -1,7 +1,7 @@
 # Client-specific dependencies
 add_subdirectory(
-        ${CMAKE_SOURCE_DIR}/extern/sdl3
-        ${CMAKE_BINARY_DIR}/extern/sdl3
+    ${CMAKE_SOURCE_DIR}/extern/sdl3
+    ${CMAKE_BINARY_DIR}/extern/sdl3
 )
 
 # Add imgui as a library (header-only, needs manual setup)
@@ -51,6 +51,15 @@ target_link_libraries(v_client
     SDL3::SDL3
     imgui
     vma
+)
+
+# Copy sdl dlls
+add_custom_command(
+        TARGET v_client POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_BINARY_DIR}/extern/sdl3/SDL3.dll"
+        "$<TARGET_FILE_DIR:v_client>"
+        COMMENT "Copying SDL3.dll to output directory"
 )
 
 # Set output directories

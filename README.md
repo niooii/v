@@ -20,3 +20,5 @@ class Class {
         // ...
 };
 ```
+
+Doxygen comments should be written with triple slashes (///), without trailing periods.  
