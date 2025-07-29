@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_keyboard.h>
 #include <contexts/window.h>
+#include <ranges>
 
 namespace v {
     // Utility methods
@@ -17,7 +18,8 @@ namespace v {
 
     Window::Window(std::string name, glm::ivec2 size, glm::ivec2 pos) :
         sdl_window_(nullptr), size_(size), pos_(pos),
-        name_(std::move(name))
+        name_(std::move(name)), curr_keys_{}, prev_keys_{},
+        curr_mbuttons{}, prev_mbuttons{}, mouse_position_(0, 0)
     {
         const SDL_PropertiesID props = SDL_CreateProperties();
         SDL_SetStringProperty(
@@ -53,61 +55,85 @@ namespace v {
 
     bool Window::is_key_down(Key key) const
     {
-        const bool*        state    = SDL_GetKeyboardState(nullptr);
         const SDL_Scancode scancode = key_to_sdl(key);
-        return state[scancode];
+        return curr_keys_[scancode];
     }
 
     bool Window::is_key_pressed(Key key) const
     {
-        // For pressed/released events, we'd need to track previous frame
-        // state This is a simplified implementation that just checks
-        // current state
-        return is_key_down(key);
+        const SDL_Scancode scancode = key_to_sdl(key);
+        return curr_keys_[scancode] && !prev_keys_[scancode];
     }
 
     bool Window::is_key_released(Key key) const
     {
-        // For pressed/released events, we'd need to track previous frame
-        // state This is a simplified implementation that returns false
-        return false;
+        const SDL_Scancode scancode = key_to_sdl(key);
+        return !curr_keys_[scancode] && prev_keys_[scancode];
     }
 
     bool Window::is_mouse_button_down(MouseButton button) const
     {
-        const Uint32 state      = SDL_GetMouseState(nullptr, nullptr);
-        const Uint8  sdl_button = mbutton_to_sdl(button);
-        return (state & (1 << (sdl_button - 1))) != 0;
+        const Uint8 sdl_button = mbutton_to_sdl(button);
+        if (sdl_button == 0 || sdl_button > 8)
+            return false;
+        return curr_mbuttons[sdl_button - 1];
     }
 
     bool Window::is_mouse_button_pressed(MouseButton button) const
     {
-        // For pressed/released events, we'd need to track previous frame
-        // state This is a simplified implementation that just checks
-        // current state
-        return is_mouse_button_down(button);
+        const Uint8 sdl_button = mbutton_to_sdl(button);
+        if (sdl_button == 0 || sdl_button > 8)
+            return false;
+        return curr_mbuttons[sdl_button - 1] &&
+            !prev_mbuttons[sdl_button - 1];
     }
 
     bool Window::is_mouse_button_released(MouseButton button) const
     {
-        // For pressed/released events, we'd need to track previous frame
-        // state This is a simplified implementation that returns false
-        return false;
+        const Uint8 sdl_button = mbutton_to_sdl(button);
+        if (sdl_button == 0 || sdl_button > 8)
+            return false;
+        return !curr_mbuttons[sdl_button - 1] &&
+            prev_mbuttons[sdl_button - 1];
     }
 
     glm::ivec2 Window::get_mouse_position() const
     {
-        float x, y;
-        SDL_GetMouseState(&x, &y);
-        return glm::ivec2(static_cast<int>(x), static_cast<int>(y));
+        return mouse_position_;
     }
 
     // Window object methods (private)
 
     void Window::process_event(const SDL_Event& event)
     {
-        // Here we update some state so the input functions work correctly
+        switch (event.type)
+        {
+        case SDL_EVENT_KEY_DOWN:
+            curr_keys_[event.key.scancode] = true;
+            break;
 
+        case SDL_EVENT_KEY_UP:
+            curr_keys_[event.key.scancode] = false;
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            curr_mbuttons[event.button.button - 1] = true;
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            curr_mbuttons[event.button.button - 1] = false;
+            break;
+
+        case SDL_EVENT_MOUSE_MOTION:
+            mouse_position_ = glm::ivec2(
+                static_cast<int>(event.motion.x),
+                static_cast<int>(event.motion.y));
+            break;
+
+        default:
+            // Ignore other events for now
+            break;
+        }
     }
 
     // Window context manager methods
@@ -150,7 +176,11 @@ namespace v {
         if (!window)
             return;
 
-        windows_.erase(SDL_GetWindowID(window->sdl_window_));
+        const auto id = SDL_GetWindowID(window->sdl_window_);
+        LOG_DEBUG(
+            "Destroying window with id {} and addr {}", (u64)id,
+            (u64)windows_[id]);
+        windows_.erase(id);
 
         delete window;
     }
@@ -159,12 +189,22 @@ namespace v {
     {
         SDL_Event event;
 
-        // first send events to their respective windows
+        // update the
+        for (const auto& w : windows_ | std::views::values)
+        {
+            // Copy current state to prev state
+            w->prev_keys_    = w->curr_keys_;
+            w->prev_mbuttons = w->curr_mbuttons;
+        }
+
+        // send events to their respective windows
         while (SDL_PollEvent(&event))
         {
             if (has_window_id(event.type))
             {
                 const auto id = event.window.windowID;
+                if (!windows_.contains(id))
+                    continue;
                 if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
                     this->destroy_window(windows_[id]);
                 else
@@ -175,11 +215,9 @@ namespace v {
             // TODO! global non window related events, process them
             // somehow
         }
-
-        // for (const auto& w : windows_ | std::views::values)
-        //     w->update();
     }
 
+    // Utility function impls
 
     static Uint8 mbutton_to_sdl(MouseButton button)
     {

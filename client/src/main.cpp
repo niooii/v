@@ -31,11 +31,18 @@ int main()
 
     while (true)
     {
+        window_ctx.update();
+
+        // logic blah blah
+        if (window->is_key_down(Key::Backspace))
+            LOG_TRACE("Backspace");
+
+        if (window->is_key_pressed(Key::W))
+            LOG_TRACE("W");
+
         auto sleep_time = stopwatch.until(TEMP_SPF);
         if (sleep_time > 0)
             time::sleep_ms(sleep_time * 1000);
-
-        window_ctx.update();
 
         stopwatch.reset();
     }

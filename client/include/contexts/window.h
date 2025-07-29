@@ -11,6 +11,7 @@
 #include <glm/vec2.hpp>
 #include <input/names.h>
 
+#include <array>
 #include <queue>
 #include <unordered_dense.h>
 
@@ -51,6 +52,14 @@ namespace v {
         SDL_Window* sdl_window_;
         glm::ivec2  size_, pos_;
         std::string name_;
+
+        std::array<bool, SDL_SCANCODE_COUNT> curr_keys_;
+        std::array<bool, SDL_SCANCODE_COUNT> prev_keys_;
+        // SDL supports up to 8 mouse buttons
+        std::array<bool, 8> curr_mbuttons;
+        std::array<bool, 8> prev_mbuttons;
+
+        glm::ivec2 mouse_position_;
     };
 
     /// A context for managing windows and input related to windows
@@ -68,7 +77,8 @@ namespace v {
         void destroy_window(const Window* window);
 
         /// Updates windows, pumps events, etc. Should be called at the
-        /// desired input update rate
+        /// desired input update rate, and should be called first in an
+        /// application loop to guarentee updated input
         void update();
 
     private:
