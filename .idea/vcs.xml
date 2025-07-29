@@ -3,9 +3,10 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/entt" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/extern/gdfe" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/extern/glm" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/hfsm2" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/extern/sdl3" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/ser20" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/spdlog" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/vma" vcs="Git" />

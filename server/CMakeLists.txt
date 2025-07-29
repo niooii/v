@@ -1,8 +1,3 @@
-# Server-specific dependencies
-# Add any server-specific external libraries here
-# For example, if you need networking libraries like enet:
-# add_subdirectory(${CMAKE_SOURCE_DIR}/extern/enet ${CMAKE_BINARY_DIR}/extern/enet)
-
 # Find all server source files
 file(GLOB_RECURSE SERVER_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
@@ -13,9 +8,9 @@ add_executable(v_server ${SERVER_SOURCES})
 target_link_libraries(v_server
     PRIVATE
     v_common
-    # Add server-specific libraries here, e.g.:
-    # enet
 )
+
+target_include_directories(v_server PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Set output directories
 set_target_properties(v_server

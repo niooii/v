@@ -14,18 +14,18 @@ namespace v {
         ~Stopwatch();
 
         /// @return The time elapsed in seconds
-        f64 elapsed();
+        f64 elapsed() const;
 
         /// @param target The target value, in seconds
         /// @return The amount of seconds until the stopwatch reaches the
         /// specified target. This may be negative if the elapsed time is
         /// greater than the target value
-        f64 until(f64 target);
+        f64 until(f64 target) const;
 
         /// @return The time elapsed in seconds
         f64 reset();
 
     private:
-        f64 prev;
+        f64 prev_;
     };
-}
+} // namespace v

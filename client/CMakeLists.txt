@@ -41,6 +41,8 @@ add_executable(v_client ${CLIENT_SOURCES})
 
 target_compile_definitions(v_client PUBLIC GDF_CLIENT_BUILD)
 
+target_include_directories(v_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
 # Link client-specific libraries
 target_link_libraries(v_client
     PRIVATE

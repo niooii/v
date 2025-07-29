@@ -39,4 +39,4 @@ namespace v::time {
     /// Halt the current thread for specified nanoseconds
     /// @param ns Number of nanoseconds to sleep
     void sleep_ns(u64 ns);
-}
+} // namespace v::time

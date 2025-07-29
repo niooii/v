@@ -1,0 +1,4 @@
+Checks: '-*,readability-access-specifiers-order'
+CheckOptions:
+  - key: readability-access-specifiers-order.Order
+    value: 'protected;public;private'

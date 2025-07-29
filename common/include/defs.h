@@ -6,6 +6,14 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <spdlog/spdlog.h>
+
+#define LOG_TRACE(...)    SPDLOG_TRACE(__VA_ARGS__)
+#define LOG_DEBUG(...)    SPDLOG_DEBUG(__VA_ARGS__)
+#define LOG_INFO(...)     SPDLOG_INFO(__VA_ARGS__)
+#define LOG_WARN(...)     SPDLOG_WARN(__VA_ARGS__)
+#define LOG_ERROR(...)    SPDLOG_ERROR(__VA_ARGS__)
+#define LOG_CRITICAL(...) SPDLOG_CRITICAL(__VA_ARGS__)
 
 typedef uint8_t       u8;
 typedef uint16_t      u16;
@@ -21,7 +29,7 @@ typedef double        f64;
 typedef unsigned char byte;
 
 #ifdef _MSC_VER
-    // typeof is a keyword since C23
+// typeof is a keyword since C23
 
     #define TYPEOF      typeof
     #define FORCEINLINE __forceinline
@@ -53,7 +61,7 @@ typedef unsigned char byte;
     #define MEMORY_BARRIER() _ReadWriteBarrier()
 
 #else
-    // GCC, Clang, and other compilers
+// GCC, Clang, and other compilers
 
     #define TYPEOF      typeof
     #define FORCEINLINE __attribute__((always_inline)) inline
@@ -64,13 +72,15 @@ typedef unsigned char byte;
 
     #define STATIC_ASSERT _Static_assert
 
-    #define CTZ(x)        __builtin_ctz(x) // Count trailing zeros (32-bit)
-    #define CTZ64(x)      __builtin_ctzll(x) // Count trailing zeros (64-bit)
-    #define CLZ(x)        __builtin_clz(x) // Count leading zeros (32-bit)
-    #define CLZ64(x)      __builtin_clzll(x) // Count leading zeros (64-bit)
-    #define POPCOUNT(x)   __builtin_popcount(x) // Population count (32-bit)
-    #define POPCOUNT64(x) __builtin_popcountll(x) // Population count (64-bit)
-    #define BYTESWAP16(x) __builtin_bswap16(x) // Byte swap (16-bit) - fixed typo
+    #define CTZ(x)      __builtin_ctz(x) // Count trailing zeros (32-bit)
+    #define CTZ64(x)    __builtin_ctzll(x) // Count trailing zeros (64-bit)
+    #define CLZ(x)      __builtin_clz(x) // Count leading zeros (32-bit)
+    #define CLZ64(x)    __builtin_clzll(x) // Count leading zeros (64-bit)
+    #define POPCOUNT(x) __builtin_popcount(x) // Population count (32-bit)
+    #define POPCOUNT64(x) \
+        __builtin_popcountll(x) // Population count (64-bit)
+    #define BYTESWAP16(x) \
+        __builtin_bswap16(x) // Byte swap (16-bit) - fixed typo
     #define BYTESWAP32(x) __builtin_bswap32(x) // Byte swap (32-bit)
     #define BYTESWAP64(x) __builtin_bswap64(x) // Byte swap (64-bit)
 
@@ -93,4 +103,3 @@ STATIC_ASSERT(sizeof(i32) == 4, "expected i32 to be 4 bytes.");
 STATIC_ASSERT(sizeof(i64) == 8, "expected i64 to be 8 bytes.");
 STATIC_ASSERT(sizeof(f32) == 4, "expected f32 to be 4 bytes.");
 STATIC_ASSERT(sizeof(f64) == 8, "expected f64 to be 8 bytes.");
-
