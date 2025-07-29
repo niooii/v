@@ -9,11 +9,10 @@
 #pragma once
 
 #include <defs.h>
+#include <engine/engine.h>
 #include <entt/entt.hpp>
 
 namespace v {
-    class Engine;
-
     class Domain {
     public:
         Domain(Engine& engine, std::string name);
@@ -26,10 +25,23 @@ namespace v {
         virtual void init_render_components(/*RenderContext* ctx*/) {}
 
         template <typename T, typename... Args>
-        T& attach_component(Args&&... args);
+        T& Domain::attach_component(Args&&... args)
+        {
+            auto& reg = engine_.domain_registry();
+
+            auto& component = reg.emplace_or_replace<T>(entity_, std::forward<Args>(args)...);
+            return component;
+        }
 
         template <typename T>
-        T* get_component();
+        T* get_component()
+        {
+            const auto& reg = engine_.domain_registry();
+
+            auto component = reg.try_get<T>(entity_);
+
+            return component;
+        }
 
         FORCEINLINE entt::entity get_entity() const { return entity_; }
         FORCEINLINE std::string_view get_name() const { return name_; }
