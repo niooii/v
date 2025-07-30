@@ -7,6 +7,7 @@
 #include <defs.h>
 #include <domain/context.h>
 #include <entt/entt.hpp>
+#include <time/stopwatch.h>
 
 namespace v {
     class Engine {
@@ -17,6 +18,13 @@ namespace v {
 
         Engine();
         ~Engine() = default;
+
+        /// Updates the deltatime value. Should be called first in a main loop
+        void tick();
+
+        /// Returns the deltaTime (time between previous tick start and current tick
+        /// start) in seconds. This will return 0 on the first frame
+        FORCEINLINE f64 delta_time() const { return prev_tick_span_; };
 
         /// Adds a context to the engine, retrievable by type
         template <std::derived_from<Context> T, typename... Args>
@@ -43,10 +51,17 @@ namespace v {
         FORCEINLINE entt::registry& domain_registry() { return registry_; }
 
     private:
-        entt::registry registry_;
+        entt::registry registry_{};
         /// The engine itself is an entity. This allows us to have
         /// 'contexts' (essentially singleton components) that we can fetch
         /// by type
         entt::entity engine_entity_;
+
+        Stopwatch tick_time_stopwatch_{};
+        /// How long it took between the previous tick's start and the current tick's
+        /// start. In other words, the 'deltaTime' variable
+        f64 prev_tick_span_{ 0 };
+
+        u64 current_tick_{ 0 };
     };
 } // namespace v

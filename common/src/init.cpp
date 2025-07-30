@@ -23,17 +23,14 @@ void init_loggers()
     // Init loggers
 
     // Console logger
-    auto stdout_sink =
-        std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
     // Daily logger - a new file is created every day at 12 am
-    auto file_sink = std::make_shared<spd::sinks::daily_file_sink_mt>(
-        "./logs/log", 0, 0);
+    auto file_sink = std::make_shared<spd::sinks::daily_file_sink_mt>("./logs/log", 0, 0);
 
     spd::sinks_init_list sinks = { stdout_sink, file_sink };
 
-    auto logger =
-        std::make_shared<spd::logger>("", sinks.begin(), sinks.end());
+    auto logger = std::make_shared<spd::logger>("", sinks.begin(), sinks.end());
 
     logger->set_level(spd::level::trace);
     set_default_logger(logger);

@@ -18,7 +18,7 @@ namespace v {
     {
         const f64 current      = time::secs();
         const f64 elapsed_time = current - prev_;
-        prev_                   = current;
+        prev_                  = current;
 
         return elapsed_time;
     }

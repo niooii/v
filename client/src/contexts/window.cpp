@@ -10,7 +10,7 @@
 namespace v {
     // Utility methods
 
-    static SDL_Scancode key_to_sdl(const Key key);
+    static SDL_Scancode key_to_sdl(Key key);
     static Key          sdl_to_key(SDL_Scancode scancode);
     static Uint8        mbutton_to_sdl(MouseButton button);
     static MouseButton  sdl_to_mbutton(Uint8 button);
@@ -19,21 +19,15 @@ namespace v {
     // Window object methods (public)
 
     Window::Window(std::string name, glm::ivec2 size, glm::ivec2 pos) :
-        sdl_window_(nullptr), size_(size), pos_(pos),
-        name_(std::move(name)), curr_keys_{}, prev_keys_{},
-        curr_mbuttons{}, prev_mbuttons{}, mouse_pos_(0, 0)
+        sdl_window_(nullptr), size_(size), pos_(pos), name_(std::move(name)),
+        curr_keys_{}, prev_keys_{}, curr_mbuttons{}, prev_mbuttons{}, mouse_pos_(0, 0)
     {
         const SDL_PropertiesID props = SDL_CreateProperties();
-        SDL_SetStringProperty(
-            props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, name_.c_str());
-        SDL_SetNumberProperty(
-            props, SDL_PROP_WINDOW_CREATE_X_NUMBER, pos.x);
-        SDL_SetNumberProperty(
-            props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, pos.y);
-        SDL_SetNumberProperty(
-            props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.x);
-        SDL_SetNumberProperty(
-            props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.y);
+        SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, name_.c_str());
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, pos.x);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, pos.y);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.x);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.y);
         SDL_SetNumberProperty(
             props, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
             SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
@@ -50,6 +44,8 @@ namespace v {
     {
         if (sdl_window_)
         {
+            if (this->capturing_raw_input())
+                this->capture_raw_input(false);
             SDL_DestroyWindow(sdl_window_);
             sdl_window_ = nullptr;
         }
@@ -86,8 +82,7 @@ namespace v {
         const Uint8 sdl_button = mbutton_to_sdl(button);
         if (sdl_button == 0 || sdl_button > 8)
             return false;
-        return curr_mbuttons[sdl_button - 1] &&
-            !prev_mbuttons[sdl_button - 1];
+        return curr_mbuttons[sdl_button - 1] && !prev_mbuttons[sdl_button - 1];
     }
 
     bool Window::is_mbutton_released(MouseButton button) const
@@ -95,13 +90,147 @@ namespace v {
         const Uint8 sdl_button = mbutton_to_sdl(button);
         if (sdl_button == 0 || sdl_button > 8)
             return false;
-        return !curr_mbuttons[sdl_button - 1] &&
-            prev_mbuttons[sdl_button - 1];
+        return !curr_mbuttons[sdl_button - 1] && prev_mbuttons[sdl_button - 1];
     }
 
-    glm::ivec2 Window::get_mouse_position() const
+    glm::ivec2 Window::get_mouse_position() const { return mouse_pos_; }
+
+    // Window property getters
+
+    glm::ivec2 Window::size() const { return size_; }
+
+    glm::ivec2 Window::pos() const { return pos_; }
+
+    const std::string& Window::title() const { return name_; }
+
+    float Window::opacity() const
     {
-        return mouse_pos_;
+        float opacity;
+        return SDL_GetWindowOpacity(sdl_window_);;
+    }
+
+    // Window state getters
+
+    bool Window::is_fullscreen() const
+    {
+        return SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_FULLSCREEN;
+    }
+
+    bool Window::is_minimized() const
+    {
+        return SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_MINIMIZED;
+    }
+
+    bool Window::is_maximized() const
+    {
+        return SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_MAXIMIZED;
+    }
+
+    bool Window::is_visible() const
+    {
+        return !(SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_HIDDEN);
+    }
+
+    bool Window::is_resizable() const
+    {
+        return SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_RESIZABLE;
+    }
+
+    bool Window::is_always_on_top() const
+    {
+        return SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_ALWAYS_ON_TOP;
+    }
+
+    bool Window::is_focused() const
+    {
+        return SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_INPUT_FOCUS;
+    }
+
+    bool Window::capturing_raw_input() const
+    {
+        return SDL_GetWindowRelativeMouseMode(sdl_window_);
+    }
+
+    // Window property setters
+
+    void Window::set_size(glm::ivec2 size)
+    {
+        size_ = size;
+        SDL_SetWindowSize(sdl_window_, size.x, size.y);
+    }
+
+    void Window::set_pos(glm::ivec2 pos)
+    {
+        pos_ = pos;
+        SDL_SetWindowPosition(sdl_window_, pos.x, pos.y);
+    }
+
+    void Window::set_title(const std::string& title)
+    {
+        name_ = title;
+        SDL_SetWindowTitle(sdl_window_, title.c_str());
+    }
+
+    void Window::set_opacity(float opacity)
+    {
+        SDL_SetWindowOpacity(sdl_window_, opacity);
+    }
+
+    void Window::set_fullscreen(bool fullscreen)
+    {
+        SDL_SetWindowFullscreen(sdl_window_, fullscreen);
+    }
+
+    void Window::set_resizable(bool resizable)
+    {
+        SDL_SetWindowResizable(sdl_window_, resizable);
+    }
+
+    void Window::set_always_on_top(bool always_on_top)
+    {
+        SDL_SetWindowAlwaysOnTop(sdl_window_, always_on_top);
+    }
+
+    // Window actions
+
+    void Window::minimize()
+    {
+        SDL_MinimizeWindow(sdl_window_);
+    }
+
+    void Window::maximize()
+    {
+        SDL_MaximizeWindow(sdl_window_);
+    }
+
+    void Window::restore()
+    {
+        SDL_RestoreWindow(sdl_window_);
+    }
+
+    void Window::show()
+    {
+        SDL_ShowWindow(sdl_window_);
+    }
+
+    void Window::hide()
+    {
+        SDL_HideWindow(sdl_window_);
+    }
+
+    void Window::raise()
+    {
+        SDL_RaiseWindow(sdl_window_);
+    }
+
+    void Window::flash()
+    {
+        SDL_FlashWindow(sdl_window_, SDL_FLASH_BRIEFLY);
+    }
+
+    void Window::capture_raw_input(bool capture)
+    {
+        SDL_SetWindowRelativeMouseMode(sdl_window_, capture);
     }
 
     // Window object methods (private)
@@ -115,12 +244,12 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_RESIZED:
-            size_ = {event.window.data1, event.window.data2};
+            size_ = { event.window.data1, event.window.data2 };
             sig_resize_.publish(size_);
             break;
 
         case SDL_EVENT_WINDOW_MOVED:
-            pos_ = {event.window.data1, event.window.data2};
+            pos_ = { event.window.data1, event.window.data2 };
             sig_moved_.publish(pos_);
             break;
 
@@ -183,8 +312,7 @@ namespace v {
 
         case SDL_EVENT_MOUSE_MOTION:
             mouse_pos_ = glm::ivec2(
-                static_cast<int>(event.motion.x),
-                static_cast<int>(event.motion.y));
+                static_cast<int>(event.motion.x), static_cast<int>(event.motion.y));
             sig_mouse_moved_.publish(
                 mouse_pos_,
                 glm::ivec2(
@@ -193,9 +321,9 @@ namespace v {
             break;
 
         case SDL_EVENT_MOUSE_WHEEL:
-            sig_mouse_wheel_.publish(glm::ivec2(
-                static_cast<int>(event.wheel.x),
-                static_cast<int>(event.wheel.y)));
+            sig_mouse_wheel_.publish(
+                glm::ivec2(
+                    static_cast<int>(event.wheel.x), static_cast<int>(event.wheel.y)));
             break;
 
         case SDL_EVENT_TEXT_INPUT:
@@ -224,8 +352,8 @@ namespace v {
         SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     }
 
-    Window* WindowContext::create_window(
-        const std::string& name, glm::ivec2 size, glm::ivec2 pos)
+    Window*
+    WindowContext::create_window(const std::string& name, glm::ivec2 size, glm::ivec2 pos)
     {
         try
         {
@@ -253,9 +381,7 @@ namespace v {
             return;
 
         const auto id = SDL_GetWindowID(window->sdl_window_);
-        LOG_DEBUG(
-            "Destroying window with id {} and addr {}", (u64)id,
-            (u64)windows_[id]);
+        LOG_DEBUG("Destroying window with id {} and addr {}", (u64)id, (u64)windows_[id]);
         windows_.erase(id);
 
         delete window;

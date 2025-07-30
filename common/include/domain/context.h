@@ -6,6 +6,8 @@
 
 namespace v {
     class Context {
+        friend class Engine;
+
     public:
         Context() = default;
 
@@ -13,4 +15,4 @@ namespace v {
         Context(const Context&)            = delete;
         Context& operator=(const Context&) = delete;
     };
-}
+} // namespace v

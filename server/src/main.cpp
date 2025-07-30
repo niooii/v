@@ -5,7 +5,8 @@
 #include <iostream>
 #include <prelude.h>
 
-int main() {
+int main()
+{
     v::init();
 
     LOG_INFO("Starting simulation loop.. (not really)");

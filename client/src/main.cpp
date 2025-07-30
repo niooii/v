@@ -8,7 +8,7 @@
 #include <time/stopwatch.h>
 #include <time/time.h>
 
-constexpr i32 TEMP_MAX_FPS = 60000;
+constexpr i32 TEMP_MAX_FPS = 10;
 
 using namespace v;
 
@@ -24,29 +24,33 @@ int main()
 
     auto& window_ctx = engine.add_context<WindowContext>();
 
-    auto window =
-        window_ctx.create_window("hjey", { 600, 600 }, { 600, 600 });
-    auto whasgoingon =
-        window_ctx.create_window("hi", { 600, 600 }, { 1200, 600 });
+    // Test event stuff
+    auto window      = window_ctx.create_window("hjey", { 600, 600 }, { 600, 600 });
+    auto whasgoingon = window_ctx.create_window("hi", { 600, 600 }, { 1200, 600 });
 
-    auto lambda = [](glm::uvec2 vec)
-    { LOG_DEBUG("Window resized: {}, {}!", vec.x, vec.y); };
-    window->on_resize.connect<lambda>();
+    window->capture_raw_input(true);
+    auto lambda = [](glm::ivec2 pos, glm::ivec2 rel_movement)
+    { LOG_DEBUG("Mouse motion: {}, {}!", rel_movement.x, rel_movement.y); };
+
+    window->on_mouse_moved.connect<lambda>();
+    whasgoingon->on_mouse_moved.connect<lambda>();
 
     while (true)
     {
+        engine.tick();
         window_ctx.update();
 
-        // logic blah blah
-        // if (window->is_key_down(Key::Backspace))
-        //     LOG_TRACE("Backspace");
+        // bunch of game logic here (GameContext? idk)
 
-        if (const auto sleep_time = stopwatch.until(TEMP_SPF);
-            sleep_time > 0)
+        LOG_INFO("DT: {}", engine.delta_time());
+
+        if (const auto sleep_time = stopwatch.until(TEMP_SPF); sleep_time > 0)
             time::sleep_ms(sleep_time * 1000);
 
         stopwatch.reset();
     }
+
+
 
     return 0;
 }

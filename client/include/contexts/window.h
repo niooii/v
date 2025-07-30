@@ -55,36 +55,24 @@ namespace v {
         entt::sink<entt::sigh<void()>> on_mouse_leave{ sig_mouse_leave_ };
 
         /// Fires whenever the window enters fullscreen mode
-        entt::sink<entt::sigh<void()>> on_fullscreen_enter{
-            sig_fullscreen_enter_
-        };
+        entt::sink<entt::sigh<void()>> on_fullscreen_enter{ sig_fullscreen_enter_ };
 
         /// Fires whenever the window leaves fullscreen mode
-        entt::sink<entt::sigh<void()>> on_fullscreen_leave{
-            sig_fullscreen_leave_
-        };
+        entt::sink<entt::sigh<void()>> on_fullscreen_leave{ sig_fullscreen_leave_ };
 
         /// Fires whenever the window is moved to a different display
-        entt::sink<entt::sigh<void()>> on_display_changed{
-            sig_display_changed_
-        };
+        entt::sink<entt::sigh<void()>> on_display_changed{ sig_display_changed_ };
 
         // Input event signals
 
         /// Fires whenever a key is pressed (not held)
-        entt::sink<entt::sigh<void(Key)>> on_key_pressed{
-            sig_key_pressed_
-        };
+        entt::sink<entt::sigh<void(Key)>> on_key_pressed{ sig_key_pressed_ };
 
         /// Fires whenever a key is released
-        entt::sink<entt::sigh<void(Key)>> on_key_released{
-            sig_key_released_
-        };
+        entt::sink<entt::sigh<void(Key)>> on_key_released{ sig_key_released_ };
 
         /// Fires whenever a mouse button is pressed (not held)
-        entt::sink<entt::sigh<void(MouseButton)>> on_mouse_pressed{
-            sig_mouse_pressed_
-        };
+        entt::sink<entt::sigh<void(MouseButton)>> on_mouse_pressed{ sig_mouse_pressed_ };
 
         /// Fires whenever a mouse button is released
         entt::sink<entt::sigh<void(MouseButton)>> on_mouse_released{
@@ -92,24 +80,19 @@ namespace v {
         };
 
         /// Fires whenever the mouse is moved (position, relative movement)
-        entt::sink<entt::sigh<void(glm::ivec2, glm::ivec2)>>
-            on_mouse_moved{ sig_mouse_moved_ };
+        entt::sink<entt::sigh<void(glm::ivec2, glm::ivec2)>> on_mouse_moved{
+            sig_mouse_moved_
+        };
 
         /// Fires whenever the mouse wheel is scrolled (x, y scroll
         /// amounts)
-        entt::sink<entt::sigh<void(glm::ivec2)>> on_mouse_wheel{
-            sig_mouse_wheel_
-        };
+        entt::sink<entt::sigh<void(glm::ivec2)>> on_mouse_wheel{ sig_mouse_wheel_ };
 
         /// Fires whenever text is input (for UI text fields)
-        entt::sink<entt::sigh<void(std::string)>> on_text_input{
-            sig_text_input_
-        };
+        entt::sink<entt::sigh<void(std::string)>> on_text_input{ sig_text_input_ };
 
         /// Fires whenever a file is dropped onto the window
-        entt::sink<entt::sigh<void(std::string)>> on_file_dropped{
-            sig_file_dropped_
-        };
+        entt::sink<entt::sigh<void(std::string)>> on_file_dropped{ sig_file_dropped_ };
 
         // Window input states
 
@@ -134,10 +117,77 @@ namespace v {
         /// Get current mouse position relative to window
         glm::ivec2 get_mouse_position() const;
 
+        // Window property getters
+
+        /// Get window size
+        glm::ivec2 size() const;
+        /// Get window position
+        glm::ivec2 pos() const;
+        /// Get window title
+        const std::string& title() const;
+        /// Get window opacity (0.0 to 1.0)
+        float opacity() const;
+
+        // Window state getters
+
+        /// Check if window is in fullscreen mode
+        bool is_fullscreen() const;
+        /// Check if window is minimized
+        bool is_minimized() const;
+        /// Check if window is maximized
+        bool is_maximized() const;
+        /// Check if window is visible
+        bool is_visible() const;
+        /// Check if window is resizable
+        bool is_resizable() const;
+        /// Check if window is always on top
+        bool is_always_on_top() const;
+        /// Check if window has focus
+        bool is_focused() const;
+        /// Check if window has raw input captured (relative mouse mode)
+        bool capturing_raw_input() const;
+
+        // Window property setters
+
+        /// Set window size
+        void set_size(glm::ivec2 size);
+        /// Set window position
+        void set_pos(glm::ivec2 pos);
+        /// Set window title
+        void set_title(const std::string& title);
+        /// Set window opacity (0.0 to 1.0)
+        void set_opacity(float opacity);
+        /// Set fullscreen mode
+        void set_fullscreen(bool fullscreen);
+        /// Set if window is resizable
+        void set_resizable(bool resizable);
+        /// Set if window is always on top
+        void set_always_on_top(bool always_on_top);
+
+        // Window actions
+
+        /// Minimize the window
+        void minimize();
+        /// Maximize the window
+        void maximize();
+        /// Restore window from minimized/maximized state
+        void restore();
+        /// Show the window
+        void show();
+        /// Hide the window
+        void hide();
+        /// Raise window to front and give it focus
+        void raise();
+        /// Flash window to get user attention
+        void flash();
+        /// Enable/disable raw input capture (relative mouse mode)
+        void capture_raw_input(bool capture);
+
     private:
         Window(std::string name, glm::ivec2 size, glm::ivec2 pos);
         ~Window();
 
+        /// Handles individual events and fires appropriate handlers
         void process_event(const SDL_Event& event);
 
         // Event signals
@@ -184,15 +234,14 @@ namespace v {
 
         /// Create a window with the given parameters
         /// @return A pointer to the window, or nullptr if failure
-        Window* create_window(
-            const std::string& name, glm::ivec2 size, glm::ivec2 pos);
+        Window* create_window(const std::string& name, glm::ivec2 size, glm::ivec2 pos);
 
         /// Destroy a window
         void destroy_window(const Window* window);
 
         /// Updates windows, pumps events, etc. Should be called at the
         /// desired input update rate, and should be called first in an
-        /// application loop to guarentee updated input
+        /// application loop to guarantee updated input
         void update();
 
     private:

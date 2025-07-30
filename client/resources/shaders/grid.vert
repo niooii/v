@@ -1,18 +1,18 @@
 #version 450
 
-layout(binding = 0) uniform UniformBufferObject {
+layout (binding = 0) uniform UniformBufferObject {
     mat4 view_projection;
 } ubo;
 
-layout(push_constant) uniform PushConstants {
+layout (push_constant) uniform PushConstants {
     vec3 camera_pos;
 } pc;
 
-layout(location = 0) in vec3 in_position;
+layout (location = 0) in vec3 in_position;
 
-layout(location = 0) out vec3 out_world_pos;
+layout (location = 0) out vec3 out_world_pos;
 
-layout(location = 1) out vec3 camera_pos;
+layout (location = 1) out vec3 camera_pos;
 
 void main() {
     camera_pos = pc.camera_pos;

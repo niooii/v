@@ -29,7 +29,8 @@ namespace v {
         {
             auto& reg = engine_.domain_registry();
 
-            auto& component = reg.emplace_or_replace<T>(entity_, std::forward<Args>(args)...);
+            auto& component =
+                reg.emplace_or_replace<T>(entity_, std::forward<Args>(args)...);
             return component;
         }
 

@@ -15,8 +15,7 @@ namespace v::time {
     {
         auto now = std::chrono::high_resolution_clock::now();
         auto duration =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(
-                now - start_time);
+            std::chrono::duration_cast<std::chrono::nanoseconds>(now - start_time);
         return static_cast<f64>(duration.count()) / 1e9;
     }
 
@@ -24,8 +23,7 @@ namespace v::time {
     {
         auto now = std::chrono::high_resolution_clock::now();
         auto duration =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(
-                now - start_time);
+            std::chrono::duration_cast<std::chrono::nanoseconds>(now - start_time);
         return static_cast<u64>(duration.count());
     }
 
@@ -33,8 +31,7 @@ namespace v::time {
     {
         auto now = std::chrono::high_resolution_clock::now();
         auto duration =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - start_time);
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time);
         return static_cast<u64>(duration.count());
     }
 
@@ -42,9 +39,7 @@ namespace v::time {
     {
         auto now      = std::chrono::system_clock::now();
         auto duration = now.time_since_epoch();
-        auto millis =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                duration);
+        auto millis   = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
         return static_cast<u64>(millis.count());
     }
 
@@ -52,18 +47,11 @@ namespace v::time {
     {
         auto now      = std::chrono::system_clock::now();
         auto duration = now.time_since_epoch();
-        auto nanos =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        auto nanos    = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
         return static_cast<u64>(nanos.count());
     }
 
-    void sleep_ms(u32 ms)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-    }
+    void sleep_ms(u32 ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 
-    void sleep_ns(u64 ns)
-    {
-        std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
-    }
+    void sleep_ns(u64 ns) { std::this_thread::sleep_for(std::chrono::nanoseconds(ns)); }
 } // namespace v::time
