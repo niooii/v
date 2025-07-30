@@ -71,7 +71,7 @@ namespace v {
         return !curr_keys_[scancode] && prev_keys_[scancode];
     }
 
-    bool Window::is_mouse_button_down(MouseButton button) const
+    bool Window::is_mbutton_down(MouseButton button) const
     {
         const Uint8 sdl_button = mbutton_to_sdl(button);
         if (sdl_button == 0 || sdl_button > 8)
@@ -79,7 +79,7 @@ namespace v {
         return curr_mbuttons[sdl_button - 1];
     }
 
-    bool Window::is_mouse_button_pressed(MouseButton button) const
+    bool Window::is_mbutton_pressed(MouseButton button) const
     {
         const Uint8 sdl_button = mbutton_to_sdl(button);
         if (sdl_button == 0 || sdl_button > 8)
@@ -88,7 +88,7 @@ namespace v {
             !prev_mbuttons[sdl_button - 1];
     }
 
-    bool Window::is_mouse_button_released(MouseButton button) const
+    bool Window::is_mbutton_released(MouseButton button) const
     {
         const Uint8 sdl_button = mbutton_to_sdl(button);
         if (sdl_button == 0 || sdl_button > 8)
@@ -108,6 +108,25 @@ namespace v {
     {
         switch (event.type)
         {
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            sig_close_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_RESIZED:
+            size_ = {event.window.data1, event.window.data2};
+            sig_resize_.publish(size_);
+            break;
+
+        case SDL_EVENT_WINDOW_MOVED:
+            pos_ = {event.window.data1, event.window.data2};
+            // another signal here maybe?
+            break;
+
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+            sig_focus_.publish(event.type == SDL_EVENT_WINDOW_FOCUS_GAINED);
+            break;
+
         case SDL_EVENT_KEY_DOWN:
             curr_keys_[event.key.scancode] = true;
             break;
@@ -205,10 +224,14 @@ namespace v {
                 const auto id = event.window.windowID;
                 if (!windows_.contains(id))
                     continue;
+
+                windows_[id]->process_event(event);
+
+                // we process destruction of window here in case
+                // we have any listeners that should be notified (from
+                // process_event)
                 if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
                     this->destroy_window(windows_[id]);
-                else
-                    windows_[id]->process_event(event);
 
                 continue;
             }

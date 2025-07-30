@@ -5,6 +5,7 @@
 #pragma once
 
 #include <defs.h>
+#include <entt/entt.hpp>
 #include <engine/engine.h>
 
 namespace spd = spdlog;

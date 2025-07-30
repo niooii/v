@@ -12,7 +12,7 @@
 #include <input/names.h>
 
 #include <array>
-#include <queue>
+#include <entt/signal/sigh.hpp>
 #include <unordered_dense.h>
 
 namespace v {
@@ -22,6 +22,19 @@ namespace v {
         friend class WindowContext;
 
     public:
+        // Window event signals
+
+        /// Fires whenever the window is resized
+        entt::sink<entt::sigh<void(glm::uvec2)>> on_resize{ sig_resize_ };
+        /// Fires whenever the window is closed (user pressed 'X' or
+        /// Alt-F4'd)
+        entt::sink<entt::sigh<void()>> on_close{ sig_close_ };
+        /// Fires whenever focus is gained/lost for a window (the bool
+        /// parameter is true if focus was gained, false if lost)
+        entt::sink<entt::sigh<void(bool)>> on_focus{ sig_focus_ };
+
+        // Window input states
+
         /// Check if key is currently held down
         bool is_key_down(Key key) const;
 
@@ -32,13 +45,13 @@ namespace v {
         bool is_key_released(Key key) const;
 
         /// Check if mouse button is currently held down
-        bool is_mouse_button_down(MouseButton button) const;
+        bool is_mbutton_down(MouseButton button) const;
 
         /// Check if mouse button was just pressed this frame
-        bool is_mouse_button_pressed(MouseButton button) const;
+        bool is_mbutton_pressed(MouseButton button) const;
 
         /// Check if mouse button was just released this frame
-        bool is_mouse_button_released(MouseButton button) const;
+        bool is_mbutton_released(MouseButton button) const;
 
         /// Get current mouse position relative to window
         glm::ivec2 get_mouse_position() const;
@@ -49,17 +62,23 @@ namespace v {
 
         void process_event(const SDL_Event& event);
 
+        // Event signals
+        entt::sigh<void(glm::uvec2)> sig_resize_;
+        entt::sigh<void()>           sig_close_;
+        entt::sigh<void(bool)>       sig_focus_;
+
+        // Internal stuff
         SDL_Window* sdl_window_;
         glm::ivec2  size_, pos_;
         std::string name_;
 
+        // Input states
         std::array<bool, SDL_SCANCODE_COUNT> curr_keys_;
         std::array<bool, SDL_SCANCODE_COUNT> prev_keys_;
         // SDL supports up to 8 mouse buttons
         std::array<bool, 8> curr_mbuttons;
         std::array<bool, 8> prev_mbuttons;
-
-        glm::ivec2 mouse_position_;
+        glm::ivec2          mouse_position_;
     };
 
     /// A context for managing windows and input related to windows
