@@ -29,7 +29,7 @@ BreakBeforeBraces: Custom
 BreakConstructorInitializers: AfterColon
 BreakConstructorInitializersBeforeComma: false
 AlignAfterOpenBracket: AlwaysBreak
-ColumnLimit: 75
+ColumnLimit: 90
 IndentPPDirectives: BeforeHash
 PointerAlignment: Left
 ContinuationIndentWidth: 4

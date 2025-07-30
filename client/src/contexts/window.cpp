@@ -11,7 +11,9 @@ namespace v {
     // Utility methods
 
     static SDL_Scancode key_to_sdl(const Key key);
+    static Key          sdl_to_key(SDL_Scancode scancode);
     static Uint8        mbutton_to_sdl(MouseButton button);
+    static MouseButton  sdl_to_mbutton(Uint8 button);
     static bool         has_window_id(Uint32 event_type);
 
     // Window object methods (public)
@@ -19,7 +21,7 @@ namespace v {
     Window::Window(std::string name, glm::ivec2 size, glm::ivec2 pos) :
         sdl_window_(nullptr), size_(size), pos_(pos),
         name_(std::move(name)), curr_keys_{}, prev_keys_{},
-        curr_mbuttons{}, prev_mbuttons{}, mouse_position_(0, 0)
+        curr_mbuttons{}, prev_mbuttons{}, mouse_pos_(0, 0)
     {
         const SDL_PropertiesID props = SDL_CreateProperties();
         SDL_SetStringProperty(
@@ -99,7 +101,7 @@ namespace v {
 
     glm::ivec2 Window::get_mouse_position() const
     {
-        return mouse_position_;
+        return mouse_pos_;
     }
 
     // Window object methods (private)
@@ -119,7 +121,7 @@ namespace v {
 
         case SDL_EVENT_WINDOW_MOVED:
             pos_ = {event.window.data1, event.window.data2};
-            // another signal here maybe?
+            sig_moved_.publish(pos_);
             break;
 
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
@@ -127,26 +129,81 @@ namespace v {
             sig_focus_.publish(event.type == SDL_EVENT_WINDOW_FOCUS_GAINED);
             break;
 
+        case SDL_EVENT_WINDOW_MINIMIZED:
+            sig_minimized_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_MAXIMIZED:
+            sig_maximized_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_RESTORED:
+            sig_restored_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_MOUSE_ENTER:
+            sig_mouse_enter_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+            sig_mouse_leave_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+            sig_fullscreen_enter_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+            sig_fullscreen_leave_.publish();
+            break;
+
+        case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+            sig_display_changed_.publish();
+            break;
+
         case SDL_EVENT_KEY_DOWN:
             curr_keys_[event.key.scancode] = true;
+            sig_key_pressed_.publish(sdl_to_key(event.key.scancode));
             break;
 
         case SDL_EVENT_KEY_UP:
             curr_keys_[event.key.scancode] = false;
+            sig_key_released_.publish(sdl_to_key(event.key.scancode));
             break;
 
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
             curr_mbuttons[event.button.button - 1] = true;
+            sig_mouse_pressed_.publish(sdl_to_mbutton(event.button.button));
             break;
 
         case SDL_EVENT_MOUSE_BUTTON_UP:
             curr_mbuttons[event.button.button - 1] = false;
+            sig_mouse_released_.publish(sdl_to_mbutton(event.button.button));
             break;
 
         case SDL_EVENT_MOUSE_MOTION:
-            mouse_position_ = glm::ivec2(
+            mouse_pos_ = glm::ivec2(
                 static_cast<int>(event.motion.x),
                 static_cast<int>(event.motion.y));
+            sig_mouse_moved_.publish(
+                mouse_pos_,
+                glm::ivec2(
+                    static_cast<int>(event.motion.xrel),
+                    static_cast<int>(event.motion.yrel)));
+            break;
+
+        case SDL_EVENT_MOUSE_WHEEL:
+            sig_mouse_wheel_.publish(glm::ivec2(
+                static_cast<int>(event.wheel.x),
+                static_cast<int>(event.wheel.y)));
+            break;
+
+        case SDL_EVENT_TEXT_INPUT:
+            sig_text_input_.publish(std::string(event.text.text));
+            break;
+
+        case SDL_EVENT_DROP_FILE:
+            sig_file_dropped_.publish(std::string(event.drop.data));
             break;
 
         default:
@@ -241,6 +298,25 @@ namespace v {
     }
 
     // Utility function impls
+
+    static MouseButton sdl_to_mbutton(const Uint8 button)
+    {
+        switch (button)
+        {
+        case SDL_BUTTON_LEFT:
+            return MouseButton::Left;
+        case SDL_BUTTON_RIGHT:
+            return MouseButton::Right;
+        case SDL_BUTTON_MIDDLE:
+            return MouseButton::Middle;
+        case SDL_BUTTON_X1:
+            return MouseButton::X1;
+        case SDL_BUTTON_X2:
+            return MouseButton::X2;
+        default:
+            return MouseButton::Unknown;
+        }
+    }
 
     static Uint8 mbutton_to_sdl(MouseButton button)
     {
@@ -453,6 +529,199 @@ namespace v {
         default:
         case Key::Unknown:
             return SDL_SCANCODE_UNKNOWN;
+        }
+    }
+
+    static Key sdl_to_key(const SDL_Scancode scancode)
+    {
+        switch (scancode)
+        {
+        // Letters
+        case SDL_SCANCODE_A:
+            return Key::A;
+        case SDL_SCANCODE_B:
+            return Key::B;
+        case SDL_SCANCODE_C:
+            return Key::C;
+        case SDL_SCANCODE_D:
+            return Key::D;
+        case SDL_SCANCODE_E:
+            return Key::E;
+        case SDL_SCANCODE_F:
+            return Key::F;
+        case SDL_SCANCODE_G:
+            return Key::G;
+        case SDL_SCANCODE_H:
+            return Key::H;
+        case SDL_SCANCODE_I:
+            return Key::I;
+        case SDL_SCANCODE_J:
+            return Key::J;
+        case SDL_SCANCODE_K:
+            return Key::K;
+        case SDL_SCANCODE_L:
+            return Key::L;
+        case SDL_SCANCODE_M:
+            return Key::M;
+        case SDL_SCANCODE_N:
+            return Key::N;
+        case SDL_SCANCODE_O:
+            return Key::O;
+        case SDL_SCANCODE_P:
+            return Key::P;
+        case SDL_SCANCODE_Q:
+            return Key::Q;
+        case SDL_SCANCODE_R:
+            return Key::R;
+        case SDL_SCANCODE_S:
+            return Key::S;
+        case SDL_SCANCODE_T:
+            return Key::T;
+        case SDL_SCANCODE_U:
+            return Key::U;
+        case SDL_SCANCODE_V:
+            return Key::V;
+        case SDL_SCANCODE_W:
+            return Key::W;
+        case SDL_SCANCODE_X:
+            return Key::X;
+        case SDL_SCANCODE_Y:
+            return Key::Y;
+        case SDL_SCANCODE_Z:
+            return Key::Z;
+
+        // Numbers
+        case SDL_SCANCODE_0:
+            return Key::Num0;
+        case SDL_SCANCODE_1:
+            return Key::Num1;
+        case SDL_SCANCODE_2:
+            return Key::Num2;
+        case SDL_SCANCODE_3:
+            return Key::Num3;
+        case SDL_SCANCODE_4:
+            return Key::Num4;
+        case SDL_SCANCODE_5:
+            return Key::Num5;
+        case SDL_SCANCODE_6:
+            return Key::Num6;
+        case SDL_SCANCODE_7:
+            return Key::Num7;
+        case SDL_SCANCODE_8:
+            return Key::Num8;
+        case SDL_SCANCODE_9:
+            return Key::Num9;
+
+        // Function keys
+        case SDL_SCANCODE_F1:
+            return Key::F1;
+        case SDL_SCANCODE_F2:
+            return Key::F2;
+        case SDL_SCANCODE_F3:
+            return Key::F3;
+        case SDL_SCANCODE_F4:
+            return Key::F4;
+        case SDL_SCANCODE_F5:
+            return Key::F5;
+        case SDL_SCANCODE_F6:
+            return Key::F6;
+        case SDL_SCANCODE_F7:
+            return Key::F7;
+        case SDL_SCANCODE_F8:
+            return Key::F8;
+        case SDL_SCANCODE_F9:
+            return Key::F9;
+        case SDL_SCANCODE_F10:
+            return Key::F10;
+        case SDL_SCANCODE_F11:
+            return Key::F11;
+        case SDL_SCANCODE_F12:
+            return Key::F12;
+
+        // Arrow keys
+        case SDL_SCANCODE_UP:
+            return Key::Up;
+        case SDL_SCANCODE_DOWN:
+            return Key::Down;
+        case SDL_SCANCODE_LEFT:
+            return Key::Left;
+        case SDL_SCANCODE_RIGHT:
+            return Key::Right;
+
+        // Special keys
+        case SDL_SCANCODE_SPACE:
+            return Key::Space;
+        case SDL_SCANCODE_RETURN:
+            return Key::Enter;
+        case SDL_SCANCODE_ESCAPE:
+            return Key::Escape;
+        case SDL_SCANCODE_TAB:
+            return Key::Tab;
+        case SDL_SCANCODE_BACKSPACE:
+            return Key::Backspace;
+        case SDL_SCANCODE_DELETE:
+            return Key::Delete;
+        case SDL_SCANCODE_INSERT:
+            return Key::Insert;
+        case SDL_SCANCODE_HOME:
+            return Key::Home;
+        case SDL_SCANCODE_END:
+            return Key::End;
+        case SDL_SCANCODE_PAGEUP:
+            return Key::PageUp;
+        case SDL_SCANCODE_PAGEDOWN:
+            return Key::PageDown;
+
+        // Modifier keys
+        case SDL_SCANCODE_LSHIFT:
+            return Key::LeftShift;
+        case SDL_SCANCODE_RSHIFT:
+            return Key::RightShift;
+        case SDL_SCANCODE_LCTRL:
+            return Key::LeftCtrl;
+        case SDL_SCANCODE_RCTRL:
+            return Key::RightCtrl;
+        case SDL_SCANCODE_LALT:
+            return Key::LeftAlt;
+        case SDL_SCANCODE_RALT:
+            return Key::RightAlt;
+
+        // Keypad
+        case SDL_SCANCODE_KP_0:
+            return Key::KP0;
+        case SDL_SCANCODE_KP_1:
+            return Key::KP1;
+        case SDL_SCANCODE_KP_2:
+            return Key::KP2;
+        case SDL_SCANCODE_KP_3:
+            return Key::KP3;
+        case SDL_SCANCODE_KP_4:
+            return Key::KP4;
+        case SDL_SCANCODE_KP_5:
+            return Key::KP5;
+        case SDL_SCANCODE_KP_6:
+            return Key::KP6;
+        case SDL_SCANCODE_KP_7:
+            return Key::KP7;
+        case SDL_SCANCODE_KP_8:
+            return Key::KP8;
+        case SDL_SCANCODE_KP_9:
+            return Key::KP9;
+        case SDL_SCANCODE_KP_PLUS:
+            return Key::KPPlus;
+        case SDL_SCANCODE_KP_MINUS:
+            return Key::KPMinus;
+        case SDL_SCANCODE_KP_MULTIPLY:
+            return Key::KPMultiply;
+        case SDL_SCANCODE_KP_DIVIDE:
+            return Key::KPDivide;
+        case SDL_SCANCODE_KP_ENTER:
+            return Key::KPEnter;
+        case SDL_SCANCODE_KP_PERIOD:
+            return Key::KPPeriod;
+
+        default:
+            return Key::Unknown;
         }
     }
 

@@ -13,6 +13,7 @@
 
 #include <array>
 #include <entt/signal/sigh.hpp>
+#include <string>
 #include <unordered_dense.h>
 
 namespace v {
@@ -26,12 +27,89 @@ namespace v {
 
         /// Fires whenever the window is resized
         entt::sink<entt::sigh<void(glm::uvec2)>> on_resize{ sig_resize_ };
+
         /// Fires whenever the window is closed (user pressed 'X' or
         /// Alt-F4'd)
         entt::sink<entt::sigh<void()>> on_close{ sig_close_ };
+
         /// Fires whenever focus is gained/lost for a window (the bool
         /// parameter is true if focus was gained, false if lost)
         entt::sink<entt::sigh<void(bool)>> on_focus{ sig_focus_ };
+
+        /// Fires whenever the window is moved
+        entt::sink<entt::sigh<void(glm::ivec2)>> on_moved{ sig_moved_ };
+
+        /// Fires whenever the window is minimized
+        entt::sink<entt::sigh<void()>> on_minimized{ sig_minimized_ };
+
+        /// Fires whenever the window is maximized
+        entt::sink<entt::sigh<void()>> on_maximized{ sig_maximized_ };
+
+        /// Fires whenever the window is restored from minimized/maximized
+        entt::sink<entt::sigh<void()>> on_restored{ sig_restored_ };
+
+        /// Fires whenever the mouse cursor enters the window
+        entt::sink<entt::sigh<void()>> on_mouse_enter{ sig_mouse_enter_ };
+
+        /// Fires whenever the mouse cursor leaves the window
+        entt::sink<entt::sigh<void()>> on_mouse_leave{ sig_mouse_leave_ };
+
+        /// Fires whenever the window enters fullscreen mode
+        entt::sink<entt::sigh<void()>> on_fullscreen_enter{
+            sig_fullscreen_enter_
+        };
+
+        /// Fires whenever the window leaves fullscreen mode
+        entt::sink<entt::sigh<void()>> on_fullscreen_leave{
+            sig_fullscreen_leave_
+        };
+
+        /// Fires whenever the window is moved to a different display
+        entt::sink<entt::sigh<void()>> on_display_changed{
+            sig_display_changed_
+        };
+
+        // Input event signals
+
+        /// Fires whenever a key is pressed (not held)
+        entt::sink<entt::sigh<void(Key)>> on_key_pressed{
+            sig_key_pressed_
+        };
+
+        /// Fires whenever a key is released
+        entt::sink<entt::sigh<void(Key)>> on_key_released{
+            sig_key_released_
+        };
+
+        /// Fires whenever a mouse button is pressed (not held)
+        entt::sink<entt::sigh<void(MouseButton)>> on_mouse_pressed{
+            sig_mouse_pressed_
+        };
+
+        /// Fires whenever a mouse button is released
+        entt::sink<entt::sigh<void(MouseButton)>> on_mouse_released{
+            sig_mouse_released_
+        };
+
+        /// Fires whenever the mouse is moved (position, relative movement)
+        entt::sink<entt::sigh<void(glm::ivec2, glm::ivec2)>>
+            on_mouse_moved{ sig_mouse_moved_ };
+
+        /// Fires whenever the mouse wheel is scrolled (x, y scroll
+        /// amounts)
+        entt::sink<entt::sigh<void(glm::ivec2)>> on_mouse_wheel{
+            sig_mouse_wheel_
+        };
+
+        /// Fires whenever text is input (for UI text fields)
+        entt::sink<entt::sigh<void(std::string)>> on_text_input{
+            sig_text_input_
+        };
+
+        /// Fires whenever a file is dropped onto the window
+        entt::sink<entt::sigh<void(std::string)>> on_file_dropped{
+            sig_file_dropped_
+        };
 
         // Window input states
 
@@ -63,9 +141,26 @@ namespace v {
         void process_event(const SDL_Event& event);
 
         // Event signals
-        entt::sigh<void(glm::uvec2)> sig_resize_;
-        entt::sigh<void()>           sig_close_;
-        entt::sigh<void(bool)>       sig_focus_;
+        entt::sigh<void(glm::uvec2)>             sig_resize_;
+        entt::sigh<void()>                       sig_close_;
+        entt::sigh<void(bool)>                   sig_focus_;
+        entt::sigh<void(glm::ivec2)>             sig_moved_;
+        entt::sigh<void()>                       sig_minimized_;
+        entt::sigh<void()>                       sig_maximized_;
+        entt::sigh<void()>                       sig_restored_;
+        entt::sigh<void()>                       sig_mouse_enter_;
+        entt::sigh<void()>                       sig_mouse_leave_;
+        entt::sigh<void()>                       sig_fullscreen_enter_;
+        entt::sigh<void()>                       sig_fullscreen_leave_;
+        entt::sigh<void()>                       sig_display_changed_;
+        entt::sigh<void(Key)>                    sig_key_pressed_;
+        entt::sigh<void(Key)>                    sig_key_released_;
+        entt::sigh<void(MouseButton)>            sig_mouse_pressed_;
+        entt::sigh<void(MouseButton)>            sig_mouse_released_;
+        entt::sigh<void(glm::ivec2, glm::ivec2)> sig_mouse_moved_;
+        entt::sigh<void(glm::ivec2)>             sig_mouse_wheel_;
+        entt::sigh<void(std::string)>            sig_text_input_;
+        entt::sigh<void(std::string)>            sig_file_dropped_;
 
         // Internal stuff
         SDL_Window* sdl_window_;
@@ -78,7 +173,7 @@ namespace v {
         // SDL supports up to 8 mouse buttons
         std::array<bool, 8> curr_mbuttons;
         std::array<bool, 8> prev_mbuttons;
-        glm::ivec2          mouse_position_;
+        glm::ivec2          mouse_pos_;
     };
 
     /// A context for managing windows and input related to windows

@@ -8,7 +8,7 @@
 #include <time/stopwatch.h>
 #include <time/time.h>
 
-constexpr i32 TEMP_MAX_FPS = 60;
+constexpr i32 TEMP_MAX_FPS = 60000;
 
 using namespace v;
 
@@ -24,24 +24,25 @@ int main()
 
     auto& window_ctx = engine.add_context<WindowContext>();
 
-    auto window = window_ctx.create_window(
-        "hjey", { 600, 600 }, { 600, 600 });
-    auto whasgoingon = window_ctx.create_window(
-        "hi", { 600, 600 }, { 1200, 600 });
+    auto window =
+        window_ctx.create_window("hjey", { 600, 600 }, { 600, 600 });
+    auto whasgoingon =
+        window_ctx.create_window("hi", { 600, 600 }, { 1200, 600 });
+
+    auto lambda = [](glm::uvec2 vec)
+    { LOG_DEBUG("Window resized: {}, {}!", vec.x, vec.y); };
+    window->on_resize.connect<lambda>();
 
     while (true)
     {
         window_ctx.update();
 
         // logic blah blah
-        if (window->is_key_down(Key::Backspace))
-            LOG_TRACE("Backspace");
+        // if (window->is_key_down(Key::Backspace))
+        //     LOG_TRACE("Backspace");
 
-        if (window->is_key_pressed(Key::W))
-            LOG_TRACE("W");
-
-        auto sleep_time = stopwatch.until(TEMP_SPF);
-        if (sleep_time > 0)
+        if (const auto sleep_time = stopwatch.until(TEMP_SPF);
+            sleep_time > 0)
             time::sleep_ms(sleep_time * 1000);
 
         stopwatch.reset();
