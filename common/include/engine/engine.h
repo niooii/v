@@ -146,7 +146,7 @@ namespace v {
             reg->emplace<T*>(ptr->entity(), ptr);
 
             // Attach the actual unique ptr to itself for lifetime management
-            auto elem = reg->emplace<std::unique_ptr<Domain>>(ptr->entity(), std::move(domain));
+            auto& elem = reg->emplace<std::unique_ptr<Domain>>(ptr->entity(), std::move(domain));
 
             return ptr;
         }

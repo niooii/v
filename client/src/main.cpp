@@ -2,8 +2,9 @@
 // Created by niooi on 7/24/25.
 //
 
-#include <contexts/window.h>
 #include <contexts/render.h>
+#include <contexts/window.h>
+#include <domain/test.h>
 #include <iostream>
 #include <prelude.h>
 #include <time/stopwatch.h>
@@ -26,6 +27,13 @@ int main()
     auto window_ctx = engine.add_context<WindowContext>(engine);
     engine.add_context<RenderContext>(engine);
 
+    // 8 example CountTo10Domain instances
+    for (i32 i = 0; i < 8; ++i)
+    {
+        engine.add_domain<CountTo10Domain>(
+            engine, "CountTo10Domain_" + std::to_string(i));
+    }
+
     // Test event stuff
     auto window      = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
     auto whasgoingon = window_ctx->create_window("hi", { 600, 600 }, { 1200, 600 });
@@ -42,7 +50,18 @@ int main()
         engine.tick();
         window_ctx->update();
 
-        // bunch of game logic here (GameContext? idk)
+        // Example domain usage: CountTo10Domain counts to 10, and then
+        // destroys itself.
+        {
+            auto reg = engine.registry_read();
+            for (auto view = reg->view<CountTo10Domain*>().each();
+                 auto [entity, domain] : view)
+            {
+                domain->update();
+            }
+        }
+
+        // bunch of game logic here (GameContext? IDK)
 
         LOG_INFO("DT: {}", engine.delta_time());
 
@@ -51,7 +70,6 @@ int main()
 
         stopwatch.reset();
     }
-
 
 
     return 0;
