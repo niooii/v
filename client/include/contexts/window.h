@@ -4,16 +4,16 @@
 
 #pragma once
 
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_video.h>
 #include <defs.h>
 #include <domain/context.h>
-#include <glm/vec2.hpp>
 #include <input/names.h>
 
 #include <array>
-#include <entt/signal/sigh.hpp>
 #include <string>
+#include <entt/signal/sigh.hpp>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_video.h>
+#include <glm/vec2.hpp>
 #include <unordered_dense.h>
 
 namespace v {
@@ -226,10 +226,12 @@ namespace v {
         glm::ivec2          mouse_pos_;
     };
 
-    /// A context for managing windows and input related to windows
+    /// A context for managing windows and input related to windows.
+    /// Kind of a special domain, in the sense that the 'components' (windows)
+    /// are not tied to the lifetime of a particular domain
     class WindowContext : public Context {
     public:
-        WindowContext();
+        explicit WindowContext(Engine& engine);
         ~WindowContext();
 
         /// Create a window with the given parameters

@@ -5,14 +5,18 @@
 #pragma once
 
 namespace v {
+    /// The base class for any Context to be attached to the Engine.
     class Context {
         friend class Engine;
 
     public:
-        Context() = default;
+        explicit Context(Engine& engine) : engine_{ engine } {};
 
         // Contexts are non-copyable
         Context(const Context&)            = delete;
         Context& operator=(const Context&) = delete;
+
+    private:
+        Engine& engine_;
     };
 } // namespace v

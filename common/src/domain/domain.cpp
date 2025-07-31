@@ -11,9 +11,7 @@ namespace v {
     Domain::Domain(Engine& engine, std::string name) :
         engine_(engine), name_(std::move(name))
     {
-        auto& reg = engine_.domain_registry();
-        entity_   = reg.create();
-
-        reg.emplace<Domain*>(entity_, this);
+        auto reg = engine_.registry_write();
+        entity_  = reg->create();
     }
 } // namespace v

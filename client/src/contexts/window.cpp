@@ -342,7 +342,7 @@ namespace v {
 
     // Window context manager methods
 
-    WindowContext::WindowContext()
+    WindowContext::WindowContext(Engine& engine) : Context(engine)
     {
         SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     }

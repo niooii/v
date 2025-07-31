@@ -6,8 +6,19 @@
 
 #include <defs.h>
 #include <domain/context.h>
+#include <domain/domain.h>
 #include <entt/entt.hpp>
+#include <shared_mutex>
 #include <time/stopwatch.h>
+#include <moodycamel/concurrentqueue.h>
+#include <unordered_dense.h>
+#include <sync.h>
+
+template<typename T>
+concept DerivedFromDomain = std::is_base_of_v<v::Domain, T>;
+
+template<typename T>
+concept DerivedFromContext = std::is_base_of_v<v::Context, T>;
 
 namespace v {
     class Engine {
@@ -19,39 +30,143 @@ namespace v {
         Engine();
         ~Engine() = default;
 
-        /// Updates the deltatime value. Should be called first in a main loop
+        /// Processes queued actions and updates deltatime.
+        /// @note Should be called first in a main loop
         void tick();
 
         /// Returns the deltaTime (time between previous tick start and current tick
-        /// start) in seconds. This will return 0 on the first frame
+        /// start) in seconds. This will return 0 on the first frame.
+        /// @note This is not thread safe, but can be safely called from multiple threads
+        /// as long as it does not overlap with the Engine::tick() method
         FORCEINLINE f64 delta_time() const { return prev_tick_span_; };
 
-        /// Adds a context to the engine, retrievable by type
-        template <std::derived_from<Context> T, typename... Args>
-        T& add_context(Args&&... args)
-        {
-            // If the component already exists, remove it
-            if (registry_.all_of<T>(engine_entity_))
-            {
-                LOG_WARN("Adding duplicate context, removing old instance..");
-                registry_.remove<T>(engine_entity_);
-            }
+        /// Fetch the domain registry (ecs entity registry) with a scoped read lock.
+        /// @note The lock is dropped after the value returned goes out of scope, or a call to
+        /// guard.release().
+        /// The registry and any components from the registry
+        /// must not be accessed after a call to guard.release()
+        ReadProtectedResourceGuard<entt::registry> registry_read() const;
 
-            return registry_.emplace<T>(engine_entity_, std::forward<Args>(args)...);
+        /// Fetch the domain registry (ecs entity registry) with a scoped write lock.
+        /// @note The lock is dropped after the value returned goes out of scope, or a call to
+        /// guard.release().
+        /// The registry and any components from the registry
+        /// must not be accessed after a call to guard.release()
+        WriteProtectedResourceGuard<entt::registry> registry_write();
+
+        /// Adds a context to the engine and wraps it in a RWLock.
+        /// Retrievable by original type.
+        /// Unless the Context implementation is thread-safe or will only be used
+        /// on one thread, you almost always want to use this over Engine::add_context.
+        /// @note Contexts must be added before the program starts running
+        /// multiple threads - adding Contexts after is undefined behavior.
+        /// This means Contexts should be added during the application's
+        /// initialization.
+        template <DerivedFromContext T, typename... Args>
+        RWProtectedResource<T>* add_context_with_lock(Args&&... args)
+        {
+            return _add_context<RWProtectedResource<T>>(std::forward<Args>(args)...);
         }
 
-        /// Retrieve a context from the engine by type
-        template <std::derived_from<Context> T>
-        FORCEINLINE T* get_context()
+        /// Retrieve a read lock for a locked context by type
+        template <DerivedFromContext T>
+        FORCEINLINE std::optional<ReadProtectedResourceGuard<T>> read_context() const
         {
-            return registry_.try_get<T>(engine_entity_);
+            using namespace std;
+            if (auto resource =
+                    ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(engine_entity_))
+                return *resource->read();
+
+            return std::nullopt;
         }
 
-        /// Fetch the domain registry (ecs entity registry)
-        FORCEINLINE entt::registry& domain_registry() { return registry_; }
+        /// Retrieve a write lock for a locked context by type
+        template <DerivedFromContext T>
+        FORCEINLINE std::optional<WriteProtectedResourceGuard<T>> write_context()
+        {
+            using namespace std;
+            if (auto resource =
+                    ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(engine_entity_))
+                return *resource->write();
+
+            return std::nullopt;
+        }
+
+        /// Adds a context to the engine, retrievable by type.
+        /// Cannot be retrieved using the Engine::read_context and Engine::write_context
+        /// methods, as those are for locked Contexts.
+        /// Use Engine::get_context instead.
+        /// The Context implementation should be thread-safe or should not be
+        /// used on multiple threads, as this method does not provide locks.
+        /// @note Contexts must be added before the program starts running
+        /// multiple threads - adding Contexts after is undefined behavior.
+        /// This means Contexts should be added during the application's
+        /// initialization.
+        template <DerivedFromContext T, typename... Args>
+        T* add_context(Args&&... args)
+        {
+            return _add_context<T>(std::forward<Args>(args)...);
+        }
+
+        /// Retrieve a context added with Engine::add_context by type
+        template <DerivedFromContext T>
+        T* get_context()
+        {
+            if (auto context =
+                    ctx_registry_.try_get<std::unique_ptr<T>>(engine_entity_))
+                return context->get();
+
+            return nullptr;
+        }
+
+        /// Create a new domain owned by the Engine, retrievable using
+        /// the registry and accessible by the type pointer.
+        /// e.g. engine.registry_read()->view<T*>().
+        /// @note Pointers to Domains may be stored, as they are heap allocated.
+        /// Though pointers to Domains are stable, they are **not** thread safe, and
+        /// the programmer must handle concurrent access to domains themselves (through either
+        /// inheriting from the ConcurrentDomain class and acquiring RW locks, or manual synchronization).
+        /// Pointer stability is guaranteed UNTIL Engine::queue_destroy_domain has been
+        /// called on it. After that, pointers are no longer guaranteed to exist
+        template<DerivedFromDomain T, typename... Args>
+        T* add_domain(Args&&... args) {
+
+            std::unique_ptr<T> domain = std::make_unique<T>(std::forward<Args>(args)...);
+            T* ptr = domain.get();
+
+            ptr->init_standard_components();
+            // TODO!
+            // ptr->init_render_components();
+
+            // Attach the domain (ptr) itself to its own entity
+            // After careful consideration i have decided its more worth
+            // to store the pointer even though it leads to more cache misses,
+            // since domains won't usually be small enough for it to matter anyway
+            auto reg = registry_write();
+            reg->emplace<T*>(ptr->entity(), ptr);
+
+            // Attach the actual unique ptr to itself for lifetime management
+            auto elem = reg->emplace<std::unique_ptr<Domain>>(ptr->entity(), std::move(domain));
+
+            return ptr;
+        }
+
+        /// Queues a domain to be destroyed on the next tick.
+        /// @note Any pointers to a domain with the id domain_id are no longer safe
+        FORCEINLINE void queue_destroy_domain(const entt::entity domain_id)
+        {
+            domain_destroy_queue_.enqueue(domain_id);
+        }
 
     private:
-        entt::registry registry_{};
+        RWProtectedResource<entt::registry> registry_{};
+
+        /// An internal registry for the engine's contexts
+        entt::registry ctx_registry_{};
+
+        /// A queue for the destruction of domains
+        moodycamel::ConcurrentQueue<entt::entity> domain_destroy_queue_{};
+
         /// The engine itself is an entity. This allows us to have
         /// 'contexts' (essentially singleton components) that we can fetch
         /// by type
@@ -63,5 +178,26 @@ namespace v {
         f64 prev_tick_span_{ 0 };
 
         u64 current_tick_{ 0 };
+
+        template <typename T, typename... Args>
+        T* _add_context(Args&&... args)
+        {
+            using namespace std;
+
+            // If the component already exists, remove it
+            if (ctx_registry_.all_of<unique_ptr<T>>(engine_entity_))
+            {
+                LOG_WARN("Adding duplicate context, removing old instance..");
+                ctx_registry_.remove<unique_ptr<T>>(engine_entity_);
+            }
+
+            auto context = make_unique<T>(forward<Args>(args)...);
+
+            T* ptr = context.get();
+
+            ctx_registry_.emplace<std::unique_ptr<T>>(engine_entity_, std::move(context));
+
+            return ptr;
+        }
     };
 } // namespace v

@@ -3,6 +3,7 @@
 //
 
 #include <contexts/window.h>
+#include <contexts/render.h>
 #include <iostream>
 #include <prelude.h>
 #include <time/stopwatch.h>
@@ -22,14 +23,15 @@ int main()
 
     Engine engine{};
 
-    auto& window_ctx = engine.add_context<WindowContext>();
+    auto window_ctx = engine.add_context<WindowContext>(engine);
+    engine.add_context<RenderContext>(engine);
 
     // Test event stuff
-    auto window      = window_ctx.create_window("hjey", { 600, 600 }, { 600, 600 });
-    auto whasgoingon = window_ctx.create_window("hi", { 600, 600 }, { 1200, 600 });
+    auto window      = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
+    auto whasgoingon = window_ctx->create_window("hi", { 600, 600 }, { 1200, 600 });
 
     window->capture_raw_input(true);
-    auto lambda = [](glm::ivec2 pos, glm::ivec2 rel_movement)
+    auto lambda = [](glm::ivec2 _pos, glm::ivec2 rel_movement)
     { LOG_DEBUG("Mouse motion: {}, {}!", rel_movement.x, rel_movement.y); };
 
     window->on_mouse_moved.connect<lambda>();
@@ -38,7 +40,7 @@ int main()
     while (true)
     {
         engine.tick();
-        window_ctx.update();
+        window_ctx->update();
 
         // bunch of game logic here (GameContext? idk)
 

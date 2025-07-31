@@ -1,0 +1,5 @@
+Files taken from:
+https://github.com/cameron314/concurrentqueue
+
+Commit hash:
+c68072129c8a5b4025122ca5a0c82ab14b30cb03
