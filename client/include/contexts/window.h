@@ -235,7 +235,8 @@ namespace v {
         ~WindowContext();
 
         /// Create a window with the given parameters
-        /// @return A pointer to the window, or nullptr if failure
+        /// @return A pointer to the window, or nullptr if failure.  Window must be
+        /// destroyed with WindowContext::destroy_window
         Window* create_window(const std::string& name, glm::ivec2 size, glm::ivec2 pos);
 
         /// Destroy a window

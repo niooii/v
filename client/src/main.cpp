@@ -4,6 +4,7 @@
 
 #include <contexts/render.h>
 #include <contexts/window.h>
+#include <engine/contexts/network.h>
 #include <domain/test.h>
 #include <iostream>
 #include <prelude.h>

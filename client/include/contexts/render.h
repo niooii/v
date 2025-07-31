@@ -27,11 +27,10 @@ namespace v {
     public:
         explicit RenderContext(Engine& engine);
 
-        /// Creates and attaches a RenderComponent to a given entity, typically
-        /// used within a Domain
+        /// Creates and attaches a RenderComponent to a Domain
         /// @return A reference to the newly created component for modification.
         /// The reference must not be stored, and is safe to use as long as only
         /// one thread is creating a RenderComponent at a time.
-        RenderComponent& create_component(entt::entity entity_id);
+        RenderComponent& create_component(Domain& domain);
     };
 } // namespace v
