@@ -54,13 +54,18 @@ target_link_libraries(v_client
 )
 
 # Copy sdl dlls
-add_custom_command(
-        TARGET v_client POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        "${CMAKE_BINARY_DIR}/extern/sdl3/SDL3.dll"
-        "$<TARGET_FILE_DIR:v_client>"
-        COMMENT "Copying SDL3.dll to output directory"
-)
+if(WIN32)
+	
+	add_custom_command(
+        	TARGET v_client POST_BUILD
+        	COMMAND ${CMAKE_COMMAND} -E copy
+        	"${CMAKE_BINARY_DIR}/extern/sdl3/SDL3.dll"
+        	"$<TARGET_FILE_DIR:v_client>"
+        	COMMENT "Copying SDL3.dll to output directory"
+	)
+else()
+
+endif()
 
 # Set output directories
 set_target_properties(v_client

@@ -10,7 +10,7 @@ namespace v {
         friend class Engine;
 
     public:
-        explicit Context(Engine& engine) : engine_{ engine } {};
+        explicit Context(class Engine& engine) : engine_{ engine } {};
 
         // Contexts are non-copyable
         Context(const Context&)            = delete;
