@@ -23,6 +23,10 @@ target_link_libraries(v_common
         ser20
         EnTT::EnTT
         spdlog::spdlog
+		absl::base
+    	# absl::container 
+    	absl::synchronization
+    	absl::strings
 )
 
 # Set output directories
