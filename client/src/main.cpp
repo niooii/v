@@ -46,11 +46,15 @@ int main()
     window->on_mouse_moved.connect<lambda>();
     whasgoingon->on_mouse_moved.connect<lambda>();
 
-    while (true)
+    engine.pre_tick.write()->connect(10, "window updates", [window_ctx](f64 dt)
     {
-        engine.tick();
+        LOG_INFO("UPDATIGN WINDOW");
         window_ctx->update();
+    });
 
+    engine.pre_tick.write()->connect(-100, "", [&engine](f64 dt)
+    {
+        LOG_INFO("UPDATING TEST DOMAN");
         // Example domain usage: CountTo10Domain counts to 10, and then
         // destroys itself.
         {
@@ -61,10 +65,12 @@ int main()
                 domain->update();
             }
         }
+        time::sleep_ms(500);
+    });
 
-        // bunch of game logic here (GameContext? IDK)
-
-        LOG_INFO("DT: {}", engine.delta_time());
+    while (true)
+    {
+        engine.tick();
 
         if (const auto sleep_time = stopwatch.until(TEMP_SPF); sleep_time > 0)
             time::sleep_ms(sleep_time * 1000);

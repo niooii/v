@@ -21,8 +21,8 @@ add_subdirectory(extern/spdlog)
 add_subdirectory(extern/glm)
 
 set(ABSL_PROPAGATE_CXX_STD ON)  
-set(ABSL_BUILD_TESTING OFF)
-set(ABSL_BUILD_TEST_HELPERS OFF)
+#set(ABSL_BUILD_TESTING OFF)
+#set(ABSL_BUILD_TEST_HELPERS OFF)
 add_subdirectory(extern/abseil-cpp)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)

@@ -4,6 +4,7 @@
 
 #include <engine/engine.h>
 #include <prelude.h>
+#include <engine/sigh.h>
 
 namespace v {
     Engine::Engine() : engine_entity_{ ctx_registry_.create() }
@@ -23,15 +24,33 @@ namespace v {
         current_tick_++;
 
         // process domain destruction queue
-        auto reg = registry_write();
+        {
+            auto reg = registry_write();
 
-        entt::entity id;
-        while (domain_destroy_queue_.try_dequeue(id)) {
-            if (reg->valid(id)) {
-                auto& owner_component = reg->get<std::unique_ptr<Domain>>(id);
-                owner_component.reset();
-                reg->destroy(id);
+            entt::entity id;
+            while (domain_destroy_queue_.try_dequeue(id)) {
+                if (reg->valid(id)) {
+                    auto& owner_component = reg->get<std::unique_ptr<Domain>>(id);
+                    owner_component.reset();
+                    reg->destroy(id);
+                }
             }
+        }
+
+        {
+            // run pre tick callbacks
+            auto pt_callbacks = pre_tick.write();
+            pt_callbacks->publish(prev_tick_span_);
+        }
+        {
+            // run on tick callbacks
+            auto t_callbacks = on_tick.write();
+            t_callbacks->publish(prev_tick_span_);
+        }
+        {
+            // run post tick callbacks
+            auto pt_callbacks = post_tick.write();
+            pt_callbacks->publish(prev_tick_span_);
         }
     }
 

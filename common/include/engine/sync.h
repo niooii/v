@@ -8,51 +8,36 @@
 #pragma once
 
 #include <memory>
-#include <mutex>
-#include <shared_mutex>
+#include <absl/synchronization/mutex.h>
 
 /// A read guard for accessing non-thread-safe resources
 template<typename T>
 class ReadProtectedResourceGuard {
 public:
-    ReadProtectedResourceGuard(const T& resource, std::shared_mutex& mtx)
+    ReadProtectedResourceGuard(const T& resource, absl::Mutex* mtx)
         : resource_(resource), lock_(mtx) {}
 
     const T* operator->() const { return &resource_; }
     const T& operator*() const { return resource_; }
 
-    /// Manually releases the lock before the guard goes out of scope.
-    /// Use with caution: you almost never want to call this
-    void release() {
-        if (lock_.owns_lock())
-            lock_.unlock();
-    }
-
 private:
     const T& resource_;
-    std::shared_lock<std::shared_mutex> lock_;
+    absl::WriterMutexLock lock_;
 };
 
 /// A write guard for accessing non-thread-safe resources
 template<typename T>
 class WriteProtectedResourceGuard {
 public:
-    WriteProtectedResourceGuard(T& resource, std::shared_mutex& mtx)
+    WriteProtectedResourceGuard(T& resource, absl::Mutex* mtx)
         : resource_(resource), lock_(mtx) {}
 
     T* operator->() { return &resource_; }
     T& operator*() { return resource_; }
 
-    /// Manually releases the lock before the guard goes out of scope.
-    /// Use with caution: you almost never want to call this
-    void release() {
-        if (lock_.owns_lock())
-            lock_.unlock();
-    }
-
 private:
     T& resource_;
-    std::unique_lock<std::shared_mutex> lock_;
+    absl::ReaderMutexLock lock_;
 };
 
 /// A wrapper class for a resource that should be protected by a RW-lock at all times.
@@ -66,16 +51,16 @@ public:
 
     /// Gets a read guard for shared, const access to the resource
     ReadProtectedResourceGuard<T> read() const {
-        return ReadProtectedResourceGuard<T>(obj_, shared_mutex_);
+        return ReadProtectedResourceGuard<T>(obj_, &mutex_);
     }
 
     /// Gets a write guard for exclusive, non-const access to the resource
     WriteProtectedResourceGuard<T> write() {
-        return WriteProtectedResourceGuard<T>(obj_, shared_mutex_);
+        return WriteProtectedResourceGuard<T>(obj_, &mutex_);
     }
 
 private:
     T obj_;
     /// Mutex is mutable so const read() method can get a lock
-    mutable std::shared_mutex shared_mutex_;
+    mutable absl::Mutex mutex_;
 };

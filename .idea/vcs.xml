@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/extern/abseil-cpp" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/entt" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/glm" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/hfsm2" vcs="Git" />

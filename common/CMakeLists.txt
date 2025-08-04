@@ -7,7 +7,8 @@ file(GLOB_RECURSE COMMON_SOURCES
 )
 
 # Create the common library
-add_library(v_common STATIC ${COMMON_SOURCES})
+add_library(v_common STATIC ${COMMON_SOURCES}
+        include/engine/sigh.h)
 
 # Include directories for common library
 target_include_directories(v_common
@@ -24,7 +25,8 @@ target_link_libraries(v_common
         EnTT::EnTT
         spdlog::spdlog
 		absl::base
-    	# absl::container 
+		absl::debugging
+	 	absl::algorithm
     	absl::synchronization
     	absl::strings
 )

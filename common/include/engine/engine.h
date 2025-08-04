@@ -7,20 +7,25 @@
 #include <defs.h>
 #include <domain/context.h>
 #include <domain/domain.h>
+#include <engine/sync.h>
 #include <entt/entt.hpp>
+#include <moodycamel/concurrentqueue.h>
 #include <shared_mutex>
 #include <time/stopwatch.h>
-#include <moodycamel/concurrentqueue.h>
 #include <unordered_dense.h>
-#include <sync.h>
 
-template<typename T>
+#include "sigh.h"
+
+template <typename T>
 concept DerivedFromDomain = std::is_base_of_v<v::Domain, T>;
 
 template<typename T>
 concept DerivedFromContext = std::is_base_of_v<v::Context, T>;
 
 namespace v {
+    /// A callback consisting of the delta time
+    typedef void(OnTickFunction)(f64);
+
     class Engine {
     public:
         // Engine is non-copyable
@@ -158,7 +163,17 @@ namespace v {
             domain_destroy_queue_.enqueue(domain_id);
         }
 
+        // Public sinks - all have same DT value. Separated for clarity
+
+        /// Runs before on_tick
+        RWProtectedResource<PrioritySink<OnTickFunction>> pre_tick;
+        /// Runs after pre_tick, before post_tick
+        RWProtectedResource<PrioritySink<OnTickFunction>> on_tick;
+        /// Runs after on_tick
+        RWProtectedResource<PrioritySink<OnTickFunction>> post_tick;
+
     private:
+        /// A central registry to store domains
         RWProtectedResource<entt::registry> registry_{};
 
         /// An internal registry for the engine's contexts
@@ -176,7 +191,6 @@ namespace v {
         /// How long it took between the previous tick's start and the current tick's
         /// start. In other words, the 'deltaTime' variable
         f64 prev_tick_span_{ 0 };
-
         u64 current_tick_{ 0 };
 
         template <typename T, typename... Args>

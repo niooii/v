@@ -9,10 +9,18 @@
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include <absl/container/btree_set.h>
+
 void init_loggers();
 
 void v::init()
 {
+    // absl::FailureSignalHandlerOptions fail_opts = {
+    //
+    // };
+    //
+    // absl::InstallFailureSignalHanWdler(fail_opts);
+
     init_loggers();
 
     time::init();
@@ -36,5 +44,5 @@ void init_loggers()
     logger->set_level(spd::level::trace);
     set_default_logger(logger);
 
-    LOG_INFO("wsg guys.. starting up...");
+    LOG_INFO("hi starting up...");
 }
