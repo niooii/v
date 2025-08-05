@@ -52,6 +52,11 @@ namespace v {
             auto pt_callbacks = post_tick.write();
             pt_callbacks->publish(prev_tick_span_);
         }
+
+        LOG_DEBUG("finished tick: {} ", current_tick_);
+
+        // flush default logger
+        spd::default_logger()->flush();
     }
 
     ReadProtectedResourceGuard<entt::registry> Engine::registry_read() const

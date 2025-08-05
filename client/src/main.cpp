@@ -48,13 +48,21 @@ int main()
 
     engine.pre_tick.write()->connect(10, "window updates", [window_ctx](f64 dt)
     {
-        LOG_INFO("UPDATIGN WINDOW");
+        // LOG_INFO("UPDATIGN WINDOW 1");
         window_ctx->update();
     });
 
-    engine.pre_tick.write()->connect(-100, "", [&engine](f64 dt)
+    engine.pre_tick.write()->connect(1, "low priority", [](f64 dt) {
+        // LOG_INFO("LOW PRIORITY TASK");
+    });
+
+    engine.pre_tick.write()->connect(1000, "high priority", [](f64 dt) {
+        // LOG_INFO("HIGH PRIORITY TASK");
+    });
+
+    engine.pre_tick.write()->connect(100, "", [&engine](f64 dt)
     {
-        LOG_INFO("UPDATING TEST DOMAN");
+        // LOG_INFO("UPDATING TEST DOMAN 2");
         // Example domain usage: CountTo10Domain counts to 10, and then
         // destroys itself.
         {
@@ -65,7 +73,6 @@ int main()
                 domain->update();
             }
         }
-        time::sleep_ms(500);
     });
 
     while (true)
@@ -73,7 +80,7 @@ int main()
         engine.tick();
 
         if (const auto sleep_time = stopwatch.until(TEMP_SPF); sleep_time > 0)
-            time::sleep_ms(sleep_time * 1000);
+            time::sleep_ms(500);
 
         stopwatch.reset();
     }

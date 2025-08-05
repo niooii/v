@@ -17,9 +17,9 @@ struct PriorityCallback {
     std::string name;
     #endif
 
-    std::strong_ordering operator<=>(const PriorityCallback &other) const
+    std::strong_ordering operator<=>(const PriorityCallback& other) const
     {
-        return priority <=> other.priority;
+        return other.priority <=> priority;
     }
 };
 
@@ -44,10 +44,14 @@ class PrioritySink {
     FORCEINLINE void publish(Args&&... args)
     {
         for (auto& callback : callbacks_)
+        {
+            LOG_DEBUG("running callback {} with prio {}", callback.name, callback.priority);
+            // std::cout << callback.name << " " << callback.priority << std::endl;
             callback.func(std::forward<Args>(args)...);
+        }
     }
 
 
 private:
-    absl::btree_multiset<PriorityCallback<T>, std::greater<PriorityCallback<T>>> callbacks_;
+    absl::btree_multiset<PriorityCallback<T>> callbacks_;
 };

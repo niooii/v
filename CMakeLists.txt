@@ -25,6 +25,12 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 #set(ABSL_BUILD_TEST_HELPERS OFF)
 add_subdirectory(extern/abseil-cpp)
 
+# Taskflow
+set(TF_BUILD_EXAMPLES OFF)
+set(TF_BUILD_TESTS OFF)
+set(TF_BUILD_BENCHMARKS OFF)
+add_subdirectory(extern/taskflow)
+
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 # default build is debug

@@ -14,7 +14,7 @@ namespace v {
     void CountTo10Domain::update()
     {
         if (counter_ <= 10) {
-            LOG_INFO("{}", counter_);
+            // LOG_INFO("{}", counter_);
             counter_++;
         }
         

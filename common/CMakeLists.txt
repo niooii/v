@@ -7,11 +7,11 @@ file(GLOB_RECURSE COMMON_SOURCES
 )
 
 # Create the common library
-add_library(v_common STATIC ${COMMON_SOURCES}
+add_library(v_lib STATIC ${COMMON_SOURCES}
         include/engine/sigh.h)
 
 # Include directories for common library
-target_include_directories(v_common
+target_include_directories(v_lib
         PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_SOURCE_DIR}/extern"
@@ -19,11 +19,12 @@ target_include_directories(v_common
 )
 
 # Link common dependencies
-target_link_libraries(v_common
+target_link_libraries(v_lib
         PUBLIC
         ser20
         EnTT::EnTT
         spdlog::spdlog
+        Taskflow::Taskflow
 		absl::base
 		absl::debugging
 	 	absl::algorithm
@@ -32,7 +33,7 @@ target_link_libraries(v_common
 )
 
 # Set output directories
-set_target_properties(v_common
+set_target_properties(v_lib
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
