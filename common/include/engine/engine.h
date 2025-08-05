@@ -14,7 +14,7 @@
 #include <time/stopwatch.h>
 #include <unordered_dense.h>
 
-#include "sigh.h"
+#include "sink.h"
 
 template <typename T>
 concept DerivedFromDomain = std::is_base_of_v<v::Domain, T>;
@@ -23,8 +23,6 @@ template <typename T>
 concept DerivedFromContext = std::is_base_of_v<v::Context, T>;
 
 namespace v {
-    /// A callback consisting of the delta time
-    typedef void(OnTickFunction)(f64);
 
     class Engine {
     public:
@@ -167,16 +165,12 @@ namespace v {
             domain_destroy_queue_.enqueue(domain_id);
         }
 
-        // Public sinks - all have same DT value. Separated for clarity
+        // Public sinks - all use DependentSink for task dependency management
 
-        /// Runs before on_tick
-        RWProtectedResource<PrioritySink<OnTickFunction>> pre_tick;
-        /// Runs after pre_tick, before post_tick
-        RWProtectedResource<PrioritySink<OnTickFunction>> on_tick;
-        /// Runs after on_tick
-        RWProtectedResource<PrioritySink<OnTickFunction>> post_tick;
+        /// Main tick sink with task dependency management
+        RWProtectedResource<DependentSink> on_tick;
         /// Runs within the Engine's destructor, before domains and contexts are destroyed
-        RWProtectedResource<PrioritySink<void()>> on_destroy;
+        RWProtectedResource<DependentSink> on_destroy;
 
     private:
         /// A central registry to store domains

@@ -3,7 +3,7 @@
 //
 
 #include <engine/engine.h>
-#include <engine/sigh.h>
+#include <engine/sink.h>
 #include <prelude.h>
 
 namespace v {
@@ -18,7 +18,7 @@ namespace v {
     {
         LOG_INFO("Engine shutting down..");
 
-        on_destroy.write()->publish();
+        on_destroy.write()->execute();
     }
 
     void Engine::tick()
@@ -49,22 +49,12 @@ namespace v {
         }
 
         {
-            // run pre tick callbacks
-            auto pt_callbacks = pre_tick.write();
-            pt_callbacks->publish(prev_tick_span_);
-        }
-        {
-            // run on tick callbacks
+            // run tick callbacks with dependency management
             auto t_callbacks = on_tick.write();
-            t_callbacks->publish(prev_tick_span_);
-        }
-        {
-            // run post tick callbacks
-            auto pt_callbacks = post_tick.write();
-            pt_callbacks->publish(prev_tick_span_);
+            t_callbacks->execute();
         }
 
-        LOG_DEBUG("finished tick: {} ", current_tick_);
+        LOG_TRACE("Finished tick {} ", current_tick_);
 
         // flush default logger
         spd::default_logger()->flush();

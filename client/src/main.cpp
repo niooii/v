@@ -46,16 +46,14 @@ int main()
 
     window->on_mouse_moved.connect<lambda>();
 
-    engine.pre_tick.write()->connect(10, "window updates", [sdl_ctx, window_ctx](f64 dt)
+    engine.on_tick.write()->connect({}, {}, "window updates", [sdl_ctx, window_ctx]()
     {
-        // LOG_INFO("UPDATING SDL AND WINDOW");
         sdl_ctx->update();
         window_ctx->update();
     });
 
-    engine.pre_tick.write()->connect(100, "", [&engine](f64 dt)
+    engine.on_tick.write()->connect({"window updates"}, {}, "domain updates", [&engine]()
     {
-        // LOG_INFO("UPDATING TEST DOMAN 2");
         // Example domain usage: CountTo10Domain counts to 10, and then
         // destroys itself.
         {
