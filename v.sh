@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
             BUILD_DIR="cmake-build-release"
             shift
             ;;
-        client|server|v_lib)
+        vclient|vserver|vlib)
             if [[ -n "$TARGET" ]]; then
                 print_error "Multiple targets specified. Use only one target."
                 exit 1
@@ -64,7 +64,7 @@ while [[ $# -gt 0 ]]; do
             print_error "Unknown argument: $1"
             echo "Usage: ./v.sh [build/run/clean] [target] [--release]"
             echo "Commands: build, run, clean"
-            echo "Targets: client, server, v_lib"
+            echo "Targets: vclient, vserver, vlib"
             echo "Flags: --release (default is debug)"
             exit 1
             ;;
@@ -76,7 +76,7 @@ if [[ -z "$COMMAND" ]]; then
     print_error "No command specified"
     echo "Usage: ./v.sh [build/run/clean] [target] [--release]"
     echo "Commands: build, run, clean"
-    echo "Targets: client, server, v_lib"
+    echo "Targets: vclient, vserver, vlib"
     echo "Flags: --release (default is debug)"
     exit 1
 fi
@@ -124,7 +124,7 @@ run_executable() {
     local target="$1"
     
     case "$target" in
-        client|server)
+        vclient|vserver)
             if [[ -f "$BUILD_DIR/$target" ]]; then
                 print_status "Running $target..."
                 cd "$BUILD_DIR"
@@ -135,8 +135,8 @@ run_executable() {
                 exit 1
             fi
             ;;
-        v_lib)
-            print_warning "v_lib is a static library and cannot be executed"
+        vlib)
+            print_warning "vlib is a static library and cannot be executed"
             print_status "Build completed successfully - library ready for linking"
             ;;
         "")

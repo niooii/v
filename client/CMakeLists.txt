@@ -37,16 +37,16 @@ endif ()
 file(GLOB_RECURSE CLIENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # Create client executable (rename to avoid directory conflict)
-add_executable(client ${CLIENT_SOURCES})
+add_executable(vclient ${CLIENT_SOURCES})
 
-target_compile_definitions(client PUBLIC GDF_CLIENT_BUILD)
+target_compile_definitions(vclient PUBLIC GDF_CLIENT_BUILD)
 
-target_include_directories(client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(vclient PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Link client-specific libraries
-target_link_libraries(client
+target_link_libraries(vclient
         PRIVATE
-        v_lib
+        vlib
         Vulkan::Vulkan
         SDL3::SDL3
         imgui
@@ -57,10 +57,10 @@ target_link_libraries(client
 if(WIN32)
 	
 	add_custom_command(
-        	TARGET client POST_BUILD
+        	TARGET vclient POST_BUILD
         	COMMAND ${CMAKE_COMMAND} -E copy
         	"${CMAKE_BINARY_DIR}/extern/sdl3/SDL3.dll"
-        	"$<TARGET_FILE_DIR:client>"
+        	"$<TARGET_FILE_DIR:vclient>"
         	COMMENT "Copying SDL3.dll to output directory"
 	)
 else()
@@ -68,7 +68,7 @@ else()
 endif()
 
 # Set output directories
-set_target_properties(client
+set_target_properties(vclient
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
@@ -94,5 +94,5 @@ add_custom_target(cp_resources
         ${CMAKE_BINARY_DIR}/resources
 )
 
-# Make client depend on resource copying
-add_dependencies(client cp_resources)
+# Make vclient depend on resource copying
+add_dependencies(vclient cp_resources)

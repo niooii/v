@@ -1,4 +1,7 @@
+keep ck
+
 # Instructions and guide
+
 Guys despite this being a file I actually did NOT vibe code most of this, just dirty boilerplate work :D
 
 ## ECS/Domain system
@@ -18,6 +21,13 @@ benefits of ECS by treating it as a context or component.
 
 A domain is meant to be thought of as a collection of core systems that can be processed independently by default, or
 reach into other domains for extended functionality.
+
+## Domains
+
+The destructor of Domains may not access any other Domains/Contexts. To do so, attach a custom on_destroy function to
+the engine, which may safely access all Domains/Contexts.
+
+Domains are accessed via the Engine's registry via type pointer (e.g. registry.view<DomainName*>().
 
 # Code Style (from README.md)
 
@@ -43,20 +53,22 @@ class Class {
 
 Doxygen comments should be written with triple slashes (///), without trailing periods.  
 Your goal is to change as LITTLE as possible, only doing what is requested. This is true for all instances **UNLESS**
-you are refactoring systems or doing anything that requires change of usage in other places, then you must seek out and 
-ensure the entire codebase remains consistent with the new usage.  
+you are refactoring systems or doing anything that requires change of usage in other places, then you must seek out and
+ensure the entire codebase remains consistent with the new usage.
 
 # Concurrency
+
 The engine is designed with concurrency in mind.  
 It is possible to acquire a read or write lock for the engine's domain registry, so read operations can be
 done in parallel. However, since Domains are stored as pointers, it is possible to call non-const methods
-on queried domains while only having a read lock for the registry.   
+on queried domains while only having a read lock for the registry.
 
 Because of this, two usages emerge:
-1.  Acquire write locks when non-const methods need to be called on Domains, and read locks when
-only const methods are needed (the intended use).  
-2.  Always acquire read locks for a particular Domain that is derived from ConcurrentDomain, 
-then manually acquire and manage a read or write lock from each ConcurrentDomain
-(fine-grained locking).  
+
+1. Acquire write locks when non-const methods need to be called on Domains, and read locks when
+   only const methods are needed (the intended use).
+2. Always acquire read locks for a particular Domain that is derived from ConcurrentDomain,
+   then manually acquire and manage a read or write lock from each ConcurrentDomain
+   (fine-grained locking).
 
 It is up to the programmer to manage this (accidental) flexibility, which is now a core feature.  

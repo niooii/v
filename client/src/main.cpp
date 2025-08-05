@@ -3,6 +3,7 @@
 //
 
 #include <contexts/render.h>
+#include <contexts/sdl.h>
 #include <contexts/window.h>
 #include <engine/contexts/network.h>
 #include <domain/test.h>
@@ -25,6 +26,7 @@ int main()
 
     Engine engine{};
 
+    auto sdl_ctx = engine.add_context<SDLContext>(engine);
     auto window_ctx = engine.add_context<WindowContext>(engine);
     engine.add_context<RenderContext>(engine);
 
@@ -37,27 +39,18 @@ int main()
 
     // Test event stuff
     auto window      = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
-    auto whasgoingon = window_ctx->create_window("hi", { 600, 600 }, { 1200, 600 });
 
     window->capture_raw_input(true);
     auto lambda = [](glm::ivec2 _pos, glm::ivec2 rel_movement)
     { LOG_DEBUG("Mouse motion: {}, {}!", rel_movement.x, rel_movement.y); };
 
     window->on_mouse_moved.connect<lambda>();
-    whasgoingon->on_mouse_moved.connect<lambda>();
 
-    engine.pre_tick.write()->connect(10, "window updates", [window_ctx](f64 dt)
+    engine.pre_tick.write()->connect(10, "window updates", [sdl_ctx, window_ctx](f64 dt)
     {
-        // LOG_INFO("UPDATIGN WINDOW 1");
+        // LOG_INFO("UPDATING SDL AND WINDOW");
+        sdl_ctx->update();
         window_ctx->update();
-    });
-
-    engine.pre_tick.write()->connect(1, "low priority", [](f64 dt) {
-        // LOG_INFO("LOW PRIORITY TASK");
-    });
-
-    engine.pre_tick.write()->connect(1000, "high priority", [](f64 dt) {
-        // LOG_INFO("HIGH PRIORITY TASK");
     });
 
     engine.pre_tick.write()->connect(100, "", [&engine](f64 dt)
@@ -75,16 +68,23 @@ int main()
         }
     });
 
-    while (true)
+    std::atomic_bool running{ true };
+
+    SDLComponent& sdl_comp = sdl_ctx->create_component(engine.entity());
+    sdl_comp.on_quit = [&running]
+    {
+        running = false;
+    };
+
+    while (running)
     {
         engine.tick();
 
         if (const auto sleep_time = stopwatch.until(TEMP_SPF); sleep_time > 0)
-            time::sleep_ms(500);
+            time::sleep_ms(sleep_time * 1000);
 
         stopwatch.reset();
     }
-
 
     return 0;
 }

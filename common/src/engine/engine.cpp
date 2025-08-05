@@ -3,13 +3,22 @@
 //
 
 #include <engine/engine.h>
-#include <prelude.h>
 #include <engine/sigh.h>
+#include <prelude.h>
 
 namespace v {
-    Engine::Engine() : engine_entity_{ ctx_registry_.create() }
+    Engine::Engine() :
+        ctx_entity_{ ctx_registry_.create() },
+        engine_entity_{ registry_.write()->create() }
     {
         LOG_INFO("Initialized the engine.");
+    }
+
+    Engine::~Engine()
+    {
+        LOG_INFO("Engine shutting down..");
+
+        on_destroy.write()->publish();
     }
 
     void Engine::tick()
@@ -28,8 +37,10 @@ namespace v {
             auto reg = registry_write();
 
             entt::entity id;
-            while (domain_destroy_queue_.try_dequeue(id)) {
-                if (reg->valid(id)) {
+            while (domain_destroy_queue_.try_dequeue(id))
+            {
+                if (reg->valid(id))
+                {
                     auto& owner_component = reg->get<std::unique_ptr<Domain>>(id);
                     owner_component.reset();
                     reg->destroy(id);

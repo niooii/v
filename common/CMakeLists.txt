@@ -7,11 +7,11 @@ file(GLOB_RECURSE COMMON_SOURCES
 )
 
 # Create the common library
-add_library(v_lib STATIC ${COMMON_SOURCES}
+add_library(vlib STATIC ${COMMON_SOURCES}
         include/engine/sigh.h)
 
 # Include directories for common library
-target_include_directories(v_lib
+target_include_directories(vlib
         PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_SOURCE_DIR}/extern"
@@ -19,7 +19,7 @@ target_include_directories(v_lib
 )
 
 # Link common dependencies
-target_link_libraries(v_lib
+target_link_libraries(vlib
         PUBLIC
         ser20
         EnTT::EnTT
@@ -33,7 +33,7 @@ target_link_libraries(v_lib
 )
 
 # Set output directories
-set_target_properties(v_lib
+set_target_properties(vlib
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"

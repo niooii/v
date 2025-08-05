@@ -9,6 +9,7 @@
 #include <input/names.h>
 
 #include <array>
+#include <memory>
 #include <string>
 #include <entt/signal/sigh.hpp>
 #include <SDL3/SDL_events.h>
@@ -18,11 +19,14 @@
 
 namespace v {
     class WindowContext;
+    class SDLContext;
 
     class Window {
         friend class WindowContext;
 
     public:
+        Window(std::string name, glm::ivec2 size, glm::ivec2 pos);
+        ~Window();
         // Window event signals
 
         /// Fires whenever the window is resized
@@ -184,9 +188,6 @@ namespace v {
         void capture_raw_input(bool capture);
 
     private:
-        Window(std::string name, glm::ivec2 size, glm::ivec2 pos);
-        ~Window();
-
         /// Handles individual events and fires appropriate handlers
         void process_event(const SDL_Event& event);
 
@@ -230,6 +231,8 @@ namespace v {
     /// Kind of a special domain, in the sense that the 'components' (windows)
     /// are not tied to the lifetime of a particular domain
     class WindowContext : public Context {
+        friend class SDLContext;
+
     public:
         explicit WindowContext(Engine& engine);
         ~WindowContext();
@@ -248,6 +251,10 @@ namespace v {
         void update();
 
     private:
-        ankerl::unordered_dense::map<Uint32, Window*> windows_;
+        /// Handles events routed from SDLContext for window-specific processing
+        /// Called by SDLContext as a friend class
+        void handle_events(const SDL_Event& event);
+
+        ankerl::unordered_dense::map<Uint32, std::unique_ptr<Window>> windows_;
     };
 } // namespace v

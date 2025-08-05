@@ -16,7 +16,7 @@ namespace v {
         Context(const Context&)            = delete;
         Context& operator=(const Context&) = delete;
 
-    private:
+    protected:
         Engine& engine_;
     };
 } // namespace v

@@ -14,7 +14,6 @@ namespace v {
     static Key          sdl_to_key(SDL_Scancode scancode);
     static Uint8        mbutton_to_sdl(MouseButton button);
     static MouseButton  sdl_to_mbutton(Uint8 button);
-    static bool         has_window_id(Uint32 event_type);
 
     // Window object methods (public)
 
@@ -344,12 +343,15 @@ namespace v {
 
     WindowContext::WindowContext(Engine& engine) : Context(engine)
     {
-        SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+        SDL_InitSubSystem(SDL_INIT_VIDEO);
     }
 
     WindowContext::~WindowContext()
     {
-        SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        // TODO! make the map store unique_ptrs instead
+        // so when the map gets destroyed windows get destroyed
+        // also can eliminate the manual delete call.
     }
 
     Window*
@@ -357,12 +359,13 @@ namespace v {
     {
         try
         {
-            const auto window = new Window(name, size, pos);
+            auto window = std::unique_ptr<Window>(new Window(name, size, pos));
 
             if (const auto id = SDL_GetWindowID(window->sdl_window_))
             {
-                windows_[id] = window;
-                return window;
+                Window* window_ptr = window.get();
+                windows_[id] = std::move(window);
+                return window_ptr;
             }
         }
         catch (std::runtime_error& e)
@@ -381,46 +384,34 @@ namespace v {
             return;
 
         const auto id = SDL_GetWindowID(window->sdl_window_);
-        LOG_DEBUG("Destroying window with id {} and addr {}", (u64)id, (u64)windows_[id]);
+        LOG_DEBUG("Destroying window with id {} and addr {}", (u64)id, (u64)windows_[id].get());
         windows_.erase(id);
-
-        delete window;
     }
 
     void WindowContext::update()
     {
-        SDL_Event event;
-
-        // update the
+        // Update input states for all windows
         for (const auto& w : windows_ | std::views::values)
         {
             // Copy current state to prev state
             w->prev_keys_    = w->curr_keys_;
             w->prev_mbuttons = w->curr_mbuttons;
         }
+    }
 
-        // send events to their respective windows
-        while (SDL_PollEvent(&event))
-        {
-            if (has_window_id(event.type))
-            {
-                const auto id = event.window.windowID;
-                if (!windows_.contains(id))
-                    continue;
+    void WindowContext::handle_events(const SDL_Event& event)
+    {
+        const auto id = event.window.windowID;
+        if (!windows_.contains(id))
+            return;
 
-                windows_[id]->process_event(event);
+        windows_[id]->process_event(event);
 
-                // we process destruction of window here in case
-                // we have any listeners that should be notified (from
-                // process_event)
-                if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
-                    this->destroy_window(windows_[id]);
-
-                continue;
-            }
-            // TODO! global non window related events, process them
-            // somehow
-        }
+        // Process destruction of window here in case
+        // we have any listeners that should be notified (from
+        // process_event)
+        if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+            this->destroy_window(windows_[id].get());
     }
 
     // Utility function impls
@@ -851,58 +842,4 @@ namespace v {
         }
     }
 
-    static bool has_window_id(const Uint32 event_type)
-    {
-        switch (event_type)
-        {
-            /* All events that have a windowID */
-        case SDL_EVENT_WINDOW_SHOWN:
-        case SDL_EVENT_WINDOW_HIDDEN:
-        case SDL_EVENT_WINDOW_EXPOSED:
-        case SDL_EVENT_WINDOW_MOVED:
-        case SDL_EVENT_WINDOW_RESIZED:
-        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-        case SDL_EVENT_WINDOW_MINIMIZED:
-        case SDL_EVENT_WINDOW_MAXIMIZED:
-        case SDL_EVENT_WINDOW_RESTORED:
-        case SDL_EVENT_WINDOW_MOUSE_ENTER:
-        case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-        case SDL_EVENT_WINDOW_FOCUS_GAINED:
-        case SDL_EVENT_WINDOW_FOCUS_LOST:
-        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-        case SDL_EVENT_WINDOW_HIT_TEST:
-        case SDL_EVENT_WINDOW_ICCPROF_CHANGED:
-        case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
-        case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
-        case SDL_EVENT_WINDOW_OCCLUDED:
-        case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
-        case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
-        case SDL_EVENT_WINDOW_DESTROYED:
-        case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
-        case SDL_EVENT_WINDOW_HDR_STATE_CHANGED:
-        case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
-
-        case SDL_EVENT_KEY_DOWN:
-        case SDL_EVENT_KEY_UP:
-        case SDL_EVENT_TEXT_EDITING:
-        case SDL_EVENT_TEXT_INPUT:
-
-        case SDL_EVENT_MOUSE_MOTION:
-        case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        case SDL_EVENT_MOUSE_BUTTON_UP:
-        case SDL_EVENT_MOUSE_WHEEL:
-
-        case SDL_EVENT_DROP_FILE:
-        case SDL_EVENT_DROP_TEXT:
-        case SDL_EVENT_DROP_BEGIN:
-        case SDL_EVENT_DROP_COMPLETE:
-
-        case SDL_EVENT_FINGER_DOWN:
-        case SDL_EVENT_FINGER_UP:
-        case SDL_EVENT_FINGER_MOTION:
-            return true;
-        default:
-            return false;
-        }
-    }
 } // namespace v
