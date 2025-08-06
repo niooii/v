@@ -8,6 +8,7 @@
 #include <domain/context.h>
 #include <domain/domain.h>
 #include <contexts/window.h>
+#include <vulkan/vulkan.h>
 
 namespace v {
     typedef void(RenderComponentFnRender)(
@@ -32,5 +33,9 @@ namespace v {
         /// The reference must not be stored, and is safe to use as long as only
         /// one thread is creating a RenderComponent at a time.
         RenderComponent& create_component(Domain& domain);
+
+    private:
+        VkInstance instance_;
+        VkDevice device_;
     };
 } // namespace v

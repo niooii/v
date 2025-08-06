@@ -19,6 +19,20 @@ target_link_libraries(imgui PUBLIC SDL3::SDL3)
 add_library(vma INTERFACE)
 target_include_directories(vma INTERFACE ${CMAKE_SOURCE_DIR}/extern/vma/include)
 
+# Add SPIRV-Reflect
+set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "Build SPIRV-Reflect static library" FORCE)
+set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "Don't build SPIRV-Reflect executable" FORCE)
+add_subdirectory(
+        ${CMAKE_SOURCE_DIR}/extern/spirv-reflect
+        ${CMAKE_BINARY_DIR}/extern/spirv-reflect
+)
+
+# Add vk-bootstrap
+add_subdirectory(
+        ${CMAKE_SOURCE_DIR}/extern/vkbootstrap
+        ${CMAKE_BINARY_DIR}/extern/vkbootstrap
+)
+
 # Find Vulkan
 if (DEFINED ENV{VULKAN_SDK})
     if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -51,6 +65,8 @@ target_link_libraries(vclient
         SDL3::SDL3
         imgui
         vma
+        spirv-reflect-static
+        vk-bootstrap
 )
 
 # Copy sdl dlls

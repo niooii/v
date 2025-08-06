@@ -25,3 +25,6 @@
 [submodule "extern/abseil-cpp"]
 	path = extern/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
+[submodule "extern/spirv-reflect"]
+	path = extern/spirv-reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
