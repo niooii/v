@@ -26,8 +26,8 @@ int main()
 
     Engine engine{};
 
-    auto sdl_ctx = engine.add_context<SDLContext>(engine);
-    auto window_ctx = engine.add_context<WindowContext>(engine);
+    auto sdl_ctx = engine.add_locked_context<SDLContext>(engine);
+    auto window_ctx = engine.add_locked_context<WindowContext>(engine);
     engine.add_context<RenderContext>(engine);
 
     // 8 example CountTo10Domain instances
@@ -38,7 +38,7 @@ int main()
     }
 
     // Test event stuff
-    auto window      = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
+    auto window      = window_ctx->write()->create_window("hjey", { 600, 600 }, { 600, 600 });
 
     window->capture_raw_input(true);
     auto lambda = [](glm::ivec2 _pos, glm::ivec2 rel_movement)
@@ -48,8 +48,8 @@ int main()
 
     engine.on_tick.write()->connect({}, {}, "window updates", [sdl_ctx, window_ctx]()
     {
-        sdl_ctx->update();
-        window_ctx->update();
+        sdl_ctx->write()->update();
+        window_ctx->write()->update();
     });
 
     engine.on_tick.write()->connect({"window updates"}, {}, "domain updates", [&engine]()
@@ -68,7 +68,7 @@ int main()
 
     std::atomic_bool running{ true };
 
-    SDLComponent& sdl_comp = sdl_ctx->create_component(engine.entity());
+    SDLComponent& sdl_comp = sdl_ctx->write()->create_component(engine.entity());
     sdl_comp.on_quit = [&running]
     {
         running = false;

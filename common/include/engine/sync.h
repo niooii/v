@@ -15,29 +15,30 @@ template<typename T>
 class ReadProtectedResourceGuard {
 public:
     ReadProtectedResourceGuard(const T& resource, absl::Mutex* mtx)
-        : resource_(resource), lock_(mtx) {}
+        : resource_(resource), lock_(std::make_unique<absl::ReaderMutexLock>(mtx)) {}
 
     const T* operator->() const { return &resource_; }
     const T& operator*() const { return resource_; }
 
 private:
     const T& resource_;
-    absl::WriterMutexLock lock_;
+    // unique ptr so the lock can be moved
+    std::unique_ptr<absl::ReaderMutexLock> lock_;
 };
 
-/// A write guard for accessing non-thread-safe resources
+/// A wrute guard for accessing non-thread-safe resources
 template<typename T>
 class WriteProtectedResourceGuard {
 public:
     WriteProtectedResourceGuard(T& resource, absl::Mutex* mtx)
-        : resource_(resource), lock_(mtx) {}
+        : resource_(resource), lock_(std::make_unique<absl::WriterMutexLock>(mtx)) {}
 
     T* operator->() { return &resource_; }
     T& operator*() { return resource_; }
 
 private:
     T& resource_;
-    absl::ReaderMutexLock lock_;
+    std::unique_ptr<absl::WriterMutexLock> lock_;
 };
 
 /// A wrapper class for a resource that should be protected by a RW-lock at all times.

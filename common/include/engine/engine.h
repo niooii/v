@@ -68,7 +68,7 @@ namespace v {
         /// This means Contexts should be added during the application's
         /// initialization.
         template <DerivedFromContext T, typename... Args>
-        RWProtectedResource<T>* add_context_with_lock(Args&&... args)
+        RWProtectedResource<T>* add_locked_context(Args&&... args)
         {
             return _add_context<RWProtectedResource<T>>(std::forward<Args>(args)...);
         }
@@ -80,7 +80,7 @@ namespace v {
             using namespace std;
             if (auto resource = ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(
                     ctx_entity_))
-                return *resource->read();
+                return std::optional{(*resource)->read()};
 
             return std::nullopt;
         }
@@ -92,7 +92,7 @@ namespace v {
             using namespace std;
             if (auto resource = ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(
                     ctx_entity_))
-                return *resource->write();
+                return std::optional{(*resource)->write()};
 
             return std::nullopt;
         }
@@ -165,10 +165,9 @@ namespace v {
             domain_destroy_queue_.enqueue(domain_id);
         }
 
-        // Public sinks - all use DependentSink for task dependency management
-
-        /// Main tick sink with task dependency management
+        /// Runs every time Engine::tick is called
         RWProtectedResource<DependentSink> on_tick;
+
         /// Runs within the Engine's destructor, before domains and contexts are destroyed
         RWProtectedResource<DependentSink> on_destroy;
 

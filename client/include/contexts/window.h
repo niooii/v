@@ -8,14 +8,16 @@
 #include <domain/context.h>
 #include <input/names.h>
 
-#include <array>
-#include <memory>
-#include <string>
-#include <entt/signal/sigh.hpp>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
+#include <array>
+#include <entt/signal/sigh.hpp>
 #include <glm/vec2.hpp>
+#include <memory>
+#include <string>
 #include <unordered_dense.h>
+
+#include "SDL3/SDL_vulkan.h"
 
 namespace v {
     class WindowContext;
@@ -187,6 +189,15 @@ namespace v {
         /// Enable/disable raw input capture (relative mouse mode)
         void capture_raw_input(bool capture);
 
+        /// Creates a vulkan surface - directly mirrors vulkan API
+        FORCEINLINE bool create_vk_surface(
+            VkInstance instance, const VkAllocationCallbacks* allocator,
+            VkSurfaceKHR* surface) const
+        {
+            return SDL_Vulkan_CreateSurface(
+                this->sdl_window_, instance, allocator, surface);
+        }
+
     private:
         /// Handles individual events and fires appropriate handlers
         void process_event(const SDL_Event& event);
@@ -228,6 +239,8 @@ namespace v {
     };
 
     /// A context for managing windows and input related to windows.
+    /// TODO! there is only one window for now, it is a singleton as it makes it
+    /// easy to write a quick prototype of the rendering system.  revisit this if needed
     /// Kind of a special domain, in the sense that the 'components' (windows)
     /// are not tied to the lifetime of a particular domain
     class WindowContext : public Context {
@@ -239,8 +252,13 @@ namespace v {
 
         /// Create a window with the given parameters
         /// @return A pointer to the window, or nullptr if failure.  Window must be
-        /// destroyed with WindowContext::destroy_window
+        /// destroyed with WindowContext::destroy_window.
+        /// TODO! this is a no-op if a window already exists, because for now the context
+        /// only supports singleton windows
         Window* create_window(const std::string& name, glm::ivec2 size, glm::ivec2 pos);
+
+        /// Gets the Window singleton
+        FORCEINLINE Window* get_window() const { return singleton_; }
 
         /// Destroy a window
         void destroy_window(const Window* window);
@@ -256,5 +274,7 @@ namespace v {
         void handle_events(const SDL_Event& event);
 
         ankerl::unordered_dense::map<Uint32, std::unique_ptr<Window>> windows_;
+
+        Window* singleton_{ nullptr };
     };
 } // namespace v

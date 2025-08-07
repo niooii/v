@@ -51,7 +51,8 @@ endif ()
 file(GLOB_RECURSE CLIENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # Create client executable (rename to avoid directory conflict)
-add_executable(vclient ${CLIENT_SOURCES})
+add_executable(vclient ${CLIENT_SOURCES}
+        src/contexts/render/per_window_init.cpp)
 
 target_compile_definitions(vclient PUBLIC GDF_CLIENT_BUILD)
 

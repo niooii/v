@@ -71,4 +71,16 @@ Because of this, two usages emerge:
    then manually acquire and manage a read or write lock from each ConcurrentDomain
    (fine-grained locking).
 
-It is up to the programmer to manage this (accidental) flexibility, which is now a core feature.  
+It is up to the programmer to manage this (accidental) flexibility, which is now a core feature.
+
+# Debugging
+
+If a bug is encountered and a fix is requested, you are to attempt to understand the issue fully. Do not make
+assumptions and always test iteratively. You can build the application with `./v.sh build [vclient/vserver/vlib]`, and
+run executables with `./v.sh run [vclient/vserver]`. If it's a runtime error, you probably want to set a timeout on it,
+since it will keep running forever with any intervention. If it's a compilation error, you can test it with build, not
+run. If you cannot find out the root of the issue, you may suggest workarounds and quick 'patch fixes' but do not
+implement them until requested explicitly. Remove any debug code you wrote to track down the issue after it has been
+fixed (eg. logs, prints, etc). Report the findings in a `bug-[name].md` file in the project root, containing what was
+wrong, the symptoms, and how it was fixed. Note symptoms are different than the root cause - do not just treat the
+symptoms, your goal is to find the root cause.  

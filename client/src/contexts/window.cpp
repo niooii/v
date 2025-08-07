@@ -29,7 +29,7 @@ namespace v {
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.y);
         SDL_SetNumberProperty(
             props, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+            SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_VULKAN);
 
         sdl_window_ = SDL_CreateWindowWithProperties(props);
 
@@ -105,7 +105,8 @@ namespace v {
     float Window::opacity() const
     {
         float opacity;
-        return SDL_GetWindowOpacity(sdl_window_);;
+        return SDL_GetWindowOpacity(sdl_window_);
+        ;
     }
 
     // Window state getters
@@ -192,40 +193,19 @@ namespace v {
 
     // Window actions
 
-    void Window::minimize()
-    {
-        SDL_MinimizeWindow(sdl_window_);
-    }
+    void Window::minimize() { SDL_MinimizeWindow(sdl_window_); }
 
-    void Window::maximize()
-    {
-        SDL_MaximizeWindow(sdl_window_);
-    }
+    void Window::maximize() { SDL_MaximizeWindow(sdl_window_); }
 
-    void Window::restore()
-    {
-        SDL_RestoreWindow(sdl_window_);
-    }
+    void Window::restore() { SDL_RestoreWindow(sdl_window_); }
 
-    void Window::show()
-    {
-        SDL_ShowWindow(sdl_window_);
-    }
+    void Window::show() { SDL_ShowWindow(sdl_window_); }
 
-    void Window::hide()
-    {
-        SDL_HideWindow(sdl_window_);
-    }
+    void Window::hide() { SDL_HideWindow(sdl_window_); }
 
-    void Window::raise()
-    {
-        SDL_RaiseWindow(sdl_window_);
-    }
+    void Window::raise() { SDL_RaiseWindow(sdl_window_); }
 
-    void Window::flash()
-    {
-        SDL_FlashWindow(sdl_window_, SDL_FLASH_BRIEFLY);
-    }
+    void Window::flash() { SDL_FlashWindow(sdl_window_, SDL_FLASH_BRIEFLY); }
 
     void Window::capture_raw_input(bool capture)
     {
@@ -357,6 +337,14 @@ namespace v {
     Window*
     WindowContext::create_window(const std::string& name, glm::ivec2 size, glm::ivec2 pos)
     {
+        if (singleton_)
+        {
+            LOG_WARN(
+                "Window with name {} was not created. WindowContext only supports a "
+                "single window as of now.",
+                name);
+            return singleton_;
+        }
         try
         {
             auto window = std::unique_ptr<Window>(new Window(name, size, pos));
@@ -364,7 +352,8 @@ namespace v {
             if (const auto id = SDL_GetWindowID(window->sdl_window_))
             {
                 Window* window_ptr = window.get();
-                windows_[id] = std::move(window);
+                windows_[id]       = std::move(window);
+                singleton_         = window_ptr;
                 return window_ptr;
             }
         }
@@ -384,7 +373,8 @@ namespace v {
             return;
 
         const auto id = SDL_GetWindowID(window->sdl_window_);
-        LOG_DEBUG("Destroying window with id {} and addr {}", (u64)id, (u64)windows_[id].get());
+        LOG_DEBUG(
+            "Destroying window with id {} and addr {}", (u64)id, (u64)windows_[id].get());
         windows_.erase(id);
     }
 

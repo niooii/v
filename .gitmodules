@@ -28,3 +28,6 @@
 [submodule "extern/spirv-reflect"]
 	path = extern/spirv-reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
+[submodule "vkbootstrap"]
+	path = vkbootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
