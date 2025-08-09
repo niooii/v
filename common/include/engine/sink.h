@@ -27,6 +27,7 @@ public:
     /// @param before Tasks that this task should run BEFORE  
     /// @param name Unique name for this task
     /// @param func Function to execute
+    /// @note ALL tasks should be thread-safe
     FORCEINLINE void connect(
         const std::vector<std::string>& after,
         const std::vector<std::string>& before,

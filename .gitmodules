@@ -4,9 +4,6 @@
 [submodule "extern/imgui"]
 	path = extern/imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "extern/vma"]
-	path = extern/vma
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
 [submodule "extern/entt"]
 	path = extern/entt
 	url = https://github.com/skypjack/entt.git
@@ -25,9 +22,6 @@
 [submodule "extern/abseil-cpp"]
 	path = extern/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
-[submodule "extern/spirv-reflect"]
-	path = extern/spirv-reflect
-	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
-[submodule "vkbootstrap"]
-	path = extern/vkbootstrap
-	url = https://github.com/charles-lunarg/vk-bootstrap.git
+[submodule "extern/daxa"]
+	path = extern/daxa
+	url = https://github.com/Ipotrick/Daxa.git

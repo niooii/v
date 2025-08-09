@@ -28,7 +28,11 @@ int main()
 
     auto sdl_ctx = engine.add_locked_context<SDLContext>(engine);
     auto window_ctx = engine.add_locked_context<WindowContext>(engine);
-    engine.add_context<RenderContext>(engine);
+
+    // Test event stuff
+    auto window      = window_ctx->write()->create_window("hjey", { 600, 600 }, { 600, 600 });
+
+    auto render_ctx = engine.add_locked_context<RenderContext>(engine);
 
     // 8 example CountTo10Domain instances
     for (i32 i = 0; i < 8; ++i)
@@ -36,9 +40,6 @@ int main()
         engine.add_domain<CountTo10Domain>(
             engine, "CountTo10Domain_" + std::to_string(i));
     }
-
-    // Test event stuff
-    auto window      = window_ctx->write()->create_window("hjey", { 600, 600 }, { 600, 600 });
 
     window->capture_raw_input(true);
     auto lambda = [](glm::ivec2 _pos, glm::ivec2 rel_movement)
@@ -52,7 +53,7 @@ int main()
         window_ctx->write()->update();
     });
 
-    engine.on_tick.write()->connect({"window updates"}, {}, "domain updates", [&engine]()
+    engine.on_tick.write()->connect({}, {}, "domain updates", [&engine]()
     {
         // Example domain usage: CountTo10Domain counts to 10, and then
         // destroys itself.
@@ -74,7 +75,7 @@ int main()
         running = false;
     };
 
-    while (running)
+   while (running)
     {
         engine.tick();
 

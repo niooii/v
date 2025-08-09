@@ -43,6 +43,9 @@ namespace v {
         /// as long as it does not overlap with the Engine::tick() method
         FORCEINLINE f64 delta_time() const { return prev_tick_span_; };
 
+        /// Returns the internally stored tick counter
+        FORCEINLINE u64 current_tick() const { return current_tick_; };
+
         /// Return's the engine's reserved entity in the main registry (cannot query
         /// contexts from this registry)
         FORCEINLINE entt::entity entity() const { return engine_entity_; };
@@ -80,7 +83,7 @@ namespace v {
             using namespace std;
             if (auto resource = ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(
                     ctx_entity_))
-                return std::optional{(*resource)->read()};
+                return std::optional{ (*resource)->read() };
 
             return std::nullopt;
         }
@@ -92,7 +95,7 @@ namespace v {
             using namespace std;
             if (auto resource = ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(
                     ctx_entity_))
-                return std::optional{(*resource)->write()};
+                return std::optional{ (*resource)->write() };
 
             return std::nullopt;
         }

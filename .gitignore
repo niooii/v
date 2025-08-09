@@ -4,3 +4,7 @@ cmake_install.cmake
 Makefile
 bug-*.md
 logs/
+build/
+.nvim-cache
+compile_commands.json
+.cache
