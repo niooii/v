@@ -6,7 +6,7 @@ project(gdf
         DESCRIPTION "Not really a game dev final..."
         LANGUAGES CXX)
 
-
+#
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)

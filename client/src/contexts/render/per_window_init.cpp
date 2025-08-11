@@ -4,208 +4,116 @@
 
 #include <algorithm>
 #include <contexts/render.h>
-#include "init_vk.h"
 #include <engine/engine.h>
 #include <stdexcept>
-#include <vulkan/vk_enum_string_helper.h>
+#include "init_vk.h"
 
-constexpr u32 FRAMES_IN_FLIGHT = 2;
 
 namespace v {
     WindowRenderResources::WindowRenderResources(
-        Window* window, const VulkanResources* vulkan_resources) :
-        vulkan_resources_(vulkan_resources)
+        Window* window, DaxaResources* daxa_resources) : daxa_resources_(daxa_resources)
     {
-        LOG_INFO("Initializing per-window Vulkan resources...");
+        LOG_INFO("Initializing per-window Daxa resources...");
 
-        // Create surface
-        if (!window->create_vk_surface(
-                vulkan_resources_->instance, vulkan_resources_->allocator, &surface))
+        // Get native window handle from SDL3 window properties
+        daxa::NativeWindowHandle   native_handle;
+        daxa::NativeWindowPlatform native_platform;
+
+        SDL_PropertiesID window_props = SDL_GetWindowProperties(window->get_sdl_window());
+
+#if defined(_WIN32)
+        void* hwnd = SDL_GetPointerProperty(
+            window_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+        if (!hwnd)
         {
-            throw std::runtime_error("Failed to create Vulkan surface");
+            throw std::runtime_error("Failed to get Win32 HWND from SDL window");
         }
+        native_handle   = reinterpret_cast<daxa::NativeWindowHandle>(hwnd);
+        native_platform = daxa::NativeWindowPlatform::WIN32_API;
+#elif defined(__linux__)
+        // wayland or x11
+        const char* video_driver = SDL_GetCurrentVideoDriver();
+        if (!video_driver)
+        {
+            throw std::runtime_error("Failed to get current SDL video driver");
+        }
+
+        if (strcmp(video_driver, "wayland") == 0)
+        {
+            void* wl_surface = SDL_GetPointerProperty(
+                window_props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);
+            if (!wl_surface)
+                throw std::runtime_error("Failed to get Wayland surface from SDL window");
+            native_handle   = reinterpret_cast<daxa::NativeWindowHandle>(wl_surface);
+            native_platform = daxa::NativeWindowPlatform::WAYLAND_API;
+            LOG_INFO("Using Wayland video driver");
+        }
+        else if (strcmp(video_driver, "x11") == 0)
+        {
+            Uint64 x11_window =
+                SDL_GetNumberProperty(window_props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+            if (x11_window == 0)
+                throw std::runtime_error("Failed to get X11 Window ID from SDL window");
+            native_handle   = reinterpret_cast<daxa::NativeWindowHandle>(x11_window);
+            native_platform = daxa::NativeWindowPlatform::XLIB_API;
+            LOG_INFO("Using X11 video driver");
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format(
+                    "Unsupported SDL video driver '{}'",
+                    video_driver));
+        }
+#else
+        throw std::runtime_error("Unsupported platform for now");
+#endif
 
         // Create swapchain
-        VkSwapchainCreateInfoKHR swapchain_create_info{};
-        swapchain_create_info.sType         = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swapchain_create_info.surface       = surface;
-        swapchain_create_info.minImageCount = FRAMES_IN_FLIGHT;
-        swapchain_create_info.imageFormat   = VK_FORMAT_B8G8R8A8_SRGB; // Common format
-        swapchain_create_info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-
-        auto window_size                       = window->size();
-        swapchain_create_info.imageExtent      = { static_cast<u32>(window_size.x),
-                                                   static_cast<u32>(window_size.y) };
-        swapchain_create_info.imageArrayLayers = 1;
-        swapchain_create_info.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        swapchain_create_info.preTransform     = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        swapchain_create_info.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        swapchain_create_info.presentMode      = VK_PRESENT_MODE_FIFO_KHR; // V-sync
-        swapchain_create_info.clipped          = VK_TRUE;
-        swapchain_create_info.oldSwapchain     = VK_NULL_HANDLE;
-
-        swapchain_format = swapchain_create_info.imageFormat;
-        swapchain_extent = swapchain_create_info.imageExtent;
-
-        auto sc_res = vkCreateSwapchainKHR(
-            vulkan_resources_->device, &swapchain_create_info,
-            vulkan_resources_->allocator, &swapchain);
-        if (sc_res != VK_SUCCESS)
+        try
         {
-            LOG_ERROR("Failed to create swapchain: {}", string_VkResult(sc_res));
-            throw std::runtime_error("Failed to create swapchain");
+            swapchain = daxa_resources_->device.create_swapchain(
+                {
+                    .native_window           = native_handle,
+                    .native_window_platform  = native_platform,
+                    .surface_format_selector = [](daxa::Format format) -> i32
+                    {
+                        switch (format)
+                        {
+                        case daxa::Format::B8G8R8A8_SRGB:
+                            return 100;
+                        case daxa::Format::R8G8B8A8_SRGB:
+                            return 90;
+                        case daxa::Format::B8G8R8A8_UNORM:
+                            return 80;
+                        case daxa::Format::R8G8B8A8_UNORM:
+                            return 70;
+                        default:
+                            return daxa::default_format_score(format);
+                        }
+                    },
+                    .present_mode = daxa::PresentMode::MAILBOX, 
+                    .image_usage  = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
+                    .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
+                    .name                         = "swapchain",
+                });
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Failed to create Daxa swapchain: {}", e.what());
+            throw std::runtime_error("Failed to create Daxa swapchain");
         }
 
-        // Get swapchain images
-        u32 actual_image_count;
-        vkGetSwapchainImagesKHR(
-            vulkan_resources_->device, swapchain, &actual_image_count, nullptr);
-        swapchain_images.resize(actual_image_count);
-        vkGetSwapchainImagesKHR(
-            vulkan_resources_->device, swapchain, &actual_image_count, swapchain_images.data());
-
-        // Create image views
-        swapchain_image_views.resize(swapchain_images.size());
-        for (size_t i = 0; i < swapchain_images.size(); i++)
-        {
-            VkImageViewCreateInfo view_info{};
-            view_info.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            view_info.image    = swapchain_images[i];
-            view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            view_info.format   = swapchain_format;
-            view_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            view_info.subresourceRange.baseMipLevel   = 0;
-            view_info.subresourceRange.levelCount     = 1;
-            view_info.subresourceRange.baseArrayLayer = 0;
-            view_info.subresourceRange.layerCount     = 1;
-
-            if (vkCreateImageView(
-                    vulkan_resources_->device, &view_info, vulkan_resources_->allocator,
-                    &swapchain_image_views[i]) != VK_SUCCESS)
-            {
-                throw std::runtime_error("Failed to create image views");
-            }
-        }
-
-        // Create command pool
-        VkCommandPoolCreateInfo pool_info{};
-        pool_info.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pool_info.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        pool_info.queueFamilyIndex = vulkan_resources_->graphics_queue_family;
-
-        if (vkCreateCommandPool(
-                vulkan_resources_->device, &pool_info, vulkan_resources_->allocator,
-                &command_pool) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create command pool");
-        }
-
-        // Create command buffers
-        command_buffers.resize(FRAMES_IN_FLIGHT);
-        VkCommandBufferAllocateInfo alloc_info{};
-        alloc_info.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        alloc_info.commandPool        = command_pool;
-        alloc_info.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        alloc_info.commandBufferCount = FRAMES_IN_FLIGHT;
-
-        if (vkAllocateCommandBuffers(
-                vulkan_resources_->device, &alloc_info, command_buffers.data()) !=
-            VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to allocate command buffers");
-        }
-
-        // Create synchronization objects
-        image_available_semaphores.resize(FRAMES_IN_FLIGHT);
-        render_finished_semaphores.resize(FRAMES_IN_FLIGHT);
-        in_flight_fences.resize(FRAMES_IN_FLIGHT);
-
-        VkSemaphoreCreateInfo semaphore_info{};
-        semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkFenceCreateInfo fence_info{};
-        fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        for (size_t i = 0; i < FRAMES_IN_FLIGHT; i++)
-        {
-            if (vkCreateSemaphore(
-                    vulkan_resources_->device, &semaphore_info,
-                    vulkan_resources_->allocator,
-                    &image_available_semaphores[i]) != VK_SUCCESS ||
-                vkCreateSemaphore(
-                    vulkan_resources_->device, &semaphore_info,
-                    vulkan_resources_->allocator,
-                    &render_finished_semaphores[i]) != VK_SUCCESS ||
-                vkCreateFence(
-                    vulkan_resources_->device, &fence_info, vulkan_resources_->allocator,
-                    &in_flight_fences[i]) != VK_SUCCESS)
-            {
-                throw std::runtime_error("Failed to create synchronization objects");
-            }
-        }
-
-        LOG_INFO("Finish initializing vulkan stuff");
+        LOG_INFO("Finished initializing Daxa per-window resources");
     }
 
     WindowRenderResources::~WindowRenderResources()
     {
-        LOG_INFO("Cleaning up per-window Vulkan stuff..");
+        LOG_INFO("Cleaning up per-window Daxa resources...");
 
-        // Clean up synchronization objects
-        for (size_t i = 0; i < in_flight_fences.size(); i++)
+        if (daxa_resources_->device.is_valid())
         {
-            if (in_flight_fences[i] != VK_NULL_HANDLE)
-            {
-                vkDestroyFence(
-                    vulkan_resources_->device, in_flight_fences[i],
-                    vulkan_resources_->allocator);
-            }
-            if (render_finished_semaphores[i] != VK_NULL_HANDLE)
-            {
-                vkDestroySemaphore(
-                    vulkan_resources_->device, render_finished_semaphores[i],
-                    vulkan_resources_->allocator);
-            }
-            if (image_available_semaphores[i] != VK_NULL_HANDLE)
-            {
-                vkDestroySemaphore(
-                    vulkan_resources_->device, image_available_semaphores[i],
-                    vulkan_resources_->allocator);
-            }
+            daxa_resources_->device.wait_idle();
         }
-
-        // Command buffers are automatically freed when command pool is destroyed
-        if (command_pool != VK_NULL_HANDLE)
-        {
-            vkDestroyCommandPool(
-                vulkan_resources_->device, command_pool, vulkan_resources_->allocator);
-        }
-
-        // Clean up image views
-        for (VkImageView image_view : swapchain_image_views)
-        {
-            if (image_view != VK_NULL_HANDLE)
-            {
-                vkDestroyImageView(
-                    vulkan_resources_->device, image_view, vulkan_resources_->allocator);
-            }
-        }
-
-        // Swapchain images are owned by swapchain and cleaned up automatically
-        if (swapchain != VK_NULL_HANDLE)
-        {
-            vkDestroySwapchainKHR(
-                vulkan_resources_->device, swapchain, vulkan_resources_->allocator);
-        }
-
-        if (surface != VK_NULL_HANDLE)
-        {
-            vkDestroySurfaceKHR(
-                vulkan_resources_->instance, surface, vulkan_resources_->allocator);
-        }
-
-        LOG_INFO("Finished destroying per-window Vulkan resources");
     }
 } // namespace v

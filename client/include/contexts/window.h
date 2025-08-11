@@ -198,6 +198,9 @@ namespace v {
                 this->sdl_window_, instance, allocator, surface);
         }
 
+        /// Get access to the underlying SDL window - needed for native handle extraction
+        FORCEINLINE SDL_Window* get_sdl_window() const { return sdl_window_; }
+
     private:
         /// Handles individual events and fires appropriate handlers
         void process_event(const SDL_Event& event);

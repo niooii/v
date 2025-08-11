@@ -5,34 +5,22 @@
 #pragma once
 
 #include <defs.h>
-#include <vulkan/vulkan.h>
+#include <daxa/daxa.hpp>
 
 namespace v {
     class Window;
     class WindowContext;
     class Engine;
 
-    /// The vulkan resources used globally
-    struct VulkanResources {
-        VkInstance             instance;
-        VkAllocationCallbacks* allocator;
-        VkPhysicalDevice       physical_device;
-        VkDevice               device;
+    /// The daxa resources used globally
+    struct DaxaResources {
+        daxa::Instance instance;
+        daxa::Device   device;
 
-        VkQueue graphics_queue;
-        VkQueue present_queue;
-        VkQueue compute_queue;
-        VkQueue transfer_queue;
+        explicit DaxaResources(Engine& engine);
+        ~DaxaResources();
 
-        uint32_t graphics_queue_family;
-        uint32_t present_queue_family;
-        uint32_t compute_queue_family;
-        uint32_t transfer_queue_family;
-
-        explicit VulkanResources(Engine& engine);
-        ~VulkanResources();
-
-        VulkanResources(const VulkanResources&) = delete;
-        VulkanResources& operator=(const VulkanResources&) = delete;
+        DaxaResources(const DaxaResources&) = delete;
+        DaxaResources& operator=(const DaxaResources&) = delete;
     };
 }

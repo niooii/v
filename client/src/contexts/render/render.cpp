@@ -9,8 +9,8 @@
 
 namespace v {
     RenderContext::RenderContext(Engine& engine) : Context(engine) {
-        // Create Vulkan resources 
-        vulkan_resources_ = std::make_unique<VulkanResources>(engine_);
+        // Create Daxa resources 
+        daxa_resources_ = std::make_unique<DaxaResources>(engine_);
 
         // Init rendering stuff for the window
         auto window_ctx = engine_.write_context<WindowContext>();
@@ -19,7 +19,7 @@ namespace v {
         }
 
         Window* win = (*window_ctx)->get_window();
-        window_resources_ = std::make_unique<WindowRenderResources>(win, vulkan_resources_.get());
+        window_resources_ = std::make_unique<WindowRenderResources>(win, daxa_resources_.get());
     }
 
     RenderContext::~RenderContext() = default;

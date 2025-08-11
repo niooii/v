@@ -9,43 +9,16 @@ set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/extern/imgui)
 file(GLOB IMGUI_SOURCES
         ${IMGUI_DIR}/*.cpp
         ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
-        ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
 )
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
 target_link_libraries(imgui PUBLIC SDL3::SDL3)
 
-# VMA is header-only
-add_library(vma INTERFACE)
-target_include_directories(vma INTERFACE ${CMAKE_SOURCE_DIR}/extern/vma/include)
-
-# Add SPIRV-Reflect
-set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "Build SPIRV-Reflect static library" FORCE)
-set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "Don't build SPIRV-Reflect executable" FORCE)
 add_subdirectory(
-        ${CMAKE_SOURCE_DIR}/extern/spirv-reflect
-        ${CMAKE_BINARY_DIR}/extern/spirv-reflect
+        ${CMAKE_SOURCE_DIR}/extern/daxa
+        ${CMAKE_BINARY_DIR}/extern/daxa
 )
 
-# Add vk-bootstrap
-add_subdirectory(
-        ${CMAKE_SOURCE_DIR}/extern/vkbootstrap
-        ${CMAKE_BINARY_DIR}/extern/vkbootstrap
-)
-
-# Find Vulkan
-if (DEFINED ENV{VULKAN_SDK})
-    if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        set(Vulkan_INCLUDE_DIRS "$ENV{VULKAN_SDK}/Include")
-    else ()
-        set(Vulkan_INCLUDE_DIRS "$ENV{VULKAN_SDK}/include")
-    endif ()
-    include_directories(${Vulkan_INCLUDE_DIRS})
-    find_package(Vulkan REQUIRED)
-else ()
-    find_package(Vulkan REQUIRED)
-    include_directories(${Vulkan_INCLUDE_DIRS})
-endif ()
 
 # Find all client source files
 file(GLOB_RECURSE CLIENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
@@ -62,12 +35,9 @@ target_include_directories(vclient PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 target_link_libraries(vclient
         PRIVATE
         vlib
-        Vulkan::Vulkan
         SDL3::SDL3
         imgui
-        vma
-        spirv-reflect-static
-        vk-bootstrap
+        daxa
 )
 
 # Copy sdl dlls

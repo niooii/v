@@ -9,7 +9,8 @@
 #include <domain/context.h>
 #include <domain/domain.h>
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <daxa/daxa.hpp>
+#include <daxa/utils/task_graph.hpp>
 #include "engine/sink.h"
 
 namespace v {
@@ -24,33 +25,22 @@ namespace v {
         std::function<RenderComponentFnRender> resize{};
     };
 
-    struct VulkanResources;
+    struct DaxaResources;
 
-    /// The vulkan resources used per-window
     struct WindowRenderResources {
         WindowRenderResources(const WindowRenderResources& other) = delete;
 
         WindowRenderResources& operator=(const WindowRenderResources& other) = delete;
 
-        WindowRenderResources(Window* window, const VulkanResources* vulkan_resources);
+        WindowRenderResources(Window* window, DaxaResources* daxa_resources);
         ~WindowRenderResources();
 
-        VkSurfaceKHR   surface;
-        VkSwapchainKHR swapchain;
+        daxa::Swapchain swapchain;
+        daxa::TaskGraph render_graph;
+        daxa::TaskImage task_swapchain_image;
+        static constexpr u32 FRAMES_IN_FLIGHT = 2;
 
-        std::vector<VkImage>     swapchain_images;
-        std::vector<VkImageView> swapchain_image_views;
-        VkFormat                 swapchain_format;
-        VkExtent2D               swapchain_extent;
-
-        std::vector<VkCommandBuffer> command_buffers;
-        VkCommandPool                command_pool;
-
-        std::vector<VkSemaphore> image_available_semaphores;
-        std::vector<VkSemaphore> render_finished_semaphores;
-        std::vector<VkFence>     in_flight_fences;
-
-        const VulkanResources* vulkan_resources_;
+        DaxaResources* daxa_resources_;
     };
 
     class RenderContext : public Context {
@@ -72,9 +62,9 @@ namespace v {
         void update();
 
     private:
-        std::unique_ptr<VulkanResources> vulkan_resources_;
+        std::unique_ptr<DaxaResources> daxa_resources_;
 
-        /// Vulkan resources for the for now singleton window
+        /// Daxa resources for the for now singleton window
         std::unique_ptr<WindowRenderResources> window_resources_;
     };
 } // namespace v
