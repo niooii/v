@@ -82,42 +82,48 @@ if [[ -z "$COMMAND" ]]; then
 fi
 
 configure_cmake() {
-    print_status "Configuring CMake for $BUILD_TYPE build..."
+    local preset_name=""
+    if [[ "$BUILD_TYPE" == "Release" ]]; then
+        preset_name="release"
+    else
+        preset_name="debug"
+    fi
     
-    mkdir -p "$BUILD_DIR"
-    cd "$BUILD_DIR"
+    print_status "Configuring CMake using preset: $preset_name"
     
-    # Mimic CLion's cmake configuration exactly
-    cmake -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-          -DCMAKE_MAKE_PROGRAM=ninja \
-          -G Ninja \
-          "$PROJECT_ROOT"
+    cmake --preset "$preset_name"
     
-    cd "$PROJECT_ROOT"
-    print_success "CMake configured successfully"
+    print_success "CMake configured successfully using preset: $preset_name"
 }
 
 build_target() {
     local target="$1"
+    local preset_name=""
+    local build_preset=""
+    
+    if [[ "$BUILD_TYPE" == "Release" ]]; then
+        preset_name="release"
+    else
+        preset_name="debug"
+    fi
     
     # Check if we need to configure
     if [[ ! -d "$BUILD_DIR" || ! -f "$BUILD_DIR/build.ninja" ]]; then
         configure_cmake
     fi
     
-    cd "$BUILD_DIR"
-    
+    # Determine build preset based on target and build type
     if [[ -n "$target" ]]; then
+        build_preset="${preset_name}-${target}"
         print_status "Building target: $target ($BUILD_TYPE)"
-        ninja "$target"
+        cmake --build --preset "$build_preset"
         print_success "Target $target built successfully"
     else
+        build_preset="${preset_name}-build"
         print_status "Building all targets ($BUILD_TYPE)"
-        ninja
+        cmake --build --preset "$build_preset"
         print_success "All targets built successfully"
     fi
-    
-    cd "$PROJECT_ROOT"
 }
 
 run_executable() {

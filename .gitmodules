@@ -22,3 +22,6 @@
 [submodule "extern/abseil-cpp"]
 	path = extern/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
+[submodule "extern/daxa"]
+	path = extern/daxa
+	url = https://github.com/niooii/Daxa.git

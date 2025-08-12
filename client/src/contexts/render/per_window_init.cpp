@@ -3,6 +3,10 @@
 //
 
 #include <algorithm>
+#include "daxa/utils/task_graph.hpp"
+#include "defs.h"
+// this isnt needed but im tryna fix some weird intellisense bug
+#define DAXA_ENABLE_UTILS_TASK_GRAPH 1
 #include <contexts/render.h>
 #include <engine/engine.h>
 #include <stdexcept>
@@ -13,8 +17,7 @@ namespace v {
     WindowRenderResources::WindowRenderResources(
         Window* window, DaxaResources* daxa_resources) : daxa_resources_(daxa_resources)
     {
-        LOG_INFO("Initializing per-window Daxa resources...");
-
+        LOG_INFO("Initializing per-window Daxa stuff...");
         // Get native window handle from SDL3 window properties
         daxa::NativeWindowHandle   native_handle;
         daxa::NativeWindowPlatform native_platform;
@@ -61,59 +64,122 @@ namespace v {
         else
         {
             throw std::runtime_error(
-                fmt::format(
-                    "Unsupported SDL video driver '{}'",
-                    video_driver));
+                fmt::format("Unsupported SDL video driver '{}'", video_driver));
         }
 #else
         throw std::runtime_error("Unsupported platform for now");
 #endif
+        // fallback present modes
+        daxa::PresentMode present_modes[] = {
+            daxa::PresentMode::MAILBOX,
+            daxa::PresentMode::FIFO,
+            daxa::PresentMode::IMMEDIATE,
+        };
 
-        // Create swapchain
-        try
+        bool swapchain_created = false;
+        for (auto present_mode : present_modes)
         {
-            swapchain = daxa_resources_->device.create_swapchain(
-                {
-                    .native_window           = native_handle,
-                    .native_window_platform  = native_platform,
-                    .surface_format_selector = [](daxa::Format format) -> i32
+            try
+            {
+                swapchain = daxa_resources_->device.create_swapchain(
                     {
-                        switch (format)
+                        .native_window           = native_handle,
+                        .native_window_platform  = native_platform,
+                        .surface_format_selector = [](daxa::Format format) -> i32
                         {
-                        case daxa::Format::B8G8R8A8_SRGB:
-                            return 100;
-                        case daxa::Format::R8G8B8A8_SRGB:
-                            return 90;
-                        case daxa::Format::B8G8R8A8_UNORM:
-                            return 80;
-                        case daxa::Format::R8G8B8A8_UNORM:
-                            return 70;
-                        default:
-                            return daxa::default_format_score(format);
-                        }
-                    },
-                    .present_mode = daxa::PresentMode::MAILBOX, 
-                    .image_usage  = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
-                    .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
-                    .name                         = "swapchain",
-                });
-        }
-        catch (const std::exception& e)
-        {
-            LOG_ERROR("Failed to create Daxa swapchain: {}", e.what());
-            throw std::runtime_error("Failed to create Daxa swapchain");
+                            switch (format)
+                            {
+                            case daxa::Format::B8G8R8A8_SRGB:
+                                return 100;
+                            case daxa::Format::R8G8B8A8_SRGB:
+                                return 90;
+                            case daxa::Format::B8G8R8A8_UNORM:
+                                return 80;
+                            case daxa::Format::R8G8B8A8_UNORM:
+                                return 70;
+                            default:
+                                return daxa::default_format_score(format);
+                            }
+                        },
+                        .present_mode = present_mode,
+                        .image_usage  = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
+                        .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
+                        .name                         = "swapchain",
+                    });
+                swapchain_created = true;
+                LOG_INFO(
+                    "Created swapchain with present mode: {}",
+                    static_cast<int>(present_mode));
+                break;
+            }
+            catch (const std::exception& e)
+            {
+                LOG_DEBUG(
+                    "Failed to create swapchain with present mode {}: {}\nRolling up one "
+                    "present mode",
+                    static_cast<int>(present_mode), e.what());
+                continue;
+            }
         }
 
-        LOG_INFO("Finished initializing Daxa per-window resources");
+        if (!swapchain_created)
+        {
+            LOG_ERROR("Failed to create swapchain with ANY present mode?");
+            throw std::runtime_error("Failed to create swapchain");
+        }
+
+        task_swapchain_image = daxa::TaskImage{ {
+            .swapchain_image = true,
+            .name            = "swapchain img",
+        } };
+
+        // resize swapchain on window resize
+
+        window->on_resize.connect<&WindowRenderResources::resize>(this);
+    
+
+        LOG_TRACE("created swapchain, creating task graph now");
+
+        render_graph = daxa::TaskGraph(
+            { .device    = daxa_resources_->device,
+              .swapchain = swapchain,
+              .name      = "main loop graph" });
+
+        render_graph.use_persistent_image(task_swapchain_image);
+
+        render_graph.submit({});
+        render_graph.present({});
+        render_graph.complete({});
+
+        LOG_INFO("Finished initializing per-window render stuff");
     }
 
     WindowRenderResources::~WindowRenderResources()
     {
-        LOG_INFO("Cleaning up per-window Daxa resources...");
+        LOG_INFO("Cleaning up swapchain and stuff...");
 
         if (daxa_resources_->device.is_valid())
         {
             daxa_resources_->device.wait_idle();
         }
+    }
+
+    void WindowRenderResources::render()
+    {
+        auto swapchain_img = swapchain.acquire_next_image();
+        if (swapchain_img.is_empty())
+        {
+            LOG_WARN("No image acquired from swapchain..??");
+            return;
+        }
+
+        task_swapchain_image.set_images({ .images = std::span{ &swapchain_img, 1 } });
+
+        render_graph.execute({});
+    }
+
+    void WindowRenderResources::resize() {
+        LOG_TRACE("resized swapchain");
+        swapchain.resize();
     }
 } // namespace v

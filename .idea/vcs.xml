@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/abseil-cpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/extern/daxa" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/entt" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/glm" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/hfsm2" vcs="Git" />
@@ -10,8 +11,5 @@
     <mapping directory="$PROJECT_DIR$/extern/sdl3" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/ser20" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/spdlog" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/extern/spirv-reflect" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/extern/vkbootstrap" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/extern/vma" vcs="Git" />
   </component>
 </project>

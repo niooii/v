@@ -35,12 +35,18 @@ namespace v {
         WindowRenderResources(Window* window, DaxaResources* daxa_resources);
         ~WindowRenderResources();
 
+        void render();
+        // called to resize the swapchain
+        void resize();
+
+
+
         daxa::Swapchain swapchain;
         daxa::TaskGraph render_graph;
         daxa::TaskImage task_swapchain_image;
         static constexpr u32 FRAMES_IN_FLIGHT = 2;
 
-        DaxaResources* daxa_resources_;
+        DaxaResources* daxa_resources_;        
     };
 
     class RenderContext : public Context {

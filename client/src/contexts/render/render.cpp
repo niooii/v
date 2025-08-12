@@ -32,6 +32,8 @@ namespace v {
     void RenderContext::update() {
         // TODO! record command buffer
         pre_render.execute();
-        LOG_TRACE("rendering");
+        window_resources_->render();
+        LOG_TRACE("rendered");
+        daxa_resources_->device.collect_garbage();
     }
 } // namespace v

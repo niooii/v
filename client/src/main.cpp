@@ -5,8 +5,8 @@
 #include <contexts/render.h>
 #include <contexts/sdl.h>
 #include <contexts/window.h>
-#include <engine/contexts/network.h>
 #include <domain/test.h>
+#include <engine/contexts/network.h>
 #include <iostream>
 #include <prelude.h>
 #include <time/stopwatch.h>
@@ -26,11 +26,11 @@ int main()
 
     Engine engine{};
 
-    auto sdl_ctx = engine.add_locked_context<SDLContext>(engine);
+    auto sdl_ctx    = engine.add_locked_context<SDLContext>(engine);
     auto window_ctx = engine.add_locked_context<WindowContext>(engine);
 
     // Test event stuff
-    auto window      = window_ctx->write()->create_window("hjey", { 600, 600 }, { 600, 600 });
+    auto window = window_ctx->write()->create_window("hjey", { 600, 600 }, { 600, 600 });
 
     auto render_ctx = engine.add_locked_context<RenderContext>(engine);
 
@@ -47,35 +47,39 @@ int main()
 
     window->on_mouse_moved.connect<lambda>();
 
-    engine.on_tick.write()->connect({}, {}, "window updates", [sdl_ctx, window_ctx]()
-    {
-        sdl_ctx->write()->update();
-        window_ctx->write()->update();
-    });
-
-    engine.on_tick.write()->connect({}, {}, "domain updates", [&engine]()
-    {
-        // Example domain usage: CountTo10Domain counts to 10, and then
-        // destroys itself.
+    engine.on_tick.write()->connect(
+        {}, {}, "windows",
+        [sdl_ctx, window_ctx]()
         {
-            auto reg = engine.registry_read();
-            for (auto view = reg->view<CountTo10Domain*>().each();
-                 auto [entity, domain] : view)
+            sdl_ctx->write()->update();
+            window_ctx->write()->update();
+        });
+
+    engine.on_tick.write()->connect(
+        {}, {}, "domain updates",
+        [&engine]()
+        {
+            // Example domain usage: CountTo10Domain counts to 10, and then
+            // destroys itself.
             {
-                domain->update();
+                auto reg = engine.registry_read();
+                for (auto view = reg->view<CountTo10Domain*>().each();
+                     auto [entity, domain] : view)
+                {
+                    domain->update();
+                }
             }
-        }
-    });
+        });
+
+    engine.on_tick.write()->connect(
+                                {"windows"}, {}, "render", [render_ctx]() { render_ctx->write()->update(); });
 
     std::atomic_bool running{ true };
 
     SDLComponent& sdl_comp = sdl_ctx->write()->create_component(engine.entity());
-    sdl_comp.on_quit = [&running]
-    {
-        running = false;
-    };
+    sdl_comp.on_quit       = [&running] { running = false; };
 
-   while (running)
+    while (running)
     {
         engine.tick();
 

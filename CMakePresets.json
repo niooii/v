@@ -1,0 +1,92 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "debug",
+            "displayName": "Debug Configuration",
+            "description": "Debug build with full debugging information",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/cmake-build-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_MAKE_PROGRAM": "ninja",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release Configuration", 
+            "description": "Release build with optimizations",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/cmake-build-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_MAKE_PROGRAM": "ninja",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug-build",
+            "displayName": "Debug Build (All Targets)",
+            "description": "Build all targets in debug mode",
+            "configurePreset": "debug"
+        },
+        {
+            "name": "release-build",
+            "displayName": "Release Build (All Targets)",
+            "description": "Build all targets in release mode",
+            "configurePreset": "release"
+        },
+        {
+            "name": "debug-vclient",
+            "displayName": "Debug Build (Client Only)",
+            "description": "Build vclient target in debug mode",
+            "configurePreset": "debug",
+            "targets": ["vclient"]
+        },
+        {
+            "name": "debug-vserver", 
+            "displayName": "Debug Build (Server Only)",
+            "description": "Build vserver target in debug mode",
+            "configurePreset": "debug",
+            "targets": ["vserver"]
+        },
+        {
+            "name": "debug-vlib",
+            "displayName": "Debug Build (Library Only)",
+            "description": "Build vlib target in debug mode",
+            "configurePreset": "debug",
+            "targets": ["vlib"]
+        },
+        {
+            "name": "release-vclient",
+            "displayName": "Release Build (Client Only)",
+            "description": "Build vclient target in release mode", 
+            "configurePreset": "release",
+            "targets": ["vclient"]
+        },
+        {
+            "name": "release-vserver",
+            "displayName": "Release Build (Server Only)",
+            "description": "Build vserver target in release mode",
+            "configurePreset": "release",
+            "targets": ["vserver"]
+        },
+        {
+            "name": "release-vlib",
+            "displayName": "Release Build (Library Only)",
+            "description": "Build vlib target in release mode",
+            "configurePreset": "release",
+            "targets": ["vlib"]
+        }
+    ]
+}

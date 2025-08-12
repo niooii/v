@@ -14,11 +14,12 @@ add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
 target_link_libraries(imgui PUBLIC SDL3::SDL3)
 
+set(DAXA_ENABLE_UTILS_TASK_GRAPH ON CACHE BOOL "" FORCE)
+
 add_subdirectory(
         ${CMAKE_SOURCE_DIR}/extern/daxa
         ${CMAKE_BINARY_DIR}/extern/daxa
 )
-
 
 # Find all client source files
 file(GLOB_RECURSE CLIENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
@@ -42,14 +43,14 @@ target_link_libraries(vclient
 
 # Copy sdl dlls
 if(WIN32)
-	
-	add_custom_command(
-        	TARGET vclient POST_BUILD
-        	COMMAND ${CMAKE_COMMAND} -E copy
-        	"${CMAKE_BINARY_DIR}/extern/sdl3/SDL3.dll"
-        	"$<TARGET_FILE_DIR:vclient>"
-        	COMMENT "Copying SDL3.dll to output directory"
-	)
+
+    add_custom_command(
+        TARGET vclient POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_BINARY_DIR}/extern/sdl3/SDL3.dll"
+        "$<TARGET_FILE_DIR:vclient>"
+        COMMENT "Copying SDL3.dll to output directory"
+    )
 else()
 
 endif()
