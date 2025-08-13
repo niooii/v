@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include "daxa/utils/task_graph.hpp"
+#include "daxa/utils/task_graph_types.hpp"
 #include "defs.h"
 // this isnt needed but im tryna fix some weird intellisense bug
 #define DAXA_ENABLE_UTILS_TASK_GRAPH 1
@@ -136,16 +137,44 @@ namespace v {
         // resize swapchain on window resize
 
         window->on_resize.connect<&WindowRenderResources::resize>(this);
-    
+
 
         LOG_TRACE("created swapchain, creating task graph now");
 
         render_graph = daxa::TaskGraph(
-            { .device    = daxa_resources_->device,
-              .swapchain = swapchain,
-              .name      = "main loop graph" });
+            {
+                .device    = daxa_resources_->device,
+                .swapchain = swapchain,
+                .name      = "main loop graph",
+            });
 
         render_graph.use_persistent_image(task_swapchain_image);
+
+        // test clear task
+        render_graph.add_task({
+            .attachments = {
+                daxa::inl_attachment(daxa::TaskAccessConsts::COLOR_ATTACHMENT, daxa::ImageViewType::REGULAR_2D, task_swapchain_image),
+            },
+            .task = [=](daxa::TaskInterface ti)
+            {
+                auto& render_target = task_swapchain_image;
+                auto const size = ti.device.info(ti.get(render_target).ids[0]).value().size;
+
+                daxa::RenderCommandRecorder render_recorder = std::move(ti.recorder).begin_renderpass({
+                    .color_attachments = std::array{
+                        daxa::RenderAttachmentInfo{
+                            .image_view = ti.get(render_target).view_ids[0],
+                            .load_op = daxa::AttachmentLoadOp::CLEAR,
+                            .clear_value = std::array<daxa::f32, 4>{0.1f, 0.0f, 0.5f, 1.0f},
+                        },
+                    },
+                    .render_area = {.width = size.x, .height = size.y},
+                });
+
+                ti.recorder = std::move(render_recorder).end_renderpass();
+            },
+            .name = "draw vertices",
+        });
 
         render_graph.submit({});
         render_graph.present({});
@@ -178,7 +207,8 @@ namespace v {
         render_graph.execute({});
     }
 
-    void WindowRenderResources::resize() {
+    void WindowRenderResources::resize()
+    {
         LOG_TRACE("resized swapchain");
         swapchain.resize();
     }

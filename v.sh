@@ -91,7 +91,7 @@ configure_cmake() {
     
     print_status "Configuring CMake using preset: $preset_name"
     
-    cmake --preset "$preset_name"
+    cmake --preset "$preset_name" -D CMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
     
     print_success "CMake configured successfully using preset: $preset_name"
 }

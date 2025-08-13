@@ -6,11 +6,10 @@
 #include <contexts/window.h>
 #include <engine/engine.h>
 #include <stdexcept>
+#include "daxa/utils/pipeline_manager.hpp"
 
 
 namespace v {
-
-
     DaxaResources::DaxaResources(Engine& engine)
     {
         LOG_INFO("Initializing Daxa context...");
@@ -32,21 +31,19 @@ namespace v {
         }
 
         // Create daxa instance
-        instance = daxa::create_instance({
-            .engine_name = "vengine",
-            .app_name = "vengine"
-        });
+        instance =
+            daxa::create_instance({ .engine_name = "vengine", .app_name = "vengine" });
 
         LOG_DEBUG("Daxa instance created successfully");
 
         daxa::DeviceInfo2 device_info = {
             .max_allowed_buffers = 16384,
-            .max_allowed_images = 16384,
-            .name = "vengine_device",
+            .max_allowed_images  = 16384,
+            .name                = "vengine_device",
         };
 
         // Let daxa choose a suitable device
-        try 
+        try
         {
             device = instance.create_device_2(instance.choose_device({}, device_info));
         }
@@ -55,6 +52,20 @@ namespace v {
             LOG_ERROR("Failed to create Daxa device: {}", e.what());
             throw std::runtime_error("Failed to create Daxa device");
         }
+
+        pipeline_manager = daxa::PipelineManager(
+            {
+                .device = device,
+                .shader_compile_options = {
+                    .root_paths = {
+                        DAXA_SHADER_INCLUDE_DIR,
+                        "./resources/shaders"
+                    },
+                    .language = daxa::ShaderLanguage::GLSL,
+                    .enable_debug_info = true,
+                },
+                .name = "pipeline manager",
+            });
 
         LOG_INFO("Daxa context initialized successfully");
     }

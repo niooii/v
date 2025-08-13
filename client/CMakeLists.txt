@@ -15,6 +15,9 @@ target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
 target_link_libraries(imgui PUBLIC SDL3::SDL3)
 
 set(DAXA_ENABLE_UTILS_TASK_GRAPH ON CACHE BOOL "" FORCE)
+set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_GLSLANG ON CACHE BOOL "" FORCE)
+
+add_compile_definitions(DAXA_REMOVE_DEPRECATED=0)
 
 add_subdirectory(
         ${CMAKE_SOURCE_DIR}/extern/daxa

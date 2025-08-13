@@ -4,8 +4,9 @@
 
 #pragma once
 
-#include <defs.h>
 #include <daxa/daxa.hpp>
+#include <daxa/utils/pipeline_manager.hpp>
+#include <defs.h>
 
 namespace v {
     class Window;
@@ -14,13 +15,15 @@ namespace v {
 
     /// The daxa resources used globally
     struct DaxaResources {
-        daxa::Instance instance;
-        daxa::Device   device;
+        daxa::Instance        instance;
+        daxa::Device          device;
+        daxa::PipelineManager pipeline_manager;
 
         explicit DaxaResources(Engine& engine);
         ~DaxaResources();
 
-        DaxaResources(const DaxaResources&) = delete;
+        DaxaResources(const DaxaResources&)            = delete;
         DaxaResources& operator=(const DaxaResources&) = delete;
     };
-}
+} // namespace v
+
