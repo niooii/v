@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Cargo-like build script for CLion CMake integration
 # Usage: ./v.sh [build/run/clean] [target] [--release]
 
 set -e
