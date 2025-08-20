@@ -1,5 +1,3 @@
-keep ck
-
 # Instructions and guide
 
 Guys despite this being a file I actually did NOT vibe code most of this, just dirty boilerplate work :D
