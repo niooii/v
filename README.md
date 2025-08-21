@@ -1,6 +1,6 @@
 # v
 
-Rewrite of the engine I partially finished for my [gamedev final project](https://github.com/niooii/gdfe), intended to render voxels.  
+Rewrite of the engine I wrote for my [gamedev final project](https://github.com/niooii/gdfe), intended to render voxels.  
 
 **This project is still in it's beginning phases**, very much WIP.  
 
