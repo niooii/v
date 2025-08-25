@@ -22,7 +22,9 @@ namespace v {
 
     /// An abstract channel class, created and managed by a NetConnection connection
     /// object, meaning a channel is unique to a specific NetConnection only. To create a
-    /// channel, inherit from this class. E.g. class ChatChannel : public NetChannel {};
+    /// channel, inherit from this class. 
+    /// E.g. class ChatChannel : public NetChannel<ChatChannel> {};
+    template <typename Derived>
     class NetChannel {
     public:
         /// Get the owning NetConnection.
@@ -33,31 +35,41 @@ namespace v {
         /// (e.g. "v::Chat::ChatChannel").
         /// Override this to set a new name that may be more consistent through codebase
         /// and version changes.
-        /// TODO! check if default impl guarentees uniqueness
         /// TODO! find a way to enforce uniqueness for custom names, or just not allow
         /// inheritance
-        virtual FORCEINLINE const std::string_view unique_name()
+        constexpr virtual const std::string_view unique_name()
         {
-            return std::string_view{ typename_ };
+            return type_name<Derived>();
         }
 
+
     private:
-        NetChannel(NetConnection* conn) :
-            conn_(conn),
-            typename_(absl::debugging_internal::DemangleString(typeid(this).name())) {};
+        NetChannel(NetConnection* conn) : conn_(conn) {}
 
         const NetConnection* conn_;
-        const std::string    typename_;
     };
 
     template <typename T>
-    concept DerivedFromChannel = std::is_base_of_v<NetChannel, T>;
+    concept DerivedFromChannel = std::is_base_of_v<NetChannel<T>, T>;
 
     class NetConnection {
     public:
-        /// Creates a NetChannel for isolated network communication
+        /// Creates a NetChannel for isolated network communication.
+        /// If it already exists, it throws a warning and returns the one existing.  
+        /// TODO! This should automatically create a channel of the same type on the 
+        /// other side of the connection, yay! (so someone on the other end of the connection can wait on it)
         template <DerivedFromChannel T>
-        NetChannel* create_channel();
+        NetChannel<T>* create_channel();
+
+        /// Returns a NetChannel or nullptr if it doesn't exist.
+        template <DerivedFromChannel T>
+        NetChannel<T>* get_channel();
+
+        /// Waits for the creation of a NetChannel (blocks thread), either 
+        /// locally or from the other end of the connection. 
+        /// TODO! how i gonna implement this lol
+        template<DerivedFromChannel T>
+        NetChannel<T>* wait_for_channel();
 
     private:
         NetConnection(const std::string& host, u16 port);
