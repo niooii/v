@@ -10,6 +10,7 @@
 #include <entt/entt.hpp>
 #include <string>
 #include "entt/entity/fwd.hpp"
+#include "unordered_dense.h"
 
 extern "C" {
 #include <enet.h>
@@ -53,6 +54,7 @@ namespace v {
     concept DerivedFromChannel = std::is_base_of_v<NetChannel<T>, T>;
 
     class NetConnection {
+    friend class NetworkContext;
     public:
         /// Creates a NetChannel for isolated network communication.
         /// If it already exists, it throws a warning and returns the one existing.  
@@ -86,6 +88,10 @@ namespace v {
         explicit NetworkContext(Engine& engine);
         ~NetworkContext();
 
+        FORCEINLINE NetConnection* create_connection(const std::string& host, u16 port) {
+            // TODO();
+        }
+
         /// Fires when a new connection is creataed.
         // entt::sink<entt::sigh<void(DomainId)>> on_conn;
 
@@ -99,8 +105,12 @@ namespace v {
     private:
         // Don't use the main engine domain registry.
         entt::registry reg_;
-
         ENetHost* host_;
+
+        ankerl::unordered_dense::map<
+            std::tuple<std::string, u16>,
+            std::unique_ptr<NetConnection>   
+        > connections {};
         // Map<ENetPeer*, ConnectionDomain> domains_;
     };
     // 	typedef ChannelId = u64;
