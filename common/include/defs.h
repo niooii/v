@@ -29,6 +29,8 @@ typedef float         f32;
 typedef double        f64;
 typedef unsigned char byte;
 
+/// Bunch of utility stuff
+
 #ifdef _MSC_VER
 // typeof is a keyword since C23
 
@@ -92,6 +94,19 @@ typedef unsigned char byte;
     #define UNREACHABLE()    __builtin_unreachable()
     #define PREFETCH(x)      __builtin_prefetch(x)
     #define MEMORY_BARRIER() __asm__ volatile("" ::: "memory")
+    
+    /// Returns a unique typename for a given type.
+    /// I'm not defining this for msvc and others because
+    /// I'm kind of locked into clang/gcc at this point. 
+    template<typename T>
+    constexpr std::string_view type_name() {
+        constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
+        constexpr std::string_view prefix {"constexpr std::string_view type_name() [T = "};
+        constexpr std::string_view suffix {"]"};
+        const auto start = func_name.find(prefix) + prefix.size();
+        const auto end = func_name.rfind(suffix);
+        return func_name.substr(start, end - start);
+    }
 #endif
 
 STATIC_ASSERT(sizeof(u8) == 1, "expected u8 to be 1 byte.");
