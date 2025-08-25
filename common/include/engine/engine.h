@@ -175,11 +175,16 @@ namespace v {
         RWProtectedResource<DependentSink> on_destroy;
 
     private:
-        /// A central registry to store domains
-        RWProtectedResource<entt::registry> registry_{};
+        /// TODO! this better be destroyed last otherwise stupid bad
+        /// race condition potentially.
+        /// Since objects are destroyed in reverse order of declaration, 
+        /// this should be consistent.
 
         /// An internal registry for the engine's contexts
         entt::registry ctx_registry_{};
+
+        /// A central registry to store domains
+        RWProtectedResource<entt::registry> registry_{};
 
         /// A queue for the destruction of domains
         moodycamel::ConcurrentQueue<entt::entity> domain_destroy_queue_{};
