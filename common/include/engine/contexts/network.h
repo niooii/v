@@ -23,13 +23,16 @@ namespace v {
 
     /// An abstract channel class, created and managed by a NetConnection connection
     /// object, meaning a channel is unique to a specific NetConnection only. To create a
-    /// channel, inherit from this class. 
+    /// channel, inherit from this class.
     /// E.g. class ChatChannel : public NetChannel<ChatChannel> {};
     template <typename Derived>
     class NetChannel {
     public:
+        // TODO! onrecv and send functions here, on send maybe?
+
         /// Get the owning NetConnection.
         FORCEINLINE const class NetConnection* connection_info() { return conn_; };
+
         /// Assigns a unique name to the channel, to be used for communication
         /// over a network.
         /// By default assigns the name of the struct and it's namespaces
@@ -54,12 +57,14 @@ namespace v {
     concept DerivedFromChannel = std::is_base_of_v<NetChannel<T>, T>;
 
     class NetConnection {
-    friend class NetworkContext;
+        friend class NetworkContext;
+
     public:
         /// Creates a NetChannel for isolated network communication.
-        /// If it already exists, it throws a warning and returns the one existing.  
-        /// TODO! This should automatically create a channel of the same type on the 
-        /// other side of the connection, yay! (so someone on the other end of the connection can wait on it)
+        /// If it already exists, it throws a warning and returns the one existing.
+        /// TODO! This should automatically create a channel of the same type on the
+        /// other side of the connection, yay! (so someone on the other end of the
+        /// connection can wait on it)
         template <DerivedFromChannel T>
         NetChannel<T>* create_channel();
 
@@ -67,15 +72,21 @@ namespace v {
         template <DerivedFromChannel T>
         NetChannel<T>* get_channel();
 
-        /// Waits for the creation of a NetChannel (blocks thread), either 
-        /// locally or from the other end of the connection. 
+        /// Waits for the creation of a NetChannel (blocks thread), either
+        /// locally or from the other end of the connection.
         /// TODO! how i gonna implement this lol
-        template<DerivedFromChannel T>
+        template <DerivedFromChannel T>
         NetChannel<T>* wait_for_channel();
+
+        FORCEINLINE const std::string& host() { return host_; }
+
+        FORCEINLINE const u16 port() { return port_; }
 
     private:
         NetConnection(const std::string& host, u16 port);
-        entt::entity entity_;
+        const std::string host_;
+        const u16         port_;
+        entt::entity      entity_;
     };
 
     /// A context that creates and manages network connections.
@@ -88,7 +99,8 @@ namespace v {
         explicit NetworkContext(Engine& engine);
         ~NetworkContext();
 
-        FORCEINLINE NetConnection* create_connection(const std::string& host, u16 port) {
+        FORCEINLINE NetConnection* create_connection(const std::string& host, u16 port)
+        {
             // TODO();
         }
 
@@ -105,54 +117,11 @@ namespace v {
     private:
         // Don't use the main engine domain registry.
         entt::registry reg_;
-        ENetHost* host_;
+        ENetHost*      host_;
 
         ankerl::unordered_dense::map<
-            std::tuple<std::string, u16>,
-            std::unique_ptr<NetConnection>   
-        > connections {};
+            std::tuple<std::string, u16>, std::unique_ptr<NetConnection>>
+            connections{};
         // Map<ENetPeer*, ConnectionDomain> domains_;
     };
-    // 	typedef ChannelId = u64;
-    // 	// TODO! PLACEHOLDER what type shouldbuffer be
-    // 	typedef Buffer = u16;
-    // 	// TODO! move this out somewhere
-    // 	typedef DomainId = entt::entity;
-    //
-    // 	/// A component that represents a network communication channel
-    // 	class ConnectionChannel {
-    // 	friend class ConnectionDomain;
-    // 	public:
-    // 		/// Accepts the channel id, domain id of the ConnectionDomain and domain id of
-    // the owner
-    // 		// TODO! this pretty much locks one domain into having one connection channel.
-    // what if they want multiple?
-    // 		// think on this. plus who owns the component, ConnDomain or the calling
-    // domain?
-    // 		// this is kinda horrid...
-    // 		entt::sink<entt::sigh<void(ChannelId, DomainId, DomainId)>> on_disconnect;
-    // 		entt::sink<entt::sigh<void(ChannelId, DomainId, Buffer)>> on_recv;
-    //
-    // 	private:
-    // 		ConnectionChannel(DomainId domain_id, ChannelId channel_id);
-    // 		// Called from ConnectionDomain
-    // 		void update(Buffer data);
-    //
-    // 		ChannelId id_;
-    // 	};
-    //
-    // 	/// A domain that represents a connection between a host and a peer
-    // 	class ConnectionDomain : public Domain {
-    // 	friend class NetworkContext;
-    // 	public:
-    // 		ConnectionChannel* create_channel(ChannelId channel_id);
-    //
-    // 	private:
-    // 		ConnectionDomain(Engine& engine, ENetPeer* peer);
-    // 		/// Routes the data to it's specified channel.  Called from NetworkContext.
-    // 		void update(Buffer data);
-    //
-    // 		Map<ChannelId, ConnectionChannel> channels_;
-    // 	};
-    //
 } // namespace v
