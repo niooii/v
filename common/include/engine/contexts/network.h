@@ -7,7 +7,9 @@
 #include <absl/debugging/internal/demangle.h>
 #include <defs.h>
 #include <domain/context.h>
+#include <engine/sync.h>
 #include <entt/entt.hpp>
+#include <fcntl.h>
 #include <string>
 #include "entt/entity/fwd.hpp"
 #include "unordered_dense.h"
@@ -18,8 +20,6 @@ extern "C" {
 
 namespace v {
     // TODO! think about how to design this for fast use from multiple threads.
-
-    typedef u16 Channel;
 
     /// An abstract channel class, created and managed by a NetConnection connection
     /// object, meaning a channel is unique to a specific NetConnection only. To create a
@@ -46,6 +46,7 @@ namespace v {
             return type_name<Derived>();
         }
 
+        void send(char* buf, u64 len);
 
     private:
         NetChannel(NetConnection* conn) : conn_(conn) {}
@@ -83,25 +84,35 @@ namespace v {
         FORCEINLINE const u16 port() { return port_; }
 
     private:
-        NetConnection(const std::string& host, u16 port);
+        // TODO! change this to accept a Option<HostOptions> struct, if not provided then
+        // it will not bind the host to any port/addr. (client usage, vs server usage
+        // where you will pass in a host struct)
+        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port);
+        ~NetConnection();
+
+        ENetHost* enet_host_;
+
         const std::string host_;
         const u16         port_;
         entt::entity      entity_;
+
+        // Pointer guarenteed to be alive here
+        NetworkContext* net_ctx_;
     };
 
     /// A context that creates and manages network connections.
     /// NetworkContext is thread-safe.
     class NetworkContext : public Context {
+        friend NetConnection;
+
     public:
-        // TODO! change this to accept a Option<HostOptions> struct, if not provided then
-        // it will not bind the host to any port/addr. (client usage, vs server usage
-        // where you will pass in a host struct)
         explicit NetworkContext(Engine& engine);
         ~NetworkContext();
 
         FORCEINLINE NetConnection* create_connection(const std::string& host, u16 port)
         {
-            // TODO();
+            auto res = connections_.write()->emplace(host, port);
+            return res.first->second.get();
         }
 
         /// Fires when a new connection is creataed.
@@ -116,12 +127,10 @@ namespace v {
 
     private:
         // Don't use the main engine domain registry.
-        entt::registry reg_;
-        ENetHost*      host_;
+        RWProtectedResource<entt::registry> reg_{};
 
-        ankerl::unordered_dense::map<
-            std::tuple<std::string, u16>, std::unique_ptr<NetConnection>>
-            connections{};
-        // Map<ENetPeer*, ConnectionDomain> domains_;
+        RWProtectedResource<ankerl::unordered_dense::map<
+            std::tuple<std::string, u16>, std::unique_ptr<NetConnection>>>
+            connections_{};
     };
 } // namespace v
