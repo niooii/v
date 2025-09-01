@@ -5,7 +5,7 @@
 #pragma once
 
 #include <defs.h>
-#include <engine/contexts/net/net_connection.h>
+#include <engine/contexts/net/connection.h>
 
 namespace v {
     /// An abstract channel class, created and managed by a NetConnection connection
