@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./v.sh [build/run/clean] [target] [--release]
+# Usage: ./v.sh [build/run/clean/reload] [target] [--release]
 
 set -e
 
@@ -9,6 +9,7 @@ BUILD_TYPE="Debug"
 BUILD_DIR="cmake-build-debug"
 COMMAND=""
 TARGET=""
+CLEAN_ALL=false
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors for output
@@ -38,9 +39,9 @@ print_warning() {
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        build|run|clean)
+        build|run|clean|reload)
             if [[ -n "$COMMAND" ]]; then
-                print_error "Multiple commands specified. Use only one of: build, run, clean"
+                print_error "Multiple commands specified. Use only one of: build, run, clean, reload"
                 exit 1
             fi
             COMMAND="$1"
@@ -50,6 +51,15 @@ while [[ $# -gt 0 ]]; do
             BUILD_TYPE="Release"
             BUILD_DIR="cmake-build-release"
             shift
+            ;;
+        all)
+            if [[ "$COMMAND" == "clean" ]]; then
+                CLEAN_ALL=true
+                shift
+            else
+                print_error "'all' flag is only valid with clean command"
+                exit 1
+            fi
             ;;
         vclient|vserver|vlib)
             if [[ -n "$TARGET" ]]; then
@@ -61,9 +71,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             print_error "Unknown argument: $1"
-            echo "Usage: ./v.sh [build/run/clean] [target] [--release]"
-            echo "Commands: build, run, clean"
+            echo "Usage: ./v.sh [build/run/clean/reload] [target/all] [--release]"
+            echo "Commands: build, run, clean, reload"
             echo "Targets: vclient, vserver, vlib"
+            echo "Clean options: all (includes external built libraries)"
             echo "Flags: --release (default is debug)"
             exit 1
             ;;
@@ -73,9 +84,10 @@ done
 # Validate command
 if [[ -z "$COMMAND" ]]; then
     print_error "No command specified"
-    echo "Usage: ./v.sh [build/run/clean] [target] [--release]"
-    echo "Commands: build, run, clean"
+    echo "Usage: ./v.sh [build/run/clean/reload] [target/all] [--release]"
+    echo "Commands: build, run, clean, reload"
     echo "Targets: vclient, vserver, vlib"
+    echo "Clean options: all (removes everything including extern/)"
     echo "Flags: --release (default is debug)"
     exit 1
 fi
@@ -161,9 +173,15 @@ print_status "Build type: $BUILD_TYPE"
 case "$COMMAND" in
     clean)
         if [[ -d "$BUILD_DIR" ]]; then
-            print_status "Cleaning build directory: $BUILD_DIR"
-            rm -rf "$BUILD_DIR"
-            print_success "Build directory cleaned"
+            if [[ "$CLEAN_ALL" == true ]]; then
+                print_status "Cleaning all built: $BUILD_DIR"
+                rm -rf "$BUILD_DIR"
+                print_success "Build directory nuked"
+            else
+                print_status "Cleaning project built: $BUILD_DIR"
+                find "$BUILD_DIR" -mindepth 1 -maxdepth 1 ! -name 'extern' ! -name 'CMakeCache.txt' ! -name 'CMakeFiles' ! -name 'build.ninja' ! -name 'cmake_install.cmake' ! -name 'compile_commands.json' ! -name '.ninja_deps' ! -name '.ninja_log' -exec rm -rf {} +
+                print_success "Build directory cleaned"
+            fi
         else
             print_warning "Build directory $BUILD_DIR does not exist"
         fi
@@ -177,6 +195,12 @@ case "$COMMAND" in
         # Build first, then run
         build_target "$TARGET"
         run_executable "$TARGET"
+        ;;
+        
+    reload)
+        print_status "Reloading CMake cache..."
+        configure_cmake
+        print_success "CMake cache reloaded successfully"
         ;;
         
     *)

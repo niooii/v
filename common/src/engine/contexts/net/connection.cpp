@@ -1,15 +1,15 @@
 //
-// Created by niooi on 7/31/2025.
+// Created by niooi on 8/1/2025.
 //
 
 #define ENET_IMPLEMENTATION
 #include <defs.h>
-#include <engine/contexts/network.h>
+#include <engine/contexts/net/net.h>
 #include <stdexcept>
 
 namespace v {
     NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port) :
-        net_ctx_(ctx), host_(std::move(host)), port_(port)
+        host_(host), port_(port), net_ctx_(ctx)
     {
         entity_ = ctx->reg_.write()->create();
         
@@ -34,29 +34,4 @@ namespace v {
             enet_host_destroy(enet_host_);
         }
     }
-
-    NetworkContext::NetworkContext(Engine& engine) : Context(engine), host_(nullptr)
-    {
-
-        if (enet_initialize() != 0)
-        {
-            throw std::runtime_error("Failed to initialize ENet");
-        }
-    }
-
-    NetworkContext::~NetworkContext()
-    {
-        enet_deinitialize();
-    }
-
-    void NetworkContext::update() {
-        auto conns = connections_.write();
-
-        for (auto& [a, b] : *conns) {
-            // TODO!
-            ENetHost* host = b->enet_host_;
-            // shuttle packets back and forth here
-        }
-    }
-
-} // namespace v
+}
