@@ -13,8 +13,10 @@ extern "C" {
 }
 
 namespace v {
-    class NetworkContext; // forward declaration
-    
+    struct HostOptions {
+        
+    };
+
     template <typename Derived>
     class NetChannel;
     
@@ -25,11 +27,6 @@ namespace v {
         friend class NetworkContext;
 
     public:
-        /// Factory method for NetworkContext to create connections
-        static std::unique_ptr<NetConnection> create(NetworkContext* ctx, const std::string& host, u16 port)
-        {
-            return std::unique_ptr<NetConnection>(new NetConnection(ctx, host, port));
-        }
         /// Creates a NetChannel for isolated network communication.
         /// If it already exists, it throws a warning and returns the one existing.
         /// TODO! This should automatically create a channel of the same type on the
@@ -58,7 +55,10 @@ namespace v {
         // TODO! change this to accept a Option<HostOptions> struct, if not provided then
         // it will not bind the host to any port/addr. (client usage, vs server usage
         // where you will pass in a host struct)
-        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port);
+        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port, std::optional<HostOptions> host_opts);
+
+        /// Shuttle packets around
+        void update();
 
         ENetHost* enet_host_;
 

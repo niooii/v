@@ -4,7 +4,7 @@
 
 #define ENET_IMPLEMENTATION
 #include <defs.h>
-#include <engine/contexts/net/net.h>
+#include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 
 namespace v {
@@ -23,12 +23,13 @@ namespace v {
     }
 
     void NetworkContext::update() {
-        auto conns = connections_.write();
+        // abusing interior mutability - this is fine
+        // as long as we keep the netconnection class
+        // thread safe
+        auto conns = connections_.read();
 
-        for (auto& [a, b] : *conns) {
-            // TODO!
-            ENetHost* host = b->enet_host_;
-            // shuttle packets back and forth here
+        for (auto& [_a, b] : *conns) {
+            b->update();
         }
     }
 
