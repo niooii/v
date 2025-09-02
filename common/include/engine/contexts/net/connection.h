@@ -13,13 +13,11 @@ extern "C" {
 }
 
 namespace v {
-    struct HostOptions {
-        
-    };
+    struct HostOptions {};
 
     template <typename Derived>
     class NetChannel;
-    
+
     template <typename T>
     concept DerivedFromChannel = std::is_base_of_v<NetChannel<T>, T>;
 
@@ -45,26 +43,27 @@ namespace v {
         template <DerivedFromChannel T>
         NetChannel<T>* wait_for_channel();
 
-        FORCEINLINE const std::string& host() { return host_; }
+        // FORCEINLINE const std::string& host() { return host_; }
 
-        FORCEINLINE const u16 port() { return port_; }
+        // FORCEINLINE const u16 port() { return port_; }
+
+        FORCEINLINE const ENetPeer* peer() { return peer_; }
 
         ~NetConnection();
 
     private:
-        // TODO! change this to accept a Option<HostOptions> struct, if not provided then
-        // it will not bind the host to any port/addr. (client usage, vs server usage
-        // where you will pass in a host struct)
-        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port, std::optional<HostOptions> host_opts);
+        /// The constructor for an outgoing connection.
+        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port);
+        /// The constructor for an incoming connection.
+        NetConnection(NetworkContext* ctx, ENetPeer* peer);
 
         /// Shuttle packets around
         void update();
 
         ENetHost* enet_host_;
 
-        const std::string host_;
-        const u16         port_;
         entt::entity      entity_;
+        ENetPeer*         peer_;
 
         // Pointer guarenteed to be alive here
         NetworkContext* net_ctx_;

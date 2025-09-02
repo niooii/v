@@ -2,22 +2,23 @@
 // Created by niooi on 8/1/2025.
 //
 
-#include "enet.h"
 #include "engine/contexts/net/connection.h"
+#include "enet.h"
 #define ENET_IMPLEMENTATION
 #include <defs.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 
 namespace v {
+    // create an outgoing connection
     NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port) :
-        host_(host), port_(port), net_ctx_(ctx)
+        net_ctx_(ctx)
     {
         entity_ = ctx->reg_.write()->create();
 
         // TODO! init enet host and other stuff
         ENetAddress address;
-        if (enet_address_set_host(&address, host_.c_str()) != 0)
+        if (enet_address_set_host(&address, host.c_str()) != 0)
         {
             enet_deinitialize();
             throw std::runtime_error("Failed to set host address");
@@ -30,6 +31,11 @@ namespace v {
             enet_deinitialize();
             throw std::runtime_error("Failed to create ENet host");
         }
+    }
+
+    // just an incoming connection, its whatever
+    NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) : net_ctx_(ctx), peer_(peer) {
+        
     }
 
     NetConnection::~NetConnection()

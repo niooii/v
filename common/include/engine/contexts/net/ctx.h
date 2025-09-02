@@ -17,7 +17,8 @@
 #include "unordered_dense.h"
 
 namespace v {
-    typedef std::tuple< std::string, u16> ConnKey;
+    typedef ENetPeer* NetPeer;
+    typedef std::tuple<std::string, u16> HostPortTuple;
 
     // TODO! think about how to design this for fast use from multiple threads.
 
@@ -33,33 +34,42 @@ namespace v {
         // TODO! return atomic counted intrusive handle
         // TODO! this kinda works for client to server but what abotu server accepting
         // clients? auto create connectiondomain??? probably. ConnectionDomain*
-        /// Creates a new connection object. 
+        /// Creates a new connection object that represents an outgoing connection. 
         FORCEINLINE std::shared_ptr<NetConnection>
-                    create_connection(const std::string& host, u16 port, std::optional<HostOptions> host_opts = std::nullopt)
+                    create_connection(const std::string& host, u16 port)
         {
             auto key = std::make_tuple(host, port);
             {
-                auto conn_read = connections_.read();
-                if (conn_read->contains(key))
-                    return conn_read->at(key);
+                auto conn_read = host_info_to_peer_.read();
+                auto it = conn_read->find(key);
+                if (it != conn_read->end())
+                {
+                    
+                }
             }
             auto res = connections_.write()->emplace(
-                key, NetConnection{this, host, port, host_opts});
+                key, NetConnection{this, host, port});
             return res.first->second;
         }
 
         FORCEINLINE std::shared_ptr<NetConnection>
-                    get_connection(const std::string& host, u16 port)
+                    get_connection(NetPeer peer)
         {
-            auto key       = std::make_tuple(host, port);
             auto conn_read = connections_.read();
 
-            auto it = conn_read->find(key);
+            auto it = conn_read->find(peer);
             if (it != conn_read->end())
                 return { it->second };
             else
                 return nullptr;
         }
+
+        FORCEINLINE std::shared_ptr<NetConnection>
+                    incoming_connection(const std::string& addr) {
+
+                    }
+
+        std::shared_ptr<NetListener> listen_on(const std::string& addr, u16 port);
 
         /// Fires when a new connection is creataed.
         // entt::sink<entt::sigh<void(DomainId)>> on_conn;
@@ -72,7 +82,19 @@ namespace v {
         RWProtectedResource<entt::registry> reg_{};
 
         RWProtectedResource<ankerl::unordered_dense::map<
-            ConnKey, std::shared_ptr<NetConnection>>>
+            NetPeer, std::shared_ptr<NetConnection>>>
             connections_{};
+
+        // the classic dual map pattern
+        RWProtectedResource<ankerl::unordered_dense::map<
+            HostPortTuple, NetPeer>> host_info_to_peer_;
+
+        RWProtectedResource<ankerl::unordered_dense::map<
+            NetPeer, HostPortTuple>> peer_to_host_info_;
+
+
+        /// An ENetHost object whose sole purpose is to manage outgoing connections
+        /// (listening on a port needs its own host object)
+        ENetHost* outgoing_;
     };
 } // namespace v
