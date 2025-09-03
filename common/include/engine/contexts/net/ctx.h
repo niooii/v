@@ -4,20 +4,20 @@
 
 #pragma once
 
-#include <absl/debugging/internal/demangle.h>
 #include <defs.h>
 #include <domain/context.h>
-#include <engine/contexts/net/connection.h>
 #include <engine/sync.h>
 #include <entt/entt.hpp>
 #include <fcntl.h>
 #include <memory>
 #include <string>
-#include "entt/entity/fwd.hpp"
-#include "unordered_dense.h"
+#include <unordered_dense.h>
+
+#include "connection.h"
+#include "listener.h"
 
 namespace v {
-    typedef ENetPeer* NetPeer;
+    typedef ENetPeer*                    NetPeer;
     typedef std::tuple<std::string, u16> HostPortTuple;
 
     // TODO! think about how to design this for fast use from multiple threads.
@@ -34,26 +34,42 @@ namespace v {
         // TODO! return atomic counted intrusive handle
         // TODO! this kinda works for client to server but what abotu server accepting
         // clients? auto create connectiondomain??? probably. ConnectionDomain*
-        /// Creates a new connection object that represents an outgoing connection. 
+        /// Creates a new connection object that represents an outgoing connection.
         FORCEINLINE std::shared_ptr<NetConnection>
                     create_connection(const std::string& host, u16 port)
         {
-            auto key = std::make_tuple(host, port);
+            const auto key = std::make_tuple(host, port);
             {
-                auto conn_read = host_info_to_peer_.read();
-                auto it = conn_read->find(key);
-                if (it != conn_read->end())
+                const auto maps = hip_map_.read();
+                const auto it   = maps->host_to_peer_.find(key);
+
+                if (UNLIKELY(it != maps->host_to_peer_.end()))
                 {
-                    
+                    NetPeer peer = it->second;
+                    return connections_.read()->at(peer);
                 }
             }
-            auto res = connections_.write()->emplace(
-                key, NetConnection{this, host, port});
+
+            auto con = NetConnection{ this, host, port };
+            auto res = connections_.write()->emplace(con.peer(), std::move(con));
             return res.first->second;
         }
 
         FORCEINLINE std::shared_ptr<NetConnection>
-                    get_connection(NetPeer peer)
+                    get_connection(const std::string& host, u16 port)
+        {
+            const auto maps = hip_map_.read();
+            const auto key  = std::make_tuple(host, port);
+
+            const auto it = maps->host_to_peer_.find(key);
+
+            if (LIKELY(it != maps->host_to_peer_.end()))
+                return get_connection(it->second);
+            else
+                return nullptr;
+        }
+
+        FORCEINLINE std::shared_ptr<NetConnection> get_connection(NetPeer peer)
         {
             auto conn_read = connections_.read();
 
@@ -65,11 +81,12 @@ namespace v {
         }
 
         FORCEINLINE std::shared_ptr<NetConnection>
-                    incoming_connection(const std::string& addr) {
+                    incoming_connection(const std::string& addr)
+        {}
 
-                    }
-
-        std::shared_ptr<NetListener> listen_on(const std::string& addr, u16 port);
+        FORCEINLINE std::shared_ptr<NetListener> listen_on(const std::string& addr, u16 port) {
+            
+        }
 
         /// Fires when a new connection is creataed.
         // entt::sink<entt::sigh<void(DomainId)>> on_conn;
@@ -81,17 +98,18 @@ namespace v {
         // Don't use the main engine domain registry.
         RWProtectedResource<entt::registry> reg_{};
 
-        RWProtectedResource<ankerl::unordered_dense::map<
-            NetPeer, std::shared_ptr<NetConnection>>>
+        RWProtectedResource<
+            ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>
             connections_{};
 
-        // the classic dual map pattern
-        RWProtectedResource<ankerl::unordered_dense::map<
-            HostPortTuple, NetPeer>> host_info_to_peer_;
+        struct HostInfoPeerMapping {
+            // the classic dual map pattern
+            ankerl::unordered_dense::map<HostPortTuple, NetPeer> host_to_peer_{};
 
-        RWProtectedResource<ankerl::unordered_dense::map<
-            NetPeer, HostPortTuple>> peer_to_host_info_;
+            ankerl::unordered_dense::map<NetPeer, HostPortTuple> peer_to_host_{};
+        };
 
+        RWProtectedResource<HostInfoPeerMapping> hip_map_{};
 
         /// An ENetHost object whose sole purpose is to manage outgoing connections
         /// (listening on a port needs its own host object)
