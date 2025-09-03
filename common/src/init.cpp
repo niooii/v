@@ -10,6 +10,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <absl/container/btree_set.h>
+#include "spdlog/common.h"
 
 void init_loggers();
 
@@ -42,6 +43,9 @@ void init_loggers()
     const auto logger = std::make_shared<spd::logger>("", sinks.begin(), sinks.end());
 
     logger->set_level(spd::level::trace);
+
+    logger->flush_on(spd::level::err);
+
     set_default_logger(logger);
 
     LOG_INFO("hi starting up...");
