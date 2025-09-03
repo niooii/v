@@ -13,7 +13,6 @@
 #include <string>
 #include <unordered_dense.h>
 
-#include "connection.h"
 #include "listener.h"
 
 namespace v {
@@ -21,6 +20,7 @@ namespace v {
     typedef std::tuple<std::string, u16> HostPortTuple;
 
     // TODO! think about how to design this for fast use from multiple threads.
+    class NetConnection;
 
     /// A context that creates and manages network connections.
     /// NetworkContext is thread-safe.
@@ -35,25 +35,8 @@ namespace v {
         // TODO! this kinda works for client to server but what abotu server accepting
         // clients? auto create connectiondomain??? probably. ConnectionDomain*
         /// Creates a new connection object that represents an outgoing connection.
-        FORCEINLINE std::shared_ptr<NetConnection>
-                    create_connection(const std::string& host, u16 port)
-        {
-            const auto key = std::make_tuple(host, port);
-            {
-                const auto maps = hip_map_.read();
-                const auto it   = maps->host_to_peer_.find(key);
-
-                if (UNLIKELY(it != maps->host_to_peer_.end()))
-                {
-                    NetPeer peer = it->second;
-                    return connections_.read()->at(peer);
-                }
-            }
-
-            auto con = NetConnection{ this, host, port };
-            auto res = connections_.write()->emplace(con.peer(), std::move(con));
-            return res.first->second;
-        }
+        std::shared_ptr<NetConnection>
+        create_connection(const std::string& host, u16 port);
 
         FORCEINLINE std::shared_ptr<NetConnection>
                     get_connection(const std::string& host, u16 port)
@@ -80,12 +63,46 @@ namespace v {
                 return nullptr;
         }
 
+        /// Request a close to the connection via its peer.
+        /// Other functions can no longer access this connection, but
+        /// the connection will remain alive until the last instance of it's handle
+        /// is gone.
+        FORCEINLINE void req_close(NetPeer peer)
+        {
+            {
+                // if this exists then we can close the connection
+                const auto maps = hip_map_.read();
+                const auto it   = maps->peer_to_host_.find(peer);
+                if (it == maps->peer_to_host_.end())
+                {
+                    LOG_WARN(
+                        "Requested close on connection that is not alive.. This should "
+                        "not happen.");
+                }
+            }
+
+            {
+                auto maps  = hip_map_.write();
+                auto tuple = maps->peer_to_host_.at(peer);
+
+                maps->host_to_peer_.erase(tuple);
+                maps->peer_to_host_.erase(peer);
+            }
+
+            {
+                auto conns = connections_.write();
+                conns->erase(peer);
+            }
+        }
+
         FORCEINLINE std::shared_ptr<NetConnection>
                     incoming_connection(const std::string& addr)
         {}
 
-        FORCEINLINE std::shared_ptr<NetListener> listen_on(const std::string& addr, u16 port) {
-            
+        FORCEINLINE std::shared_ptr<NetListener>
+                    listen_on(const std::string& addr, u16 port)
+        {
+
         }
 
         /// Fires when a new connection is creataed.
@@ -109,10 +126,14 @@ namespace v {
             ankerl::unordered_dense::map<NetPeer, HostPortTuple> peer_to_host_{};
         };
 
+        // for outgoing connection management
         RWProtectedResource<HostInfoPeerMapping> hip_map_{};
+
+        // for listener management
+        RWProtectedResource<HostInfoPeerMapping> lst_hip_map_{};
 
         /// An ENetHost object whose sole purpose is to manage outgoing connections
         /// (listening on a port needs its own host object)
-        ENetHost* outgoing_;
+        RWProtectedResource<ENetHost*> outgoing_;
     };
 } // namespace v

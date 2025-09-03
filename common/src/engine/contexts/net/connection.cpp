@@ -2,10 +2,10 @@
 // Created by niooi on 8/1/2025.
 //
 
-#include "engine/contexts/net/connection.h"
-#include "enet.h"
+#include <engine/contexts/net/connection.h>
 #define ENET_IMPLEMENTATION
 #include <defs.h>
+#include <enet.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 
@@ -25,46 +25,36 @@ namespace v {
         }
         address.port = port;
 
-        enet_host_ = enet_host_create(&address, 32, 2, 0, 0);
-        if (enet_host_ == nullptr)
+        peer_ =
+            enet_host_connect(*ctx->outgoing_.write(), &address, 4 /* 4 channels */, 0);
+
+        if (!peer_)
         {
-            enet_deinitialize();
-            throw std::runtime_error("Failed to create ENet host");
+            LOG_ERROR("Failed to connect to peer at {}:{}", host, port);
+            throw std::runtime_error("bleh");
         }
+
+        peer_->data = (void*)this;
     }
 
     // just an incoming connection, its whatever
-    NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) : net_ctx_(ctx), peer_(peer) {
-        
+    NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) :
+        net_ctx_(ctx), peer_(peer)
+    {}
+
+    // at this point there should be no more references.
+    NetConnection::~NetConnection() {
+        // internally queues disconnect
+        if (!remote_disconnected_)
+            enet_peer_disconnect(peer_, 0);
+
+        // make it known that the connection was disconnected locally
+        peer_->data = NULL;
     }
 
-    NetConnection::~NetConnection()
+    void NetConnection::handle_raw_packet(ENetPacket* packet)
     {
-        if (enet_host_ != nullptr)
-        {
-            enet_host_destroy(enet_host_);
-        }
-    }
-
-    void NetConnection::update()
-    {
-        // TODO! auto channel creation etc
-        // for now just update the enet thing
-
-        ENetEvent event;
-        while (enet_host_service(enet_host_, &event, 0) > 0)
-        {
-            switch (event.type)
-            {
-            case ENET_EVENT_TYPE_CONNECT:
-                break;
-
-            case ENET_EVENT_TYPE_RECEIVE:
-                break;
-
-            case ENET_EVENT_TYPE_DISCONNECT:
-                break;
-            }
-        }
+        // TODO! auto channel creation, routing, etc
+        LOG_DEBUG("got packet yep");
     }
 } // namespace v

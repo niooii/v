@@ -5,6 +5,7 @@
 #pragma once
 
 #include <defs.h>
+#include <engine/contexts/net/ctx.h>
 #include <entt/entt.hpp>
 #include <string>
 
@@ -43,6 +44,12 @@ namespace v {
         template <DerivedFromChannel T>
         NetChannel<T>* wait_for_channel();
 
+        /// Request a close to this connection.
+        /// Other functions can no longer access this connection, but
+        /// the connection will remain alive until the last instance of it's handle
+        /// is gone.
+        void request_close() { net_ctx_->req_close(peer_); }
+
         // FORCEINLINE const std::string& host() { return host_; }
 
         // FORCEINLINE const u16 port() { return port_; }
@@ -57,13 +64,16 @@ namespace v {
         /// The constructor for an incoming connection.
         NetConnection(NetworkContext* ctx, ENetPeer* peer);
 
-        /// Shuttle packets around
-        void update();
+        /// Handles an incoming raw packet
+        void handle_raw_packet(ENetPacket* packet);
 
-        ENetHost* enet_host_;
+        entt::entity entity_;
+        ENetPeer*    peer_;
 
-        entt::entity      entity_;
-        ENetPeer*         peer_;
+        // whether the connection was disconnected on our side or not.
+        // if its not, we have to handle removing it from maps and internal tracking,
+        // if it WAS disconnected by us, its already gone.
+        bool remote_disconnected_{};
 
         // Pointer guarenteed to be alive here
         NetworkContext* net_ctx_;
