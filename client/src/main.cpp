@@ -6,7 +6,7 @@
 #include <contexts/sdl.h>
 #include <contexts/window.h>
 #include <domain/test.h>
-#include <engine/contexts/net/net.h>
+#include <engine/contexts/net/ctx.h>
 #include <iostream>
 #include <prelude.h>
 #include <time/stopwatch.h>

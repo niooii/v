@@ -60,12 +60,12 @@ namespace v {
         spd::default_logger()->flush();
     }
 
-    ReadProtectedResourceGuard<entt::registry> Engine::registry_read() const
+    ReadGuard<entt::registry> Engine::registry_read() const
     {
         return registry_.read();
     }
 
-    WriteProtectedResourceGuard<entt::registry> Engine::registry_write()
+    WriteGuard<entt::registry> Engine::registry_write()
     {
         return registry_.write();
     }
