@@ -54,13 +54,13 @@ namespace v {
         /// @note The lock is dropped after the value returned goes out of scope, or a
         /// call to guard.release(). The registry and any components from the registry
         /// must not be accessed after a call to guard.release()
-        ReadProtectedResourceGuard<entt::registry> registry_read() const;
+        ReadGuard<entt::registry> registry_read() const;
 
         /// Fetch the domain registry (ecs entity registry) with a scoped write lock.
         /// @note The lock is dropped after the value returned goes out of scope, or a
         /// call to guard.release(). The registry and any components from the registry
         /// must not be accessed after a call to guard.release()
-        WriteProtectedResourceGuard<entt::registry> registry_write();
+        WriteGuard<entt::registry> registry_write();
 
         /// Adds a context to the engine and wraps it in a RWLock.
         /// Retrievable by original type.
@@ -71,17 +71,17 @@ namespace v {
         /// This means Contexts should be added during the application's
         /// initialization.
         template <DerivedFromContext T, typename... Args>
-        RWProtectedResource<T>* add_locked_context(Args&&... args)
+        RwLock<T>* add_locked_context(Args&&... args)
         {
-            return _add_context<RWProtectedResource<T>>(std::forward<Args>(args)...);
+            return _add_context<RwLock<T>>(std::forward<Args>(args)...);
         }
 
         /// Retrieve a read lock for a locked context by type
         template <DerivedFromContext T>
-        FORCEINLINE std::optional<ReadProtectedResourceGuard<T>> read_context() const
+        FORCEINLINE std::optional<ReadGuard<T>> read_context() const
         {
             using namespace std;
-            if (auto resource = ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(
+            if (auto resource = ctx_registry_.try_get<unique_ptr<RwLock<T>>>(
                     ctx_entity_))
                 return std::optional{ (*resource)->read() };
 
@@ -90,10 +90,10 @@ namespace v {
 
         /// Retrieve a write lock for a locked context by type
         template <DerivedFromContext T>
-        FORCEINLINE std::optional<WriteProtectedResourceGuard<T>> write_context()
+        FORCEINLINE std::optional<WriteGuard<T>> write_context()
         {
             using namespace std;
-            if (auto resource = ctx_registry_.try_get<unique_ptr<RWProtectedResource<T>>>(
+            if (auto resource = ctx_registry_.try_get<unique_ptr<RwLock<T>>>(
                     ctx_entity_))
                 return std::optional{ (*resource)->write() };
 
@@ -169,10 +169,10 @@ namespace v {
         }
 
         /// Runs every time Engine::tick is called
-        RWProtectedResource<DependentSink> on_tick;
+        RwLock<DependentSink> on_tick;
 
         /// Runs within the Engine's destructor, before domains and contexts are destroyed
-        RWProtectedResource<DependentSink> on_destroy;
+        RwLock<DependentSink> on_destroy;
 
     private:
         /// TODO! this better be destroyed last otherwise stupid bad
@@ -184,7 +184,7 @@ namespace v {
         entt::registry ctx_registry_{};
 
         /// A central registry to store domains
-        RWProtectedResource<entt::registry> registry_{};
+        RwLock<entt::registry> registry_{};
 
         /// A queue for the destruction of domains
         moodycamel::ConcurrentQueue<entt::entity> domain_destroy_queue_{};

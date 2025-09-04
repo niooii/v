@@ -39,8 +39,6 @@ namespace v {
         // called to resize the swapchain
         void resize();
 
-
-
         daxa::Swapchain swapchain;
         daxa::TaskGraph render_graph;
         daxa::TaskImage task_swapchain_image;
@@ -59,11 +57,11 @@ namespace v {
         /// Tasks that should run before the rendering of a frame
         DependentSink pre_render;
 
-        /// Creates and attaches a RenderComponent to an entity, usually a Domain.
-        /// @return A reference to the newly created component for modification.
-        /// The reference must not be stored, and is safe to use as long as only
-        /// one thread is creating a RenderComponent at a time.
-        RenderComponent& create_component(entt::entity id);
+        /// Creates an empty RenderComponent
+        FORCEINLINE RenderComponent create_component() { return {}; };
+        
+        /// Attaches a RenderComponent to an entity, usually a Domain
+        void attach_component(const RenderComponent& component, entt::entity id);
 
         void update();
 

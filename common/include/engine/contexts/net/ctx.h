@@ -49,7 +49,7 @@ namespace v {
                     get_connection(const std::string& host, u16 port)
         {
             const auto maps = conn_maps_.read();
-            const auto key  = std::make_tuple(host, port, ConnectionType::Outgoing);
+            const auto key  = std::make_tuple(host, port);
 
             const auto it = maps->forward.find(key);
 
@@ -84,29 +84,29 @@ namespace v {
         FORCEINLINE void req_close(NetPeer peer)
         {
             {
-                // if this exists then we can close the connection
-                const auto maps = conn_maps_.read();
-                const auto it   = maps->backward.find(peer);
-                if (it == maps->backward.end())
-                {
+                auto conns = connections_.write();
+                if (!conns->contains(peer)) {
                     LOG_WARN(
                         "Requested close on connection that is not alive.. This should "
                         "not happen.");
+                    return;
+                }
+                conns->erase(peer);
+            }
+
+            {
+                // remove DeMap stuff that was linking info together
+                auto maps  = conn_maps_.write();
+
+                if (maps->backward.contains(peer)) {
+
+                    auto tuple = maps->backward.at(peer);
+
+                    maps->forward.erase(tuple);
+                    maps->backward.erase(peer);
                 }
             }
 
-            {
-                auto maps  = conn_maps_.write();
-                auto tuple = maps->backward.at(peer);
-
-                maps->forward.erase(tuple);
-                maps->backward.erase(peer);
-            }
-
-            {
-                auto conns = connections_.write();
-                conns->erase(peer);
-            }
         }
 
 
@@ -121,17 +121,23 @@ namespace v {
         // or nothing. 
         void update_host(NetHost host, void* data);
 
+        /// Links peer connection info to conn_maps_ for bidirectional lookup
+        void link_peer_conn_info(NetPeer peer, const std::string& host, u16 port);
+
+        /// Links host server info to server_maps_ for bidirectional lookup
+        void link_host_server_info(NetHost host, const std::string& addr, u16 port);
+
         // Don't use the main engine domain registry.
-        RWProtectedResource<entt::registry> reg_{};
+        RwLock<entt::registry> reg_{};
 
         // for outgoing and incoming connections
-        RWProtectedResource<
+        RwLock<
             ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>
             connections_{};
 
         // for listeners
         // TODO! is this bad? do i have an illness?
-        RWProtectedResource<
+        RwLock<
             ankerl::unordered_dense::map<NetHost, std::shared_ptr<NetListener>>>
             servers_{};
 
@@ -144,13 +150,13 @@ namespace v {
         };
 
         // for outgoing connection management
-        RWProtectedResource<DeMap<HostPortTypeTuple, ENetPeer*>> conn_maps_{};
+        RwLock<DeMap<HostPortTuple, ENetPeer*>> conn_maps_{};
 
         // for listener management
-        RWProtectedResource<DeMap<HostPortTuple, ENetHost*>> server_maps_{};
+        RwLock<DeMap<HostPortTuple, ENetHost*>> server_maps_{};
 
         /// An ENetHost object whose sole purpose is to manage outgoing connections
         /// (listening on a port needs its own host object)
-        RWProtectedResource<ENetHost*> outgoing_host_;
+        RwLock<ENetHost*> outgoing_host_;
     };
 } // namespace v

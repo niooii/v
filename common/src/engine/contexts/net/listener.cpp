@@ -5,7 +5,7 @@
 #include "defs.h"
 
 namespace v {
-    NetListener::NetListener(NetworkContext* ctx, std::string& host, u16 port, u32 max_connections) : net_ctx_(ctx) {
+    NetListener::NetListener(NetworkContext* ctx, const std::string& host, u16 port, u32 max_connections) : net_ctx_(ctx) {
         ENetAddress address = {0};
         if (int res = enet_address_set_host(&address, host.c_str()); res < 0) {
             LOG_ERROR("Bad host: {}", host.c_str());
@@ -19,15 +19,13 @@ namespace v {
             throw std::runtime_error("Bye");
         }
     }
-    
-    void NetListener::update() {
-        ENetEvent event;
-        
-        while (enet_host_service(host_, &event, 0) > 0) {
-            // TODO!
-            switch (event.type) {
 
-            }
-        }
+
+    void NetListener::on_connection(OnConnectCallback callback, bool new_only) {
+
+    }
+
+    void NetListener::handle_new_connection(std::shared_ptr<NetConnection> con){
+        conn_callbacks_.
     }
 }
