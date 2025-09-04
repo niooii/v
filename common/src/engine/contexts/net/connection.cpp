@@ -12,7 +12,7 @@
 namespace v {
     // create an outgoing connection
     NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port) :
-        net_ctx_(ctx)
+        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing)
     {
         entity_ = ctx->reg_.write()->create();
 
@@ -26,7 +26,7 @@ namespace v {
         address.port = port;
 
         peer_ =
-            enet_host_connect(*ctx->outgoing_.write(), &address, 4 /* 4 channels */, 0);
+            enet_host_connect(*ctx->outgoing_host_.write(), &address, 4 /* 4 channels */, 0);
 
         if (!peer_)
         {
@@ -39,10 +39,10 @@ namespace v {
 
     // just an incoming connection, its whatever
     NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) :
-        net_ctx_(ctx), peer_(peer)
+        net_ctx_(ctx), peer_(peer), conn_type_(ConnectionType::Incoming)
     {}
 
-    // at this point there should be no more references.
+    // at this point there should be no more references internally
     NetConnection::~NetConnection() {
         // internally queues disconnect
         if (!remote_disconnected_)

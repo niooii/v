@@ -22,8 +22,7 @@ namespace v {
         void on_connection(OnConnectCallback callback, bool new_only = false);
 
     private:
-        NetListener(class NetworkContext* ctx, std::string& host, u16 port, u32 max_connections = 128);
-        void update();
+        NetListener(class NetworkContext* ctx, const std::string& host, u16 port, u32 max_connections = 128);
 
         std::string addr_;
         u16 port_;
