@@ -33,29 +33,49 @@ namespace v {
             throw std::runtime_error("bleh");
         }
 
-        new (&outgoing_) RWProtectedResource<ENetHost*>(host);
+        new (&outgoing_host_) RWProtectedResource<ENetHost*>(host);
     }
 
     NetworkContext::~NetworkContext() { enet_deinitialize(); }
 
 
     std::shared_ptr<NetConnection>
-                NetworkContext::create_connection(const std::string& host, u16 port)
+    NetworkContext::create_connection(const std::string& host, u16 port)
     {
-        const auto key = std::make_tuple(host, port);
+        const auto key = std::make_tuple(host, port, ConnectionType::Outgoing);
         {
-            const auto maps = hip_map_.read();
-            const auto it   = maps->host_to_peer_.find(key);
+            const auto maps = outgoing_maps_.read();
+            const auto it   = maps->forward.find(key);
 
-            if (UNLIKELY(it != maps->host_to_peer_.end()))
+            if (UNLIKELY(it != maps->forward.end()))
             {
                 NetPeer peer = it->second;
-                return connections_.read()->at(peer);
+                return outgoing_.read()->at(peer);
             }
         }
 
         auto con = NetConnection{ this, host, port };
-        auto res = connections_.write()->emplace(con.peer(), std::move(con));
+        auto res = outgoing_.write()->emplace(con.peer(), std::move(con));
+        return res.first->second;
+    }
+
+    std::shared_ptr<NetListener>
+    NetworkContext::listen_on(const std::string& addr, u16 port, u32 max_connections)
+    {
+        const auto key = std::make_tuple(addr, port);
+        {
+            const auto maps = server_maps_.read();
+            const auto it   = maps->forward.find(key);
+
+            if (UNLIKELY(it != maps->forward.end()))
+            {
+                NetHost host = it->second;
+                return servers_.read()->at(host);
+            }
+        }
+
+        auto server = NetListener{ this, addr, port, max_connections };
+        auto res    = servers_.write()->emplace(server.host_, std::move(server));
         return res.first->second;
     }
 
@@ -64,7 +84,7 @@ namespace v {
         // update outgoing connection stuff
         {
             ENetEvent event;
-            auto      host = outgoing_.write();
+            auto      host = outgoing_host_.write();
 
             while (enet_host_service(*host, &event, 0) > 0)
             {
@@ -73,7 +93,7 @@ namespace v {
                 case ENET_EVENT_TYPE_RECEIVE:
                     {
                         NetPeer peer = event.peer;
-                        auto con = (NetConnection*)(peer->data);
+                        auto    con  = (NetConnection*)(peer->data);
                         con->handle_raw_packet(event.packet);
                         enet_packet_destroy(event.packet);
                     }
@@ -86,10 +106,11 @@ namespace v {
                 case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
                     NetPeer peer = event.peer;
                     // if data is NULL, then we disconnected locally.
-                    if (!peer->data) 
+                    if (!peer->data)
                         break;
 
-                    // otherwise the disconnect was triggered remotely, and our connection is still valid. remove internal tracking stuff
+                    // otherwise the disconnect was triggered remotely, and our connection
+                    // is still valid. remove internal tracking stuff
                     req_close(peer);
                     break;
                 }
@@ -100,12 +121,9 @@ namespace v {
         // abusing interior mutability - this is fine
         // as long as we keep the netconnection class
         // thread safe
-        // auto conns = connections_.read();
+        auto conns = servers.read();
 
-        // for (auto& [_a, b] : *conns)
-        // {
-        //     b->update();
-        // }
+
     }
 
 } // namespace v

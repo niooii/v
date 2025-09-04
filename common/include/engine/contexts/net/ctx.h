@@ -16,8 +16,15 @@
 #include "listener.h"
 
 namespace v {
-    typedef ENetPeer*                    NetPeer;
+    enum ConnectionType {
+        Incoming,
+        Outgoing
+    };
+
+    typedef std::tuple<std::string, u16, ConnectionType> HostPortTypeTuple;
     typedef std::tuple<std::string, u16> HostPortTuple;
+    typedef ENetPeer*                    NetPeer;
+    typedef ENetHost*                    NetHost;
 
     // TODO! think about how to design this for fast use from multiple threads.
     class NetConnection;
@@ -41,12 +48,12 @@ namespace v {
         FORCEINLINE std::shared_ptr<NetConnection>
                     get_connection(const std::string& host, u16 port)
         {
-            const auto maps = hip_map_.read();
-            const auto key  = std::make_tuple(host, port);
+            const auto maps = conn_maps_.read();
+            const auto key  = std::make_tuple(host, port, ConnectionType::Outgoing);
 
-            const auto it = maps->host_to_peer_.find(key);
+            const auto it = maps->forward.find(key);
 
-            if (LIKELY(it != maps->host_to_peer_.end()))
+            if (LIKELY(it != maps->forward.end()))
                 return get_connection(it->second);
             else
                 return nullptr;
@@ -63,6 +70,13 @@ namespace v {
                 return nullptr;
         }
 
+        FORCEINLINE std::shared_ptr<NetConnection>
+                    incoming_connection(const std::string& addr)
+        {}
+
+        std::shared_ptr<NetListener>
+                    listen_on(const std::string& addr, u16 port, u32 max_connections=128);
+
         /// Request a close to the connection via its peer.
         /// Other functions can no longer access this connection, but
         /// the connection will remain alive until the last instance of it's handle
@@ -71,9 +85,9 @@ namespace v {
         {
             {
                 // if this exists then we can close the connection
-                const auto maps = hip_map_.read();
-                const auto it   = maps->peer_to_host_.find(peer);
-                if (it == maps->peer_to_host_.end())
+                const auto maps = conn_maps_.read();
+                const auto it   = maps->backward.find(peer);
+                if (it == maps->backward.end())
                 {
                     LOG_WARN(
                         "Requested close on connection that is not alive.. This should "
@@ -82,11 +96,11 @@ namespace v {
             }
 
             {
-                auto maps  = hip_map_.write();
-                auto tuple = maps->peer_to_host_.at(peer);
+                auto maps  = conn_maps_.write();
+                auto tuple = maps->backward.at(peer);
 
-                maps->host_to_peer_.erase(tuple);
-                maps->peer_to_host_.erase(peer);
+                maps->forward.erase(tuple);
+                maps->backward.erase(peer);
             }
 
             {
@@ -95,15 +109,6 @@ namespace v {
             }
         }
 
-        FORCEINLINE std::shared_ptr<NetConnection>
-                    incoming_connection(const std::string& addr)
-        {}
-
-        FORCEINLINE std::shared_ptr<NetListener>
-                    listen_on(const std::string& addr, u16 port)
-        {
-
-        }
 
         /// Fires when a new connection is creataed.
         // entt::sink<entt::sigh<void(DomainId)>> on_conn;
@@ -112,28 +117,40 @@ namespace v {
         void update();
 
     private:
+        // data is either a pointer to NetListener (for access to the callbacks)
+        // or nothing. 
+        void update_host(NetHost host, void* data);
+
         // Don't use the main engine domain registry.
         RWProtectedResource<entt::registry> reg_{};
 
+        // for outgoing and incoming connections
         RWProtectedResource<
             ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>
             connections_{};
 
-        struct HostInfoPeerMapping {
-            // the classic dual map pattern
-            ankerl::unordered_dense::map<HostPortTuple, NetPeer> host_to_peer_{};
+        // for listeners
+        // TODO! is this bad? do i have an illness?
+        RWProtectedResource<
+            ankerl::unordered_dense::map<NetHost, std::shared_ptr<NetListener>>>
+            servers_{};
 
-            ankerl::unordered_dense::map<NetPeer, HostPortTuple> peer_to_host_{};
+        // literally just two maps
+        template <typename K, typename T>
+        struct DeMap {
+            ankerl::unordered_dense::map<K, T> forward{};
+
+            ankerl::unordered_dense::map<T, K> backward{};
         };
 
         // for outgoing connection management
-        RWProtectedResource<HostInfoPeerMapping> hip_map_{};
+        RWProtectedResource<DeMap<HostPortTypeTuple, ENetPeer*>> conn_maps_{};
 
         // for listener management
-        RWProtectedResource<HostInfoPeerMapping> lst_hip_map_{};
+        RWProtectedResource<DeMap<HostPortTuple, ENetHost*>> server_maps_{};
 
         /// An ENetHost object whose sole purpose is to manage outgoing connections
         /// (listening on a port needs its own host object)
-        RWProtectedResource<ENetHost*> outgoing_;
+        RWProtectedResource<ENetHost*> outgoing_host_;
     };
 } // namespace v
