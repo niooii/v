@@ -5,9 +5,9 @@
 
 #pragma once
 
+#include <spdlog/spdlog.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <spdlog/spdlog.h>
 
 #define LOG_TRACE    SPDLOG_TRACE
 #define LOG_DEBUG    SPDLOG_DEBUG
@@ -75,15 +75,13 @@ typedef unsigned char byte;
 
     #define STATIC_ASSERT _Static_assert
 
-    #define CTZ(x)      __builtin_ctz(x) // Count trailing zeros (32-bit)
-    #define CTZ64(x)    __builtin_ctzll(x) // Count trailing zeros (64-bit)
-    #define CLZ(x)      __builtin_clz(x) // Count leading zeros (32-bit)
-    #define CLZ64(x)    __builtin_clzll(x) // Count leading zeros (64-bit)
-    #define POPCOUNT(x) __builtin_popcount(x) // Population count (32-bit)
-    #define POPCOUNT64(x) \
-        __builtin_popcountll(x) // Population count (64-bit)
-    #define BYTESWAP16(x) \
-        __builtin_bswap16(x) // Byte swap (16-bit) - fixed typo
+    #define CTZ(x)        __builtin_ctz(x) // Count trailing zeros (32-bit)
+    #define CTZ64(x)      __builtin_ctzll(x) // Count trailing zeros (64-bit)
+    #define CLZ(x)        __builtin_clz(x) // Count leading zeros (32-bit)
+    #define CLZ64(x)      __builtin_clzll(x) // Count leading zeros (64-bit)
+    #define POPCOUNT(x)   __builtin_popcount(x) // Population count (32-bit)
+    #define POPCOUNT64(x) __builtin_popcountll(x) // Population count (64-bit)
+    #define BYTESWAP16(x) __builtin_bswap16(x) // Byte swap (16-bit) - fixed typo
     #define BYTESWAP32(x) __builtin_bswap32(x) // Byte swap (32-bit)
     #define BYTESWAP64(x) __builtin_bswap64(x) // Byte swap (64-bit)
 
@@ -94,19 +92,20 @@ typedef unsigned char byte;
     #define UNREACHABLE()    __builtin_unreachable()
     #define PREFETCH(x)      __builtin_prefetch(x)
     #define MEMORY_BARRIER() __asm__ volatile("" ::: "memory")
-    
-    /// Returns a unique typename for a given type.
-    /// I'm not defining this for msvc and others because
-    /// I'm kind of locked into clang/gcc at this point. 
-    template<typename T>
-    constexpr std::string_view type_name() {
-        constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
-        constexpr std::string_view prefix {"constexpr std::string_view type_name() [T = "};
-        constexpr std::string_view suffix {"]"};
-        const auto start = func_name.find(prefix) + prefix.size();
-        const auto end = func_name.rfind(suffix);
-        return func_name.substr(start, end - start);
-    }
+
+/// Returns a unique typename for a given type.
+/// I'm not defining this for msvc and others because
+/// I'm kind of locked into clang/gcc at this point.
+template <typename T>
+constexpr std::string_view type_name()
+{
+    constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
+    constexpr std::string_view prefix{ "constexpr std::string_view type_name() [T = " };
+    constexpr std::string_view suffix{ "]" };
+    const auto                 start = func_name.find(prefix) + prefix.size();
+    const auto                 end   = func_name.rfind(suffix);
+    return func_name.substr(start, end - start);
+}
 #endif
 
 STATIC_ASSERT(sizeof(u8) == 1, "expected u8 to be 1 byte.");

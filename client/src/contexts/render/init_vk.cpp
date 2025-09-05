@@ -15,7 +15,7 @@ namespace v {
         LOG_INFO("Initializing Daxa context...");
 
         // Verify window context exists (needed for eventual swapchain creation)
-        auto window_ctx = engine.read_context<WindowContext>();
+        auto window_ctx = engine.get_context<WindowContext>();
         if (!window_ctx)
         {
             throw std::runtime_error(
@@ -23,7 +23,7 @@ namespace v {
                 "being created first");
         }
 
-        Window* temp_window = (*window_ctx)->get_window();
+        Window* temp_window = window_ctx->get_window();
         if (!temp_window)
         {
             throw std::runtime_error(
@@ -31,8 +31,11 @@ namespace v {
         }
 
         // Create daxa instance
-        instance =
-            daxa::create_instance({ .engine_name = "vengine", .app_name = "vengine", });
+        instance = daxa::create_instance(
+            {
+                .engine_name = "vengine",
+                .app_name    = "vengine",
+            });
 
         LOG_DEBUG("Daxa instance created successfully");
 

@@ -46,7 +46,7 @@ namespace v {
             case SDL_EVENT_QUIT:
                 {
                     for (auto [_entity, comp] :
-                         engine_.registry_read()->view<SDLComponent>().each())
+                         engine_.registry().view<SDLComponent>().each())
                         comp.on_quit();
                     break;
                 }
@@ -57,7 +57,7 @@ namespace v {
 
     SDLComponent& SDLContext::create_component(entt::entity id) const
     {
-        return engine_.registry_write()->emplace<SDLComponent>(id);
+        return engine_.registry().emplace<SDLComponent>(id);
     }
 
     static bool has_window_id(Uint32 event_type)

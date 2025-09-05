@@ -5,12 +5,12 @@
 #pragma once
 
 #include <contexts/window.h>
+#include <daxa/daxa.hpp>
+#include <daxa/utils/task_graph.hpp>
 #include <defs.h>
 #include <domain/context.h>
 #include <domain/domain.h>
 #include <vector>
-#include <daxa/daxa.hpp>
-#include <daxa/utils/task_graph.hpp>
 #include "engine/sink.h"
 
 namespace v {
@@ -39,12 +39,12 @@ namespace v {
         // called to resize the swapchain
         void resize();
 
-        daxa::Swapchain swapchain;
-        daxa::TaskGraph render_graph;
-        daxa::TaskImage task_swapchain_image;
+        daxa::Swapchain      swapchain;
+        daxa::TaskGraph      render_graph;
+        daxa::TaskImage      task_swapchain_image;
         static constexpr u32 FRAMES_IN_FLIGHT = 2;
 
-        DaxaResources* daxa_resources_;        
+        DaxaResources* daxa_resources_;
     };
 
     class RenderContext : public Context {
@@ -59,7 +59,7 @@ namespace v {
 
         /// Creates an empty RenderComponent
         FORCEINLINE RenderComponent create_component() { return {}; };
-        
+
         /// Attaches a RenderComponent to an entity, usually a Domain
         void attach_component(const RenderComponent& component, entt::entity id);
 

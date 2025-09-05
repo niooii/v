@@ -16,7 +16,7 @@ namespace v {
     public:
         // rough scaffold for now
         void insert();
+
     private:
-        
     };
 } // namespace v

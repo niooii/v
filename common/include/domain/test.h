@@ -10,13 +10,10 @@ namespace v {
     class CountTo10Domain : public Domain {
     public:
         CountTo10Domain(Engine& engine, const std::string& name);
-        ~CountTo10Domain() override
-        {
-            LOG_INFO("Destroying CountTo10Domain.");
-        };
-        
+        ~CountTo10Domain() override { LOG_INFO("Destroying CountTo10Domain."); };
+
         void update();
-        
+
     private:
         i32 counter_;
     };
