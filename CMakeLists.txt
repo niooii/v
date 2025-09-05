@@ -14,6 +14,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_program(GLSLC glslc REQUIRED)
 
 # Common external dependencies used by both client and server
+# Taskflow
+set(TF_BUILD_EXAMPLES OFF)
+set(TF_BUILD_TESTS OFF)
+set(TF_BUILD_BENCHMARKS OFF)
+add_subdirectory(extern/taskflow)
+
 add_subdirectory(extern/ser20)
 add_subdirectory(extern/entt)
 add_subdirectory(extern/hfsm2)
@@ -25,17 +31,20 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 #set(ABSL_BUILD_TEST_HELPERS OFF)
 add_subdirectory(extern/abseil-cpp)
 
-# Taskflow
-set(TF_BUILD_EXAMPLES OFF)
-set(TF_BUILD_TESTS OFF)
-set(TF_BUILD_BENCHMARKS OFF)
-add_subdirectory(extern/taskflow)
+# Disable warnings for external dependencies
+set_property(DIRECTORY extern/ser20 PROPERTY COMPILE_OPTIONS "-w")
+set_property(DIRECTORY extern/entt PROPERTY COMPILE_OPTIONS "-w")
+set_property(DIRECTORY extern/hfsm2 PROPERTY COMPILE_OPTIONS "-w")
+set_property(DIRECTORY extern/spdlog PROPERTY COMPILE_OPTIONS "-w")
+set_property(DIRECTORY extern/glm PROPERTY COMPILE_OPTIONS "-w")
+set_property(DIRECTORY extern/abseil-cpp PROPERTY COMPILE_OPTIONS "-w")
+set_property(DIRECTORY extern/taskflow PROPERTY COMPILE_OPTIONS "-w")
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 # CMAKE_BUILD_TYPE is now set by CMakePresets.json
 
-set(NO_WARNING_FLAGS "-Wno-unused-parameter -Wno-missing-braces -Wno-unused-variable -Wno-ignored-qualifiers -Wno-missing-field-initializers -Wno-gnu-anonymous-struct -Wno-nested-anon-types")
+set(NO_WARNING_FLAGS "-Wno-unused-parameter -Wno-missing-braces -Wno-unused-variable -Wno-ignored-qualifiers -Wno-missing-field-initializers -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-sign-conversion")
 
 set(CMAKE_CXX_FLAGS "-Wall -W -Wextra ${NO_WARNING_FLAGS} -ffast-math -march=native -mavx2 -fcolor-diagnostics")
 

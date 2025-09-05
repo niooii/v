@@ -75,7 +75,8 @@ It is up to the programmer to manage this (accidental) flexibility, which is now
 
 If a bug is encountered and a fix is requested, you are to attempt to understand the issue fully. Do not make
 assumptions and always test iteratively. You can build the application with `./v.sh build [vclient/vserver/vlib]`, and
-run executables with `./v.sh run [vclient/vserver]`. If it's a runtime error, you probably want to set a timeout on it,
+run executables with `./v.sh run [vclient/vserver]`. Prefer to pipe the output to `| grep error` with some amount of surrounding
+lines, as the output is quite large. If it's a runtime error, you probably want to set a timeout on it,
 since it will keep running forever with any intervention. If it's a compilation error, you can test it with build, not
 run. If you cannot find out the root of the issue, you may suggest workarounds and quick 'patch fixes' but do not
 implement them until requested explicitly. Remove any debug code you wrote to track down the issue after it has been

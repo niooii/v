@@ -45,4 +45,3 @@ namespace v {
         const NetConnection* conn_;
     };
 } // namespace v
-

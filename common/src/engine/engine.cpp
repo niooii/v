@@ -8,8 +8,7 @@
 
 namespace v {
     Engine::Engine() :
-        ctx_entity_{ ctx_registry_.create() },
-        engine_entity_{ registry_.write()->create() }
+        ctx_entity_{ ctx_registry_.create() }, engine_entity_{ registry_.create() }
     {
         LOG_INFO("Initialized the engine.");
     }
@@ -18,7 +17,7 @@ namespace v {
     {
         LOG_INFO("Engine shutting down..");
 
-        on_destroy.write()->execute();
+        on_destroy.execute();
     }
 
     void Engine::tick()
@@ -34,25 +33,20 @@ namespace v {
 
         // process domain destruction queue
         {
-            auto reg = registry_write();
-
             entt::entity id;
             while (domain_destroy_queue_.try_dequeue(id))
             {
-                if (reg->valid(id))
+                if (registry_.valid(id))
                 {
-                    auto& owner_component = reg->get<std::unique_ptr<Domain>>(id);
+                    auto& owner_component = registry_.get<std::unique_ptr<Domain>>(id);
                     owner_component.reset();
-                    reg->destroy(id);
+                    registry_.destroy(id);
                 }
             }
         }
 
-        {
-            // run tick callbacks with dependency management
-            auto t_callbacks = on_tick.write();
-            t_callbacks->execute();
-        }
+        // run tick callbacks with dependency management
+        on_tick.execute();
 
         LOG_TRACE("Finished tick {} ", current_tick_);
 
@@ -60,13 +54,4 @@ namespace v {
         spd::default_logger()->flush();
     }
 
-    ReadGuard<entt::registry> Engine::registry_read() const
-    {
-        return registry_.read();
-    }
-
-    WriteGuard<entt::registry> Engine::registry_write()
-    {
-        return registry_.write();
-    }
 } // namespace v

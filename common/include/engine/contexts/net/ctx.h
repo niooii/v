@@ -16,15 +16,12 @@
 #include "listener.h"
 
 namespace v {
-    enum ConnectionType {
-        Incoming,
-        Outgoing
-    };
+    enum ConnectionType { Incoming, Outgoing };
 
     typedef std::tuple<std::string, u16, ConnectionType> HostPortTypeTuple;
-    typedef std::tuple<std::string, u16> HostPortTuple;
-    typedef ENetPeer*                    NetPeer;
-    typedef ENetHost*                    NetHost;
+    typedef std::tuple<std::string, u16>                 HostPortTuple;
+    typedef ENetPeer*                                    NetPeer;
+    typedef ENetHost*                                    NetHost;
 
     // TODO! think about how to design this for fast use from multiple threads.
     class NetConnection;
@@ -72,10 +69,12 @@ namespace v {
 
         FORCEINLINE std::shared_ptr<NetConnection>
                     incoming_connection(const std::string& addr)
-        {}
+        {
+            return nullptr;
+        }
 
         std::shared_ptr<NetListener>
-                    listen_on(const std::string& addr, u16 port, u32 max_connections=128);
+        listen_on(const std::string& addr, u16 port, u32 max_connections = 128);
 
         /// Request a close to the connection via its peer.
         /// Other functions can no longer access this connection, but
@@ -85,7 +84,8 @@ namespace v {
         {
             {
                 auto conns = connections_.write();
-                if (!conns->contains(peer)) {
+                if (!conns->contains(peer))
+                {
                     LOG_WARN(
                         "Requested close on connection that is not alive.. This should "
                         "not happen.");
@@ -96,9 +96,10 @@ namespace v {
 
             {
                 // remove DeMap stuff that was linking info together
-                auto maps  = conn_maps_.write();
+                auto maps = conn_maps_.write();
 
-                if (maps->backward.contains(peer)) {
+                if (maps->backward.contains(peer))
+                {
 
                     auto tuple = maps->backward.at(peer);
 
@@ -106,7 +107,6 @@ namespace v {
                     maps->backward.erase(peer);
                 }
             }
-
         }
 
 
@@ -118,7 +118,7 @@ namespace v {
 
     private:
         // data is either a pointer to NetListener (for access to the callbacks)
-        // or nothing. 
+        // or nothing.
         void update_host(NetHost host, void* data);
 
         /// Links peer connection info to conn_maps_ for bidirectional lookup
@@ -131,14 +131,12 @@ namespace v {
         RwLock<entt::registry> reg_{};
 
         // for outgoing and incoming connections
-        RwLock<
-            ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>
+        RwLock<ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>
             connections_{};
 
         // for listeners
         // TODO! is this bad? do i have an illness?
-        RwLock<
-            ankerl::unordered_dense::map<NetHost, std::shared_ptr<NetListener>>>
+        RwLock<ankerl::unordered_dense::map<NetHost, std::shared_ptr<NetListener>>>
             servers_{};
 
         // literally just two maps

@@ -25,8 +25,8 @@ namespace v {
         }
         address.port = port;
 
-        peer_ =
-            enet_host_connect(*ctx->outgoing_host_.write(), &address, 4 /* 4 channels */, 0);
+        peer_ = enet_host_connect(
+            *ctx->outgoing_host_.write(), &address, 4 /* 4 channels */, 0);
 
         if (!peer_)
         {
@@ -43,7 +43,8 @@ namespace v {
     {}
 
     // at this point there should be no more references internally
-    NetConnection::~NetConnection() {
+    NetConnection::~NetConnection()
+    {
         // internally queues disconnect
         if (!remote_disconnected_)
             enet_peer_disconnect(peer_, 0);

@@ -26,4 +26,3 @@ namespace v {
         DaxaResources& operator=(const DaxaResources&) = delete;
     };
 } // namespace v
-

@@ -39,9 +39,9 @@ print_warning() {
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        build|run|clean|reload)
+        build|run|clean|reload|format|fmt)
             if [[ -n "$COMMAND" ]]; then
-                print_error "Multiple commands specified. Use only one of: build, run, clean, reload"
+                print_error "Multiple commands specified. Use only one of: build, run, clean, reload, format"
                 exit 1
             fi
             COMMAND="$1"
@@ -56,8 +56,11 @@ while [[ $# -gt 0 ]]; do
             if [[ "$COMMAND" == "clean" ]]; then
                 CLEAN_ALL=true
                 shift
+            elif [[ "$COMMAND" == "format" || "$COMMAND" == "fmt" ]]; then
+                TARGET="all"
+                shift
             else
-                print_error "'all' flag is only valid with clean command"
+                print_error "'all' flag is only valid with clean and format commands"
                 exit 1
             fi
             ;;
@@ -71,10 +74,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             print_error "Unknown argument: $1"
-            echo "Usage: ./v.sh [build/run/clean/reload] [target/all] [--release]"
-            echo "Commands: build, run, clean, reload"
+            echo "Usage: ./v.sh [build/run/clean/reload/format] [target/all] [--release]"
+            echo "Commands: build, run, clean, reload, format (fmt)"
             echo "Targets: vclient, vserver, vlib"
-            echo "Clean options: all (includes external built libraries)"
+            echo "Special: all (with clean: removes extern/, with format: formats all files)"
             echo "Flags: --release (default is debug)"
             exit 1
             ;;
@@ -84,10 +87,10 @@ done
 # Validate command
 if [[ -z "$COMMAND" ]]; then
     print_error "No command specified"
-    echo "Usage: ./v.sh [build/run/clean/reload] [target/all] [--release]"
-    echo "Commands: build, run, clean, reload"
+    echo "Usage: ./v.sh [build/run/clean/reload/format] [target/all] [--release]"
+    echo "Commands: build, run, clean, reload, format (fmt)"
     echo "Targets: vclient, vserver, vlib"
-    echo "Clean options: all (removes everything including extern/)"
+    echo "Special: all (with clean: removes extern/, with format: formats all files)"
     echo "Flags: --release (default is debug)"
     exit 1
 fi
@@ -167,6 +170,68 @@ run_executable() {
     esac
 }
 
+format_target() {
+    local target="$1"
+    
+    # Check if clang-format is available
+    if ! command -v clang-format &> /dev/null; then
+        print_error "clang-format not found. Please install clang-format."
+        exit 1
+    fi
+    
+    local files=()
+    case "$target" in
+        vclient)
+            print_status "Finding vclient source files..."
+            readarray -t files < <(find client/ -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \))
+            ;;
+        vserver)
+            print_status "Finding vserver source files..."
+            readarray -t files < <(find server/ -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \))
+            ;;
+        vlib)
+            print_status "Finding vlib source files..."
+            readarray -t files < <(find common/ -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \))
+            ;;
+        all|"")
+            print_status "Finding all source files..."
+            readarray -t files < <(find . -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) -not -path "./extern/*" -not -path "./.idea/*")
+            ;;
+        *)
+            print_error "Unknown target: $target"
+            print_error "Valid targets: vclient, vserver, vlib, all"
+            exit 1
+            ;;
+    esac
+    
+    if [ ${#files[@]} -eq 0 ]; then
+        print_warning "No source files found to format"
+        return
+    fi
+    
+    print_status "Formatting ${#files[@]} files..."
+    
+    set +e  # Temporarily disable exit on error
+    local count=0
+    local errors=0
+    
+    for file in "${files[@]}"; do
+        ((count++))
+        echo "  [$count/${#files[@]}] $file"
+        if ! clang-format -i "$file"; then
+            print_warning "Failed to format: $file"
+            ((errors++))
+        fi
+    done
+    set -e  # Re-enable exit on error
+    
+    if [ $errors -gt 0 ]; then
+        print_warning "$errors files failed to format"
+    fi
+    
+    print_success "Successfully formatted ${#files[@]} files"
+}
+
 print_status "Using build directory: $BUILD_DIR"
 print_status "Build type: $BUILD_TYPE"
 
@@ -201,6 +266,10 @@ case "$COMMAND" in
         print_status "Reloading CMake cache..."
         configure_cmake
         print_success "CMake cache reloaded successfully"
+        ;;
+        
+    format|fmt)
+        format_target "$TARGET"
         ;;
         
     *)

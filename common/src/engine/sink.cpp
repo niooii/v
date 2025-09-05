@@ -6,8 +6,9 @@
 
 void DependentSink::execute()
 {
-    static tf::Executor executor_;
-    if (!registered_tasks_.empty()) {
+    static tf::Executor executor_(1);
+    if (!registered_tasks_.empty())
+    {
         executor_.run(taskflow_).wait();
     }
 }

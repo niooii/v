@@ -77,13 +77,15 @@ namespace v {
             }
         }
 
-        auto server = std::shared_ptr<NetListener>(new NetListener(this, addr, port, max_connections));
-        auto res    = servers_.write()->emplace(server->host_, server);
+        auto server = std::shared_ptr<NetListener>(
+            new NetListener(this, addr, port, max_connections));
+        auto res = servers_.write()->emplace(server->host_, server);
         link_host_server_info(server->host_, addr, port);
         return res.first->second;
     }
 
-    void NetworkContext::update_host(NetHost host, void* data) {
+    void NetworkContext::update_host(NetHost host, void* data)
+    {
         ENetEvent event;
 
         while (enet_host_service(host, &event, 0) > 0)
@@ -95,10 +97,13 @@ namespace v {
                     // atp we know the host is a server host
                     NetListener* server = static_cast<NetListener*>(data);
 
-                    auto con = std::shared_ptr<NetConnection>(new NetConnection(this, event.peer));
-                    auto res = connections_.write()->emplace(const_cast<ENetPeer*>(con->peer()), con);
+                    auto con = std::shared_ptr<NetConnection>(
+                        new NetConnection(this, event.peer));
+                    auto res = connections_.write()->emplace(
+                        const_cast<ENetPeer*>(con->peer()), con);
 
-                    // Skip DeMap population for incoming connections to avoid NAT collision issues
+                    // Skip DeMap population for incoming connections to avoid NAT
+                    // collision issues
 
                     server->handle_new_connection(con);
                 }
@@ -173,23 +178,23 @@ namespace v {
         // as long as we keep the netconnection class
         // thread safe
         auto conns = servers_.read();
-
-
     }
 
-    void NetworkContext::link_peer_conn_info(NetPeer peer, const std::string& host, u16 port)
+    void
+    NetworkContext::link_peer_conn_info(NetPeer peer, const std::string& host, u16 port)
     {
-        const auto key = std::make_tuple(host, port);
-        auto maps = conn_maps_.write();
-        maps->forward[key] = peer;
+        const auto key       = std::make_tuple(host, port);
+        auto       maps      = conn_maps_.write();
+        maps->forward[key]   = peer;
         maps->backward[peer] = key;
     }
 
-    void NetworkContext::link_host_server_info(NetHost host, const std::string& addr, u16 port)
+    void
+    NetworkContext::link_host_server_info(NetHost host, const std::string& addr, u16 port)
     {
-        const auto key = std::make_tuple(addr, port);
-        auto maps = server_maps_.write();
-        maps->forward[key] = host;
+        const auto key       = std::make_tuple(addr, port);
+        auto       maps      = server_maps_.write();
+        maps->forward[key]   = host;
         maps->backward[host] = key;
     }
 

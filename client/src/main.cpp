@@ -26,13 +26,13 @@ int main()
 
     Engine engine{};
 
-    auto sdl_ctx    = engine.add_locked_context<SDLContext>(engine);
-    auto window_ctx = engine.add_locked_context<WindowContext>(engine);
+    auto sdl_ctx    = engine.add_context<SDLContext>(engine);
+    auto window_ctx = engine.add_context<WindowContext>(engine);
 
     // Test event stuff
-    auto window = window_ctx->write()->create_window("hjey", { 600, 600 }, { 600, 600 });
+    auto window = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
 
-    auto render_ctx = engine.add_locked_context<RenderContext>(engine);
+    auto render_ctx = engine.add_context<RenderContext>(engine);
 
     // 8 example CountTo10Domain instances
     for (i32 i = 0; i < 8; ++i)
@@ -47,23 +47,23 @@ int main()
 
     window->on_mouse_moved.connect<lambda>();
 
-    engine.on_tick.write()->connect(
+    engine.on_tick.connect(
         {}, {}, "windows",
         [sdl_ctx, window_ctx]()
         {
-            sdl_ctx->write()->update();
-            window_ctx->write()->update();
+            sdl_ctx->update();
+            window_ctx->update();
         });
 
-    engine.on_tick.write()->connect(
+    engine.on_tick.connect(
         {}, {}, "domain updates",
         [&engine]()
         {
             // Example domain usage: CountTo10Domain counts to 10, and then
             // destroys itself.
             {
-                auto reg = engine.registry_read();
-                for (auto view = reg->view<CountTo10Domain*>().each();
+                const auto& reg = engine.registry();
+                for (auto view = reg.view<CountTo10Domain*>().each();
                      auto [entity, domain] : view)
                 {
                     domain->update();
@@ -71,12 +71,12 @@ int main()
             }
         });
 
-    engine.on_tick.write()->connect(
-                                {"windows"}, {}, "render", [render_ctx]() { render_ctx->write()->update(); });
+    engine.on_tick.connect(
+        { "windows" }, {}, "render", [render_ctx]() { render_ctx->update(); });
 
     std::atomic_bool running{ true };
 
-    SDLComponent& sdl_comp = sdl_ctx->write()->create_component(engine.entity());
+    SDLComponent& sdl_comp = sdl_ctx->create_component(engine.entity());
     sdl_comp.on_quit       = [&running] { running = false; };
 
     while (running)

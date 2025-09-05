@@ -6,8 +6,8 @@
 
 #include <defs.h>
 #include <enet.h>
-#include <unordered_dense.h>
 #include <entt/entt.hpp>
+#include <unordered_dense.h>
 
 namespace v {
     class NetConnection;
@@ -22,7 +22,7 @@ namespace v {
         /// new_only is false by default.
         bool new_only{};
     };
-    
+
     /// A 'server' class.
     class NetListener {
         friend class NetworkContext;
@@ -35,7 +35,8 @@ namespace v {
         /// TODO! should each net chanenl be its own context...?
         /// since i wanna keep this pattern of creating a compoennt and attaching it
         /// for calllbacks
-        /// TODO! decide if they use the main domain registry or altenrate (the net one specifically) - bottleneck?
+        /// TODO! decide if they use the main domain registry or altenrate (the net one
+        /// specifically) - bottleneck?
         void attach_component(const ServerComponent& component, entt::entity id);
 
     private:
