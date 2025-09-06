@@ -6,13 +6,16 @@
 #include "engine/contexts/net/connection.h"
 #include "engine/contexts/net/listener.h"
 #include "engine/sync.h"
+#include "time/time.h"
 #define ENET_IMPLEMENTATION
 #include <defs.h>
+#include <time/stopwatch.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 
 namespace v {
-    NetworkContext::NetworkContext(Engine& engine) : Context(engine)
+    NetworkContext::NetworkContext(Engine& engine, f64 update_every) :
+        Context(engine), update_rate_(update_every)
     {
 
         if (enet_initialize() != 0)
@@ -35,9 +38,40 @@ namespace v {
         }
 
         new (&outgoing_host_) RwLock<ENetHost*>(host);
+
+        // start io thread
+        io_thread_ = std::thread(
+            [this]()
+            {
+                Stopwatch stopwatch{};
+                while (is_alive_)
+                {
+                    stopwatch.reset();
+                    
+                    {
+                        auto host = outgoing_host_.write();
+                        update_host(*host, NULL);
+                    }
+                    {
+                        auto servers = servers_.write();
+                        for (auto& [host, listener] : *servers) {
+                            update_host(host, (void*)listener.get());
+                        }
+                    }
+
+                    f64 sleep_time = stopwatch.until(update_rate_);
+                    if (sleep_time > 0)
+                        v::time::sleep_ns(static_cast<u64>(sleep_time * 1e9));
+                }
+            });
     }
 
-    NetworkContext::~NetworkContext() { enet_deinitialize(); }
+    NetworkContext::~NetworkContext()
+    {
+        is_alive_= false;
+        io_thread_.join();
+        enet_deinitialize();
+    }
 
 
     std::shared_ptr<NetConnection>

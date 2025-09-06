@@ -57,11 +57,8 @@ namespace v {
         /// Tasks that should run before the rendering of a frame
         DependentSink pre_render;
 
-        /// Creates an empty RenderComponent
-        FORCEINLINE RenderComponent create_component() { return {}; };
-
-        /// Attaches a RenderComponent to an entity, usually a Domain
-        void attach_component(const RenderComponent& component, entt::entity id);
+        /// Creates and attaches a RenderComponent to an entity, usually a Domain
+        RenderComponent& create_component(entt::entity id);
 
         void update();
 

@@ -26,6 +26,11 @@ namespace v {
     }
 
 
+    ServerComponent& NetListener::create_component(entt::entity id)
+    {
+        return net_ctx_->engine_.registry().emplace<ServerComponent>(id);
+    }
+
     void NetListener::handle_new_connection(std::shared_ptr<NetConnection> con)
     {
         for (auto& callback : conn_callbacks_)
