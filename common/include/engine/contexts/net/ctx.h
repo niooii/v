@@ -6,6 +6,7 @@
 
 #include <defs.h>
 #include <domain/context.h>
+#include <engine/engine.h>
 #include <engine/sync.h>
 #include <entt/entt.hpp>
 #include <fcntl.h>
@@ -30,9 +31,12 @@ namespace v {
     /// NetworkContext is thread-safe.
     class NetworkContext : public Context {
         friend NetConnection;
+        friend NetListener;
 
     public:
-        explicit NetworkContext(Engine& engine);
+        /// update_every is the fixed update rate of the context's internal
+        /// io loop, in seconds.
+        explicit NetworkContext(Engine& engine, f64 update_every);
         ~NetworkContext();
 
         // TODO! return atomic counted intrusive handle
@@ -127,8 +131,11 @@ namespace v {
         /// Links host server info to server_maps_ for bidirectional lookup
         void link_host_server_info(NetHost host, const std::string& addr, u16 port);
 
-        // Don't use the main engine domain registry.
-        RwLock<entt::registry> reg_{};
+        /// Rate at which the internal io loop polls stuff, in seconds
+        /// TODO if this is ever modifable in the future, make atomic
+        f64 update_rate_;
+        std::thread io_thread_;
+        std::atomic_bool is_alive_{true};
 
         // for outgoing and incoming connections
         RwLock<ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>

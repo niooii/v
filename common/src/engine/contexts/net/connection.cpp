@@ -14,7 +14,7 @@ namespace v {
     NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port) :
         net_ctx_(ctx), conn_type_(ConnectionType::Outgoing)
     {
-        entity_ = ctx->reg_.write()->create();
+        entity_ = ctx->engine_.registry().create();
 
         // TODO! init enet host and other stuff
         ENetAddress address;

@@ -8,14 +8,24 @@
 #include <engine/contexts/net/connection.h>
 
 namespace v {
+    typedef std::span<const std::byte> Bytes;
+    
+    template <typename Payload>
+    using OnRecvCallback = std::function<void(const Payload&)>;
+    
+    template <typename Payload>
+    struct NetChannelComponent {
+        OnRecvCallback<Payload> on_recv;
+    };
+
     /// An abstract channel class, created and managed by a NetConnection connection
     /// object, meaning a channel is unique to a specific NetConnection only. To create a
     /// channel, inherit from this class.
     /// E.g. class ChatChannel : public NetChannel<ChatChannel> {};
-    template <typename Derived>
+    template <typename Derived, typename Payload = Bytes>
     class NetChannel {
     public:
-        // TODO! onrecv and send functions here, on send maybe?
+        using PayloadT = Payload;
 
         /// Get the owning NetConnection.
         FORCEINLINE const class NetConnection* connection_info() { return conn_; };
@@ -35,13 +45,14 @@ namespace v {
 
         void send(char* buf, u64 len);
 
+    protected:
+        Payload parse(const u8* bytes, u64 len);
+
     private:
         NetChannel(NetConnection* conn) : conn_(conn) {}
 
-        // used for automatic creation of a channel that was opened over a network.
-        // do not call this
-        void create_self() { conn_->create_channel<Derived>(); }
-
+        // pointer to the owning netconnection, which is guarenteed to be valid
+        // TODO! consider a shared ptr
         const NetConnection* conn_;
     };
 } // namespace v

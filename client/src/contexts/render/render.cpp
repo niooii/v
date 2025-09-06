@@ -29,6 +29,11 @@ namespace v {
     RenderContext::~RenderContext() = default;
 
 
+    RenderComponent& RenderContext::create_component(entt::entity id)
+    {
+        return engine_.registry().emplace<RenderComponent>(id);
+    }
+
     void RenderContext::update()
     {
         // TODO! record command buffer
