@@ -3,20 +3,21 @@
 //
 
 #include <engine/contexts/net/connection.h>
+#include "moodycamel/concurrentqueue.h"
 #define ENET_IMPLEMENTATION
 #include <defs.h>
 #include <enet.h>
+#include <engine/contexts/net/channel.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 
 namespace v {
     // create an outgoing connection
     NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port) :
-        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing)
+        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_)
     {
         entity_ = ctx->engine_.registry().create();
 
-        // TODO! init enet host and other stuff
         ENetAddress address;
         if (enet_address_set_host(&address, host.c_str()) != 0)
         {
@@ -39,7 +40,8 @@ namespace v {
 
     // just an incoming connection, its whatever
     NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) :
-        net_ctx_(ctx), peer_(peer), conn_type_(ConnectionType::Incoming)
+        net_ctx_(ctx), peer_(peer), conn_type_(ConnectionType::Incoming),
+        Domain(ctx->engine_)
     {}
 
     // at this point there should be no more references internally
@@ -53,9 +55,161 @@ namespace v {
         peer_->data = NULL;
     }
 
+    template <DerivedFromChannel T>
+    NetChannel<T, typename T::PayloadT>& NetConnection::create_channel()
+    {
+        if (auto comp = engine_.registry().try_get<T*>(entity_))
+        {
+            LOG_WARN("Channel {} not created, as it already exists...", T::unique_name());
+            return comp;
+        }
+
+        auto channel = engine_.registry().emplace<T*>(entity_, new T());
+
+        {
+            // acquire all the mapping info locks (TODO! maybe clump them up?) so
+            // the network io thread must halt as we're checking to see if we can
+            // fill in the information right now
+
+            auto lock = map_lock_.write();
+
+            c_insts_[T::unique_name()] = channel;
+
+            auto id_it = recv_c_ids_.find(T::unique_name());
+            if (id_it)
+            {
+                u32   id     = id_it->second;
+                auto& info   = (recv_c_info_)[id];
+                info.channel = channel;
+                // drain the precreation queue into the incoming queue
+                ENetPacket* packet;
+                while (info.before_creation_packets->try_dequeue(packet))
+                {
+                    channel->take_packet(packet);
+                }
+
+                delete info.before_creation_packets;
+            }
+        }
+
+        LOG_TRACE("Local channel created");
+
+        // send over creation data and our runtime uid
+        std::string message =
+            std::format("CHANNEL|{}|{}", T::unique_name(), runtime_type_id<T>());
+
+        ENetPacket* packet = enet_packet_create(
+            message.c_str(),
+            message.length() + 1, // including null terminator
+            ENET_PACKET_FLAG_RELIABLE);
+
+        enet_peer_send(peer_, channel, packet);
+
+        LOG_TRACE("Queued channel creation packet send");
+
+        return channel;
+    }
+
+    void NetConnection::request_close()
+    {
+        net_ctx_->cleanup_tracking(peer_);
+
+        auto lock = map_lock_.write();
+        // delete all channel pointers
+        for (auto& [a, b] : c_insts_)
+        {
+            delete b;
+        }
+    }
+
+    void NetConnection::update() {
+        // update all channels (runs the callbacks for recieved/parsed data)
+        for (auto& [name, chnl] : c_insts_) {
+            chnl->update();
+        }
+
+        // destroys the consumed packets
+        ENetPacket* packet;
+        while (packet_destroy_queue_.try_dequeue(packet)) {
+            enet_packet_destroy(packet);
+        }
+    }
+
+
     void NetConnection::handle_raw_packet(ENetPacket* packet)
     {
         // TODO! auto channel creation, routing, etc
-        LOG_DEBUG("got packet yep");
+        LOG_TRACE("Got packet");
+        // check if its a channel creation request
+        constexpr std::string_view prefix = "CHANNEL|";
+        if (UNLIKELY(
+                packet->dataLength > prefix.size() &&
+                memcmp(packet->data, prefix.data(), prefix.size()) == 0))
+        {
+            LOG_TRACE(
+                "Packet is channel creation request: {}",
+                std::string(
+                    reinterpret_cast<const char*>(packet->data), packet->dataLength));
+
+            const char* data =
+                reinterpret_cast<const char*>(packet->data) + prefix.size();
+
+
+            size_t remaining_len = packet->dataLength - prefix.size();
+
+            std::string message(data, remaining_len);
+
+            size_t separator = message.find('|');
+            if (separator != std::string::npos)
+            {
+                std::string channel_name = message.substr(0, separator);
+                std::string channel_id   = message.substr(separator + 1);
+
+                u32 c_id;
+                auto [ptr, ec] = std::from_chars(
+                    channel_id.data(), channel_id.data() + channel_id.size(), c_id);
+
+                if (ec != std::errc())
+                {
+                    LOG_ERROR("Invalid channel ID: {}", channel_id);
+                    return;
+                }
+
+                // populate info maps
+
+                auto lock = map_lock_.write();
+
+                recv_c_ids_[channel_name] = c_id;
+                auto [it, inserted]       = recv_c_info_.try_emplace(c_id);
+                auto& info                = it->second;
+                info.name                 = std::move(channel_name);
+
+                auto inst = c_insts_.find(channel_name);
+                if (inst != c_insts_.end())
+                {
+                    // the channel instance already exists locally
+                    info.channel = inst->second;
+                }
+                else
+                {
+                    info.before_creation_packets =
+                        new moodycamel::ConcurrentQueue<ENetPacket*>();
+                }
+                LOG_TRACE("Channel maps populated");
+            }
+            else
+            {
+                LOG_WARN(
+                    "Bad channel creation packet",
+                    std::string(
+                        reinterpret_cast<const char*>(packet->data), packet->dataLength));
+            }
+            return;
+        }
+
+        // else its a regular packet traveling to a channel
+        // TODO!
+        LOG_DEBUG("GOT PACKET sent to channel, unhandled.");
+        enet_packet_destroy(packet);
     }
 } // namespace v

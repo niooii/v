@@ -33,9 +33,12 @@ namespace v {
 
     void NetListener::handle_new_connection(std::shared_ptr<NetConnection> con)
     {
-        for (auto& callback : conn_callbacks_)
+        auto view = net_ctx_->engine_.registry().view<ServerComponent>();
+
+        for (auto [entity, comp] : view.each())
         {
-            callback(con);
+            if (comp.on_connect)
+                comp.on_connect(con);
         }
     }
 } // namespace v

@@ -4,19 +4,20 @@
 
 #pragma once
 
+#include <atomic>
 #include <defs.h>
 #include <engine/contexts/net/ctx.h>
 #include <entt/entt.hpp>
 #include <string>
 #include "engine/engine.h"
+#include "moodycamel/concurrentqueue.h"
+#include "unordered_dense.h"
 
 extern "C" {
 #include <enet.h>
 }
 
 namespace v {
-    struct HostOptions {};
-
     template <typename Derived, typename Payload>
     class NetChannel;
 
@@ -25,30 +26,42 @@ namespace v {
 
     template <typename T>
     concept DerivedFromChannel =
-        HasPayloadAlias<T> &&
-        std::is_base_of_v<NetChannel<T, typename T::PayloadT>, T>;
+        HasPayloadAlias<T> && std::is_base_of_v<NetChannel<T, typename T::PayloadT>, T>;
 
-    class NetConnection {
+    class NetConnection : Domain {
         friend class NetworkContext;
+
+        template <typename T, typename P>
+        friend class NetChannel;
 
     public:
         /// Creates a NetChannel for isolated network communication.
         /// If it already exists, it throws a warning and returns the one existing.
-        /// Note: someone on the other side of the connection
-        /// must also explicitly create this channel. Until then, messages are sent but
-        /// accumulated on the reciever's side in a queue.
+        /// Channels created with this method may be queried from the engine's main
+        /// registry via it's type pointer, e.g. registry.view<SomeChannel*>(); Note:
+        /// someone on the other side of the connection must also explicitly create this
+        /// channel. Until then, messages are sent but accumulated on the reciever's side
+        /// in a queue.
         template <DerivedFromChannel T>
-        NetChannel<T, typename T::PayloadT>* create_channel();
+        NetChannel<T, typename T::PayloadT>& create_channel();
 
         /// Returns a NetChannel or nullptr if it doesn't exist.
         template <DerivedFromChannel T>
-        NetChannel<T, typename T::PayloadT>* get_channel();
+        FORCEINLINE NetChannel<T, typename T::PayloadT>* get_channel()
+        {
+            if (auto channel = net_ctx_->engine_.registry().try_get<T*>(entity_))
+            {
+                return channel;
+            }
+
+            return nullptr;
+        }
 
         /// Request a close to this connection.
         /// Other functions can no longer access this connection, but
         /// the connection will remain alive until the last instance of it's handle
         /// is gone.
-        void request_close() { net_ctx_->req_close(peer_); }
+        void request_close();
 
         // FORCEINLINE const std::string& host() { return host_; }
 
@@ -67,8 +80,7 @@ namespace v {
         /// Handles an incoming raw packet
         void handle_raw_packet(ENetPacket* packet);
 
-        entt::entity entity_;
-        ENetPeer*    peer_;
+        ENetPeer* peer_;
 
         ConnectionType conn_type_;
 
@@ -76,6 +88,25 @@ namespace v {
         // if its not, we have to handle removing it from maps and internal tracking,
         // if it WAS disconnected by us, its already gone.
         bool remote_disconnected_{};
+
+        struct NetChannelInfo {
+            std::string           name;
+            class NetChannelBase* channel{ nullptr };
+            // we queue the packets recieved before initialization
+            moodycamel::ConcurrentQueue<ENetPacket*>* before_creation_packets{ nullptr };
+        };
+
+        ankerl::unordered_dense::map<u32, NetChannelInfo>               recv_c_info_{};
+        ankerl::unordered_dense::map<std::string, u32>                  recv_c_ids_{};
+        ankerl::unordered_dense::map<std::string_view, NetChannelBase*> c_insts_{};
+
+        // a mutex for all the maps above
+        RwLock<int> map_lock_;
+
+        /// The main update function called synchronously. 
+        void update();
+
+        moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
 
         // Pointer guarenteed to be alive here
         NetworkContext* net_ctx_;

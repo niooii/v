@@ -24,7 +24,6 @@ namespace v {
     typedef ENetPeer*                                    NetPeer;
     typedef ENetHost*                                    NetHost;
 
-    // TODO! think about how to design this for fast use from multiple threads.
     class NetConnection;
 
     /// A context that creates and manages network connections.
@@ -32,6 +31,8 @@ namespace v {
     class NetworkContext : public Context {
         friend NetConnection;
         friend NetListener;
+        template <typename D, typename P>
+        friend class NetChannel;
 
     public:
         /// update_every is the fixed update rate of the context's internal
@@ -80,11 +81,22 @@ namespace v {
         std::shared_ptr<NetListener>
         listen_on(const std::string& addr, u16 port, u32 max_connections = 128);
 
-        /// Request a close to the connection via its peer.
-        /// Other functions can no longer access this connection, but
-        /// the connection will remain alive until the last instance of it's handle
-        /// is gone.
-        FORCEINLINE void req_close(NetPeer peer)
+        /// Handles network flushing and updating
+        void update();
+
+    private:
+        // data is either a pointer to NetListener (for access to the callbacks)
+        // or nothing.
+        void update_host(NetHost host, void* data);
+
+        /// Links peer connection info to conn_maps_ for bidirectional lookup
+        void link_peer_conn_info(NetPeer peer, const std::string& host, u16 port);
+
+        /// Links host server info to server_maps_ for bidirectional lookup
+        void link_host_server_info(NetHost host, const std::string& addr, u16 port);
+
+        /// Cleanup internal tracking of a connection
+        FORCEINLINE void cleanup_tracking(NetPeer peer)
         {
             {
                 auto conns = connections_.write();
@@ -113,23 +125,6 @@ namespace v {
             }
         }
 
-
-        /// Fires when a new connection is creataed.
-        // entt::sink<entt::sigh<void(DomainId)>> on_conn;
-
-        /// Handles network flushing and updating
-        void update();
-
-    private:
-        // data is either a pointer to NetListener (for access to the callbacks)
-        // or nothing.
-        void update_host(NetHost host, void* data);
-
-        /// Links peer connection info to conn_maps_ for bidirectional lookup
-        void link_peer_conn_info(NetPeer peer, const std::string& host, u16 port);
-
-        /// Links host server info to server_maps_ for bidirectional lookup
-        void link_host_server_info(NetHost host, const std::string& addr, u16 port);
 
         /// Rate at which the internal io loop polls stuff, in seconds
         /// TODO if this is ever modifable in the future, make atomic

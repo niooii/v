@@ -21,6 +21,7 @@ namespace v {
         /// all the incoming connections that already exist.
         /// If new_only is true, the callback will only run for *future* connections.
         /// new_only is false by default.
+        // This is internally set to true once all the old connections have been processed, btw.
         bool new_only{};
 
         /// Set a callback to run when an incoming connection has been disconnected.
@@ -34,9 +35,6 @@ namespace v {
 
     public:
         /// Creates and attaches a ServerComponent to an entity, usually a Domain
-        /// TODO! should each net chanenl be its own context...?
-        /// since i wanna keep this pattern of creating a compoennt and attaching it
-        /// for calllbacks
         ServerComponent& create_component(entt::entity id);
 
     private:
@@ -47,6 +45,9 @@ namespace v {
         // called by net context when new connection is inbound
         void handle_new_connection(std::shared_ptr<NetConnection> con);
 
+        /// Processes the client events TODO! whatever a hwbawjhdfajwh
+        void update();
+
         std::string addr_;
         u16         port_;
 
@@ -54,7 +55,5 @@ namespace v {
         ENetHost*       host_;
 
         ankerl::unordered_dense::set<ENetPeer*> connected_;
-
-        std::vector<OnConnectCallback> conn_callbacks_;
     };
 } // namespace v

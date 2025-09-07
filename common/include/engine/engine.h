@@ -48,10 +48,7 @@ namespace v {
         /// contexts from this registry)
         FORCEINLINE entt::entity entity() const { return engine_entity_; };
 
-        /// Get a const reference to the domain registry (ecs entity registry).
-        FORCEINLINE const entt::registry& registry() const { return registry_; }
-
-        /// Get a mutable reference to the domain registry (ecs entity registry).
+        /// Get a reference to the domain registry (ecs entity registry).
         FORCEINLINE entt::registry& registry() { return registry_; }
 
         /// Adds a context to the engine, retrievable by type.

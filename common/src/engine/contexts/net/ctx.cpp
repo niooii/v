@@ -9,9 +9,9 @@
 #include "time/time.h"
 #define ENET_IMPLEMENTATION
 #include <defs.h>
-#include <time/stopwatch.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
+#include <time/stopwatch.h>
 
 namespace v {
     NetworkContext::NetworkContext(Engine& engine, f64 update_every) :
@@ -47,14 +47,15 @@ namespace v {
                 while (is_alive_)
                 {
                     stopwatch.reset();
-                    
+
                     {
                         auto host = outgoing_host_.write();
                         update_host(*host, NULL);
                     }
                     {
                         auto servers = servers_.write();
-                        for (auto& [host, listener] : *servers) {
+                        for (auto& [host, listener] : *servers)
+                        {
                             update_host(host, (void*)listener.get());
                         }
                     }
@@ -68,7 +69,7 @@ namespace v {
 
     NetworkContext::~NetworkContext()
     {
-        is_alive_= false;
+        is_alive_ = false;
         io_thread_.join();
         enet_deinitialize();
     }
@@ -136,9 +137,8 @@ namespace v {
                     auto res = connections_.write()->emplace(
                         const_cast<ENetPeer*>(con->peer()), con);
 
-                    // Skip DeMap population for incoming connections to avoid NAT
-                    // collision issues
-
+                    // TODO! URGENT! tihs is unsafe.
+                    // queue up a new connection creation./ 
                     server->handle_new_connection(con);
                 }
                 break;
@@ -147,7 +147,6 @@ namespace v {
                     NetPeer peer = event.peer;
                     auto    con  = (NetConnection*)(peer->data);
                     con->handle_raw_packet(event.packet);
-                    enet_packet_destroy(event.packet);
                 }
                 break;
 
@@ -163,7 +162,10 @@ namespace v {
 
                 // otherwise the disconnect was triggered remotely, and our connection
                 // is still valid. remove internal tracking stuff
-                req_close(peer);
+                // TODO! URGENT! this is horrible and asking for race conditions,
+                // QUEUE up a delete instead. 
+                auto con = (NetConnection*)(peer->data);
+                con->request_close();
                 break;
             }
         }
@@ -171,47 +173,10 @@ namespace v {
 
     void NetworkContext::update()
     {
-        // update outgoing connection stuff
+        for (auto& [peer, net_con] : *connections_.read())
         {
-            ENetEvent event;
-            auto      host = outgoing_host_.write();
-
-            while (enet_host_service(*host, &event, 0) > 0)
-            {
-                switch (event.type)
-                {
-                case ENET_EVENT_TYPE_RECEIVE:
-                    {
-                        NetPeer peer = event.peer;
-                        auto    con  = (NetConnection*)(peer->data);
-                        con->handle_raw_packet(event.packet);
-                        enet_packet_destroy(event.packet);
-                    }
-                    break;
-
-                // this event is generated when we call enet_peer_disconnect.
-                // in the case it was disconnected remotely, we still have to remove
-                // the internal tracking state
-                case ENET_EVENT_TYPE_DISCONNECT:
-                case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
-                    NetPeer peer = event.peer;
-                    // if data is NULL, then we disconnected locally.
-                    if (!peer->data)
-                        break;
-
-                    // otherwise the disconnect was triggered remotely, and our connection
-                    // is still valid. remove internal tracking stuff
-                    req_close(peer);
-                    break;
-                }
-            }
+            net_con->update();
         }
-
-
-        // abusing interior mutability - this is fine
-        // as long as we keep the netconnection class
-        // thread safe
-        auto conns = servers_.read();
     }
 
     void

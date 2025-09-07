@@ -15,7 +15,7 @@ namespace v {
     /// The base class for any Domain
     class Domain {
     public:
-        Domain(class Engine& engine, std::string name);
+        Domain(class Engine& engine, std::string name = "Unnamed Domain");
 
         virtual ~Domain() = default;
 
