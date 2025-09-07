@@ -43,16 +43,31 @@ namespace v {
         }
     }
 
-    void NetListener::update() {
+    void NetListener::handle_disconnection(std::shared_ptr<NetConnection> con)
+    {
         auto view = net_ctx_->engine_.registry().view<ServerComponent>();
 
-        for (auto [entity, comp] : view.each()) {
-            if (UNLIKELY(!comp.new_only && comp.on_connect)) {
-                
+        for (auto [entity, comp] : view.each())
+        {
+            if (comp.on_disconnect)
+                comp.on_disconnect(con);
+        }
+    }
+
+    void NetListener::update()
+    {
+        auto view = net_ctx_->engine_.registry().view<ServerComponent>();
+
+        for (auto [entity, comp] : view.each())
+        {
+            if (UNLIKELY(!comp.new_only && comp.on_connect))
+            {
+
                 // the component has just been created this/previous frame,
                 // run on all previous connections
                 auto conns = net_ctx_->connections_.read();
-                for (ENetPeer* peer : connected_) {
+                for (ENetPeer* peer : connected_)
+                {
                     auto con = conns->at(peer);
                     comp.on_connect(con);
                 }

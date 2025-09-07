@@ -28,15 +28,12 @@ namespace v {
     class NetConnection;
 
     /// Network events that need to be processed on the main thread
-    enum class NetworkEventType {
-        NewConnection,
-        ConnectionClosed
-    };
+    enum class NetworkEventType { NewConnection, ConnectionClosed };
 
     struct NetworkEvent {
-        NetworkEventType type;
+        NetworkEventType               type;
         std::shared_ptr<NetConnection> connection;
-        NetListener* server; // only used for NewConnection events
+        NetListener*                   server; // only used for NewConnection events
     };
 
     /// A context that creates and manages network connections.
@@ -141,9 +138,9 @@ namespace v {
 
         /// Rate at which the internal io loop polls stuff, in seconds
         /// TODO if this is ever modifable in the future, make atomic
-        f64 update_rate_;
-        std::thread io_thread_;
-        std::atomic_bool is_alive_{true};
+        f64              update_rate_;
+        std::thread      io_thread_;
+        std::atomic_bool is_alive_{ true };
 
         // for outgoing and incoming connections
         RwLock<ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>

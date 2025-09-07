@@ -48,7 +48,7 @@ namespace v {
         // run tick callbacks with dependency management
         on_tick.execute();
 
-        LOG_TRACE("Finished tick {} ", current_tick_);
+        // LOG_TRACE("Finished tick {} ", current_tick_);
 
         // flush default logger
         spd::default_logger()->flush();

@@ -28,7 +28,7 @@ namespace v {
     concept DerivedFromChannel =
         HasPayloadAlias<T> && std::is_base_of_v<NetChannel<T, typename T::PayloadT>, T>;
 
-    class NetConnection : Domain {
+    class NetConnection : public Domain {
         friend class NetworkContext;
 
         template <typename T, typename P>
@@ -103,7 +103,7 @@ namespace v {
         // a mutex for all the maps above
         RwLock<int> map_lock_;
 
-        /// The main update function called synchronously. 
+        /// The main update function called synchronously.
         void update();
 
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};

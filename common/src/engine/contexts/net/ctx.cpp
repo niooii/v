@@ -2,16 +2,16 @@
 // Created by niooi on 7/31/2025.
 //
 
-#include "enet.h"
-#include "engine/contexts/net/connection.h"
-#include "engine/contexts/net/listener.h"
-#include "engine/sync.h"
-#include "time/time.h"
 #define ENET_IMPLEMENTATION
 #include <defs.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 #include <time/stopwatch.h>
+#include "enet.h"
+#include "engine/contexts/net/connection.h"
+#include "engine/contexts/net/listener.h"
+#include "engine/sync.h"
+#include "time/time.h"
 
 namespace v {
     NetworkContext::NetworkContext(Engine& engine, f64 update_every) :
@@ -164,21 +164,26 @@ namespace v {
                 // is still valid. remove internal tracking stuff
                 // Queue connection close event for main thread processing
                 auto con = (NetConnection*)(peer->data);
-                
+
                 con->remote_disconnected_ = true;
 
                 // Find the shared_ptr for this connection
                 std::shared_ptr<NetConnection> shared_con;
                 {
                     auto connections = connections_.read();
-                    auto it = connections->find(peer);
-                    if (it != connections->end()) {
+                    auto it          = connections->find(peer);
+                    if (it != connections->end())
+                    {
                         shared_con = it->second;
                     }
                 }
-                
-                if (shared_con) {
-                    NetworkEvent event{ NetworkEventType::ConnectionClosed, shared_con, nullptr };
+
+                if (shared_con)
+                {
+                    // Pass server info if this disconnect came from a server host
+                    NetListener* server = static_cast<NetListener*>(data);
+                    NetworkEvent event{ NetworkEventType::ConnectionClosed, shared_con,
+                                        server };
                     event_queue_.enqueue(std::move(event));
                 }
                 break;
@@ -194,24 +199,31 @@ namespace v {
         {
             switch (event.type)
             {
-                case NetworkEventType::NewConnection:
+            case NetworkEventType::NewConnection:
+                if (event.server)
+                {
+                    event.server->handle_new_connection(event.connection);
+                }
+                break;
+
+            case NetworkEventType::ConnectionClosed:
+                if (event.connection)
+                {
+                    // Call disconnection handler if this was a server connection
                     if (event.server)
                     {
-                        event.server->handle_new_connection(event.connection);
+                        event.server->handle_disconnection(event.connection);
                     }
-                    break;
-                    
-                case NetworkEventType::ConnectionClosed:
-                    if (event.connection)
-                    {
-                        event.connection->request_close();
-                    }
-                    break;
+
+                    event.connection->request_close();
+                }
+                break;
             }
         }
 
         // Update server stuff
-        for (auto& [host, server] : *servers_.read()) {
+        for (auto& [host, server] : *servers_.read())
+        {
             server->update();
         }
 

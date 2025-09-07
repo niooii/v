@@ -21,7 +21,8 @@ namespace v {
         /// all the incoming connections that already exist.
         /// If new_only is true, the callback will only run for *future* connections.
         /// new_only is false by default.
-        // This is internally set to true once all the old connections have been processed, btw.
+        // This is internally set to true once all the old connections have been
+        // processed, btw.
         bool new_only{};
 
         /// Set a callback to run when an incoming connection has been disconnected.
@@ -45,7 +46,11 @@ namespace v {
         // called by net context when new connection is inbound
         void handle_new_connection(std::shared_ptr<NetConnection> con);
 
-        /// Function will update server components by calling them on all previous connections if requested
+        // called by net context when connection is disconnected
+        void handle_disconnection(std::shared_ptr<NetConnection> con);
+
+        /// Function will update server components by calling them on all previous
+        /// connections if requested
         void update();
 
         std::string addr_;

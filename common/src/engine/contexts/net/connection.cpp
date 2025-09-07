@@ -2,14 +2,14 @@
 // Created by niooi on 8/1/2025.
 //
 
-#include <engine/contexts/net/connection.h>
-#include "moodycamel/concurrentqueue.h"
-#define ENET_IMPLEMENTATION
+#include <cstring>
 #include <defs.h>
 #include <enet.h>
 #include <engine/contexts/net/channel.h>
+#include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
+#include "moodycamel/concurrentqueue.h"
 
 namespace v {
     // create an outgoing connection
@@ -42,7 +42,9 @@ namespace v {
     NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) :
         net_ctx_(ctx), peer_(peer), conn_type_(ConnectionType::Incoming),
         Domain(ctx->engine_)
-    {}
+    {
+        peer_->data = (void*)this;
+    }
 
     // at this point there should be no more references internally
     NetConnection::~NetConnection()
@@ -63,10 +65,21 @@ namespace v {
         if (auto comp = engine_.registry().try_get<T*>(entity_))
         {
             LOG_WARN("Channel {} not created, as it already exists...", T::unique_name());
-            return comp;
+            return static_cast<NetChannel<T, typename T::PayloadT>&>(**comp);
+        }
+
+        std::shared_ptr<NetConnection> shared_this;
+        {
+            auto connections = net_ctx_->connections_.read();
+            auto it          = connections->find(peer_);
+            if (it != connections->end())
+            {
+                shared_this = it->second;
+            }
         }
 
         auto channel = engine_.registry().emplace<T*>(entity_, new T());
+        channel->set_connection(shared_this);
 
         {
             // acquire all the mapping info locks (TODO! maybe clump them up?) so
@@ -75,10 +88,10 @@ namespace v {
 
             auto lock = map_lock_.write();
 
-            c_insts_[T::unique_name()] = channel;
+            c_insts_[std::string(T::unique_name())] = channel;
 
-            auto id_it = recv_c_ids_.find(T::unique_name());
-            if (id_it)
+            auto id_it = recv_c_ids_.find(std::string(T::unique_name()));
+            if (id_it != recv_c_ids_.end())
             {
                 u32   id     = id_it->second;
                 auto& info   = (recv_c_info_)[id];
@@ -105,11 +118,11 @@ namespace v {
             message.length() + 1, // including null terminator
             ENET_PACKET_FLAG_RELIABLE);
 
-        enet_peer_send(peer_, channel, packet);
+        enet_peer_send(peer_, 0, packet); // Use channel 0 for control messages
 
         LOG_TRACE("Queued channel creation packet send");
 
-        return channel;
+        return static_cast<NetChannel<T, typename T::PayloadT>&>(*channel);
     }
 
     void NetConnection::request_close()
@@ -213,8 +226,37 @@ namespace v {
         }
 
         // else its a regular packet traveling to a channel
-        // TODO!
-        LOG_DEBUG("GOT PACKET sent to channel, unhandled.");
-        enet_packet_destroy(packet);
+        if (packet->dataLength < sizeof(u32))
+        {
+            LOG_WARN("Packet too small to contain channel ID, dropping");
+            enet_packet_destroy(packet);
+            return;
+        }
+
+        // extract channel ID from first 4 bytes
+        u32 channel_id;
+        // TODO! perserve endianness
+        std::memcpy(&channel_id, packet->data, sizeof(u32));
+
+        {
+            auto lock = map_lock_.read();
+            auto it   = recv_c_info_.find(channel_id);
+            if (it == recv_c_info_.end())
+            {
+                LOG_WARN("Invalid packet, no such channel id exists: {}", channel_id);
+                enet_packet_destroy(packet);
+                return;
+            }
+
+            auto& info = it->second;
+            if (!info.channel)
+            {
+                info.before_creation_packets->enqueue(packet);
+            }
+            else
+            {
+                info.channel->take_packet(packet);
+            }
+        }
     }
 } // namespace v

@@ -26,13 +26,22 @@ int main()
 
     Engine engine{};
 
-    auto sdl_ctx    = engine.add_context<SDLContext>(engine);
-    auto window_ctx = engine.add_context<WindowContext>(engine);
+    // auto sdl_ctx    = engine.add_context<SDLContext>(engine);
+    // auto window_ctx = engine.add_context<WindowContext>(engine);
 
     // Test event stuff
-    auto window = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
+    // auto window = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
 
-    auto render_ctx = engine.add_context<RenderContext>(engine);
+    // auto render_ctx = engine.add_context<RenderContext>(engine);
+
+    // Add network context
+    auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 120.0);
+
+    // Connect to server
+    LOG_INFO("Connecting to server...");
+    auto connection = net_ctx->create_connection("127.0.0.1", 25566);
+
+    LOG_INFO("Connection created, attempting to connect...");
 
     // 8 example CountTo10Domain instances
     for (i32 i = 0; i < 8; ++i)
@@ -41,19 +50,11 @@ int main()
             engine, "CountTo10Domain_" + std::to_string(i));
     }
 
-    window->capture_raw_input(true);
+    // window->capture_raw_input(true);
     auto lambda = [](glm::ivec2 _pos, glm::ivec2 rel_movement)
     { LOG_DEBUG("Mouse motion: {}, {}!", rel_movement.x, rel_movement.y); };
 
-    window->on_mouse_moved.connect<lambda>();
-
-    engine.on_tick.connect(
-        {}, {}, "windows",
-        [sdl_ctx, window_ctx]()
-        {
-            sdl_ctx->update();
-            window_ctx->update();
-        });
+    // window->on_mouse_moved.connect<lambda>();
 
     engine.on_tick.connect(
         {}, {}, "domain updates",
@@ -71,13 +72,23 @@ int main()
             }
         });
 
-    engine.on_tick.connect(
-        { "windows" }, {}, "render", [render_ctx]() { render_ctx->update(); });
+    // engine.on_tick.connect(
+    //     {}, {}, "windows",
+    //     [sdl_ctx, window_ctx]()
+    //     {
+    //         sdl_ctx->update();
+    //         window_ctx->update();
+    //     });
+
+    // engine.on_tick.connect(
+    //     { "windows" }, {}, "render", [render_ctx]() { render_ctx->update(); });
+
+    engine.on_tick.connect({}, {}, "network", [net_ctx]() { net_ctx->update(); });
 
     std::atomic_bool running{ true };
 
-    SDLComponent& sdl_comp = sdl_ctx->create_component(engine.entity());
-    sdl_comp.on_quit       = [&running] { running = false; };
+    // SDLComponent& sdl_comp = sdl_ctx->create_component(engine.entity());
+    // sdl_comp.on_quit       = [&running] { running = false; };
 
     while (running)
     {

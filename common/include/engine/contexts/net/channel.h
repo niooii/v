@@ -36,6 +36,7 @@ namespace v {
 
     class NetChannelBase {
         friend NetConnection;
+
     public:
         virtual void send(char* buf, u64 len) = 0;
 
@@ -110,23 +111,16 @@ namespace v {
             }
             else
             {
-                // require Derived::parse() to exist
-                if constexpr (requires { Derived::parse(); })
-                {
-                    return Derived::parse(bytes, len);
-                }
-                else
-                {
-                    static_assert(
-                        !std::is_same_v<Payload, Payload>,
-                        "No parser for Payload: provide `static Payload "
-                        "parse(const u8* bytes, u64 len)` in Derived class");
-                }
+                // Call the derived class's parse method
+                return Derived::parse(bytes, len);
             }
         }
 
     private:
-        NetChannel(std::shared_ptr<NetConnection> conn) : conn_(conn) {}
+        NetChannel() = default;
+
+        void set_connection(std::shared_ptr<NetConnection> c) { conn_ = c; }
+        std::shared_ptr<NetConnection> connection() const { return conn_; }
 
         /// Calls the listeners and hands packets back to the NetConnection.
         void update() override
@@ -144,7 +138,7 @@ namespace v {
 
             while (incoming_.try_dequeue(elem))
             {
-                for (auto& [entity, comp] : view.each())
+                for (auto [entity, comp] : view.each())
                 {
                     if (comp.on_recv)
                         comp.on_recv(std::get<Payload>(*elem));
@@ -157,9 +151,11 @@ namespace v {
 
         void take_packet(ENetPacket* packet) override
         {
-            Payload p = parse(packet->data, packet->dataLength);
+            // exclude the channel id header
+            // TODO! or just use some enet property? idk
+            Payload p = parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
             std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
-                std::make_unique(p, packet);
+                std::make_unique<std::tuple<Payload, ENetPacket*>>(p, packet);
 
             incoming_.enqueue(std::move(elem));
         }
