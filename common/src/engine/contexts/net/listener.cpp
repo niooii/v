@@ -2,6 +2,7 @@
 #include <engine/contexts/net/ctx.h>
 #include <engine/contexts/net/listener.h>
 #include <stdexcept>
+#include <system_error>
 #include "defs.h"
 
 namespace v {
@@ -39,6 +40,25 @@ namespace v {
         {
             if (comp.on_connect)
                 comp.on_connect(con);
+        }
+    }
+
+    void NetListener::update() {
+        auto view = net_ctx_->engine_.registry().view<ServerComponent>();
+
+        for (auto [entity, comp] : view.each()) {
+            if (UNLIKELY(!comp.new_only && comp.on_connect)) {
+                
+                // the component has just been created this/previous frame,
+                // run on all previous connections
+                auto conns = net_ctx_->connections_.read();
+                for (ENetPeer* peer : connected_) {
+                    auto con = conns->at(peer);
+                    comp.on_connect(con);
+                }
+
+                comp.new_only = true;
+            }
         }
     }
 } // namespace v

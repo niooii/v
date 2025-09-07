@@ -87,7 +87,7 @@ namespace v {
         // whether the connection was disconnected on our side or not.
         // if its not, we have to handle removing it from maps and internal tracking,
         // if it WAS disconnected by us, its already gone.
-        bool remote_disconnected_{};
+        std::atomic_bool remote_disconnected_{};
 
         struct NetChannelInfo {
             std::string           name;

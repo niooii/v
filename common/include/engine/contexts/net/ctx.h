@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <unordered_dense.h>
+#include "moodycamel/concurrentqueue.h"
 
 #include "listener.h"
 
@@ -25,6 +26,18 @@ namespace v {
     typedef ENetHost*                                    NetHost;
 
     class NetConnection;
+
+    /// Network events that need to be processed on the main thread
+    enum class NetworkEventType {
+        NewConnection,
+        ConnectionClosed
+    };
+
+    struct NetworkEvent {
+        NetworkEventType type;
+        std::shared_ptr<NetConnection> connection;
+        NetListener* server; // only used for NewConnection events
+    };
 
     /// A context that creates and manages network connections.
     /// NetworkContext is thread-safe.
@@ -158,5 +171,8 @@ namespace v {
         /// An ENetHost object whose sole purpose is to manage outgoing connections
         /// (listening on a port needs its own host object)
         RwLock<ENetHost*> outgoing_host_;
+
+        /// Queue for network events that need to be processed on the main thread
+        moodycamel::ConcurrentQueue<NetworkEvent> event_queue_;
     };
 } // namespace v

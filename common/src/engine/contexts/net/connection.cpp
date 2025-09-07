@@ -49,10 +49,12 @@ namespace v {
     {
         // internally queues disconnect
         if (!remote_disconnected_)
-            enet_peer_disconnect(peer_, 0);
+        {
+            // make it known that the connection was disconnected locally
+            peer_->data = NULL;
 
-        // make it known that the connection was disconnected locally
-        peer_->data = NULL;
+            enet_peer_disconnect(peer_, 0);
+        }
     }
 
     template <DerivedFromChannel T>
@@ -122,15 +124,18 @@ namespace v {
         }
     }
 
-    void NetConnection::update() {
+    void NetConnection::update()
+    {
         // update all channels (runs the callbacks for recieved/parsed data)
-        for (auto& [name, chnl] : c_insts_) {
+        for (auto& [name, chnl] : c_insts_)
+        {
             chnl->update();
         }
 
         // destroys the consumed packets
         ENetPacket* packet;
-        while (packet_destroy_queue_.try_dequeue(packet)) {
+        while (packet_destroy_queue_.try_dequeue(packet))
+        {
             enet_packet_destroy(packet);
         }
     }

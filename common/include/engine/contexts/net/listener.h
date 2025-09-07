@@ -45,7 +45,7 @@ namespace v {
         // called by net context when new connection is inbound
         void handle_new_connection(std::shared_ptr<NetConnection> con);
 
-        /// Processes the client events TODO! whatever a hwbawjhdfajwh
+        /// Function will update server components by calling them on all previous connections if requested
         void update();
 
         std::string addr_;

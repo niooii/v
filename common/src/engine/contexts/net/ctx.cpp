@@ -137,9 +137,9 @@ namespace v {
                     auto res = connections_.write()->emplace(
                         const_cast<ENetPeer*>(con->peer()), con);
 
-                    // TODO! URGENT! tihs is unsafe.
-                    // queue up a new connection creation./ 
-                    server->handle_new_connection(con);
+                    // Queue new connection event for main thread processing
+                    NetworkEvent event{ NetworkEventType::NewConnection, con, server };
+                    event_queue_.enqueue(std::move(event));
                 }
                 break;
             case ENET_EVENT_TYPE_RECEIVE:
@@ -162,10 +162,25 @@ namespace v {
 
                 // otherwise the disconnect was triggered remotely, and our connection
                 // is still valid. remove internal tracking stuff
-                // TODO! URGENT! this is horrible and asking for race conditions,
-                // QUEUE up a delete instead. 
+                // Queue connection close event for main thread processing
                 auto con = (NetConnection*)(peer->data);
-                con->request_close();
+                
+                con->remote_disconnected_ = true;
+
+                // Find the shared_ptr for this connection
+                std::shared_ptr<NetConnection> shared_con;
+                {
+                    auto connections = connections_.read();
+                    auto it = connections->find(peer);
+                    if (it != connections->end()) {
+                        shared_con = it->second;
+                    }
+                }
+                
+                if (shared_con) {
+                    NetworkEvent event{ NetworkEventType::ConnectionClosed, shared_con, nullptr };
+                    event_queue_.enqueue(std::move(event));
+                }
                 break;
             }
         }
@@ -173,6 +188,34 @@ namespace v {
 
     void NetworkContext::update()
     {
+        // Process queued network events from IO thread
+        NetworkEvent event;
+        while (event_queue_.try_dequeue(event))
+        {
+            switch (event.type)
+            {
+                case NetworkEventType::NewConnection:
+                    if (event.server)
+                    {
+                        event.server->handle_new_connection(event.connection);
+                    }
+                    break;
+                    
+                case NetworkEventType::ConnectionClosed:
+                    if (event.connection)
+                    {
+                        event.connection->request_close();
+                    }
+                    break;
+            }
+        }
+
+        // Update server stuff
+        for (auto& [host, server] : *servers_.read()) {
+            server->update();
+        }
+
+        // Update all active connections
         for (auto& [peer, net_con] : *connections_.read())
         {
             net_con->update();
