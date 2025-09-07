@@ -34,7 +34,14 @@ namespace v {
         // send the packet
         if (enet_peer_send(conn_->peer_, 0, packet) != 0)
         {
-            LOG_ERROR("Failed to send packet on channel {}", Derived::unique_name());
+            u32 state = conn_->peer_->state;
+            if (state == ENET_PEER_STATE_CONNECTING || state == ENET_PEER_STATE_CONNECTION_PENDING || state == ENET_PEER_STATE_CONNECTION_SUCCEEDED) {
+                LOG_WARN("Connection is not yet open, queueing packet send");
+                LOG_ERROR("TODO! Packet queueing not implemented yet");
+                // TODO! when implementing make sure that enet_packet_destroy isnt called
+            } else {
+                LOG_ERROR("Failed to send packet on channel {}", Derived::unique_name());
+            }
             enet_packet_destroy(packet);
         }
     }

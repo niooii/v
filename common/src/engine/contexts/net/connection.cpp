@@ -16,8 +16,6 @@ namespace v {
     NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port) :
         net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_)
     {
-        entity_ = ctx->engine_.registry().create();
-
         ENetAddress address;
         if (enet_address_set_host(&address, host.c_str()) != 0)
         {
@@ -36,6 +34,8 @@ namespace v {
         }
 
         peer_->data = (void*)this;
+
+        LOG_TRACE("Outgoing connection initialized");
     }
 
     // just an incoming connection, its whatever
@@ -44,12 +44,15 @@ namespace v {
         Domain(ctx->engine_)
     {
         peer_->data = (void*)this;
+
+        LOG_TRACE("Incoming connection initialized");
     }
 
     // at this point there should be no more references internally
     NetConnection::~NetConnection()
     {
         // internally queues disconnect
+        // if remote_disconnected_, then the peer may no longer be a valid pointer
         if (!remote_disconnected_)
         {
             // make it known that the connection was disconnected locally
@@ -57,6 +60,8 @@ namespace v {
 
             enet_peer_disconnect(peer_, 0);
         }
+
+        LOG_TRACE("Connection destroyed");
     }
 
     template <DerivedFromChannel T>

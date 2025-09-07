@@ -129,11 +129,24 @@ namespace v {
             {
             case ENET_EVENT_TYPE_CONNECT:
                 {
+                    // TODO! peer is guarenteed to exist, but
+                    // peer->data may not be a valid pointer to a connection object,
+                    // if the NetConnection object was destroyed right after creation,
+                    // this is kinda hard lol
+                    if (event.peer->data)
+                    {
+                        // the connection object already exists, and therefore is an
+                        // outgoing connection
+                        LOG_TRACE("Outgoing connection confirmed, {}", event.peer->data);
+                        break;
+                    }
+
                     // atp we know the host is a server host
                     NetListener* server = static_cast<NetListener*>(data);
 
                     auto con = std::shared_ptr<NetConnection>(
                         new NetConnection(this, event.peer));
+
                     auto res = connections_.write()->emplace(
                         const_cast<ENetPeer*>(con->peer()), con);
 
@@ -166,6 +179,7 @@ namespace v {
                 auto con = (NetConnection*)(peer->data);
 
                 con->remote_disconnected_ = true;
+                event.peer->data = NULL;
 
                 // Find the shared_ptr for this connection
                 std::shared_ptr<NetConnection> shared_con;

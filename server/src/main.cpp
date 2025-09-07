@@ -29,11 +29,11 @@ int main()
     // Create server component to handle connections
     ServerComponent& server_comp = listener->create_component(engine.entity());
 
-    server_comp.on_connect = [](std::shared_ptr<NetConnection> con)
-    { LOG_INFO("Client connected successfully!"); };
+    // server_comp.on_connect = [](std::shared_ptr<NetConnection> con)
+    // { LOG_INFO("Client connected successfully!"); };
 
-    server_comp.on_disconnect = [](std::shared_ptr<NetConnection> con)
-    { LOG_INFO("Client disconnected"); };
+    // server_comp.on_disconnect = [](std::shared_ptr<NetConnection> con)
+    // { LOG_INFO("Client disconnected"); };
 
     Stopwatch        stopwatch{};
     std::atomic_bool running{ true };

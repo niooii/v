@@ -96,6 +96,7 @@ namespace v {
             moodycamel::ConcurrentQueue<ENetPacket*>* before_creation_packets{ nullptr };
         };
 
+        // maps for tracking channel stuff
         ankerl::unordered_dense::map<u32, NetChannelInfo>               recv_c_info_{};
         ankerl::unordered_dense::map<std::string, u32>                  recv_c_ids_{};
         ankerl::unordered_dense::map<std::string_view, NetChannelBase*> c_insts_{};
@@ -103,7 +104,7 @@ namespace v {
         // a mutex for all the maps above
         RwLock<int> map_lock_;
 
-        /// The main update function called synchronously.
+        /// The main update function called synchronously
         void update();
 
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
