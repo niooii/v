@@ -28,6 +28,12 @@ namespace v {
     concept DerivedFromChannel =
         HasPayloadAlias<T> && std::is_base_of_v<NetChannel<T, typename T::PayloadT>, T>;
 
+    enum class NetConnectionResult {
+        TimedOut = 0,
+        ConnWaiting,
+        Success
+    };
+
     class NetConnection : public Domain {
         friend class NetworkContext;
 
@@ -73,12 +79,15 @@ namespace v {
 
     private:
         /// The constructor for an outgoing connection.
-        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port);
+        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port, f64 connection_timeout);
         /// The constructor for an incoming connection.
         NetConnection(NetworkContext* ctx, ENetPeer* peer);
 
         /// Handles an incoming raw packet
         void handle_raw_packet(ENetPacket* packet);
+
+        /// The main update function called synchronously
+        NetConnectionResult update();
 
         ENetPeer* peer_;
 
@@ -104,10 +113,13 @@ namespace v {
         // a mutex for all the maps above
         RwLock<int> map_lock_;
 
-        /// The main update function called synchronously
-        void update();
-
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
+        
+        /// The amount of elapsed time since we requested the connection (since construction)
+        Stopwatch since_open_{};
+
+        /// Amount of time to wait for the connection to succeed until we nuke the connection
+        f64 connection_timeout_;
 
         // Pointer guarenteed to be alive here
         NetworkContext* net_ctx_;

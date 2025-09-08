@@ -2,6 +2,7 @@
 // Created by niooi on 7/31/2025.
 //
 
+#include <vector>
 #define ENET_IMPLEMENTATION
 #include <defs.h>
 #include <engine/contexts/net/ctx.h>
@@ -75,8 +76,8 @@ namespace v {
     }
 
 
-    std::shared_ptr<NetConnection>
-    NetworkContext::create_connection(const std::string& host, u16 port)
+    std::shared_ptr<NetConnection> NetworkContext::create_connection(
+        const std::string& host, u16 port, f64 connection_timeout)
     {
         const auto key = std::make_tuple(host, port);
         {
@@ -90,7 +91,8 @@ namespace v {
             }
         }
 
-        auto con = std::shared_ptr<NetConnection>(new NetConnection(this, host, port));
+        auto con = std::shared_ptr<NetConnection>(
+            new NetConnection(this, host, port, connection_timeout));
         auto res = connections_.write()->emplace(const_cast<ENetPeer*>(con->peer()), con);
 
         link_peer_conn_info(const_cast<ENetPeer*>(con->peer()), host, port);
@@ -170,6 +172,8 @@ namespace v {
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
                 NetPeer peer = event.peer;
                 // if data is NULL, then we disconnected locally.
+                // TODO! URGENT! this is kinda bad?? the destructor runs on the main thread and it sets this
+                // data field to NULL, but this is on a separate io thread and theres no sync.
                 if (!peer->data)
                     break;
 
@@ -179,7 +183,7 @@ namespace v {
                 auto con = (NetConnection*)(peer->data);
 
                 con->remote_disconnected_ = true;
-                event.peer->data = NULL;
+                event.peer->data          = NULL;
 
                 // Find the shared_ptr for this connection
                 std::shared_ptr<NetConnection> shared_con;
@@ -215,9 +219,8 @@ namespace v {
             {
             case NetworkEventType::NewConnection:
                 if (event.server)
-                {
                     event.server->handle_new_connection(event.connection);
-                }
+
                 break;
 
             case NetworkEventType::ConnectionClosed:
@@ -225,9 +228,7 @@ namespace v {
                 {
                     // Call disconnection handler if this was a server connection
                     if (event.server)
-                    {
                         event.server->handle_disconnection(event.connection);
-                    }
 
                     event.connection->request_close();
                 }
@@ -241,10 +242,33 @@ namespace v {
             server->update();
         }
 
+        std::vector<std::shared_ptr<NetConnection>>* to_close{ nullptr };
+
+        LOG_DEBUG("UPDATING CONNECTIONS");
         // Update all active connections
         for (auto& [peer, net_con] : *connections_.read())
         {
-            net_con->update();
+            NetConnectionResult res = net_con->update();
+
+            if (UNLIKELY(res == NetConnectionResult::TimedOut))
+            {
+                LOG_DEBUG("GOT TIMEOUT REQ");
+                if (!to_close)
+                    to_close = new std::vector<std::shared_ptr<NetConnection>>();
+                to_close->push_back(net_con);
+            }
+        }
+
+        LOG_DEBUG("FINISH UPDATING CONNS");
+
+        // close timed out connection attempts
+        if (to_close) {
+            for (auto& net_con : *to_close) {
+                net_con->request_close();
+            }
+
+            LOG_ERROR("KILLED!!");
+            delete to_close;
         }
     }
 

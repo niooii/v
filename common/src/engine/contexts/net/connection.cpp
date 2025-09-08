@@ -13,8 +13,8 @@
 
 namespace v {
     // create an outgoing connection
-    NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port) :
-        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_)
+    NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port, f64 connection_timeout) :
+        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_), connection_timeout_(connection_timeout)
     {
         ENetAddress address;
         if (enet_address_set_host(&address, host.c_str()) != 0)
@@ -87,7 +87,7 @@ namespace v {
         channel->set_connection(shared_this);
 
         {
-            // acquire all the mapping info locks (TODO! maybe clump them up?) so
+            // acquire all the mapping info locks so
             // the network io thread must halt as we're checking to see if we can
             // fill in the information right now
 
@@ -140,14 +140,38 @@ namespace v {
         {
             delete b;
         }
+
+        c_insts_.clear();
+        recv_c_ids_.clear();
+        recv_c_info_.clear();
     }
 
-    void NetConnection::update()
+    NetConnectionResult NetConnection::update()
     {
-        // update all channels (runs the callbacks for recieved/parsed data)
-        for (auto& [name, chnl] : c_insts_)
+            LOG_TRACE("CHECKING");
+        // TODO! need ENET_PEER_STATE_CONNECTION_ACKNOWLEDGING?
+        if (peer_->state != ENET_PEER_STATE_CONNECTED || peer_->state != ENET_PEER_STATE_CONNECTION_SUCCEEDED) {
+            // check for timeout
+            if (since_open_.elapsed() > connection_timeout_) {
+                LOG_ERROR("Connection timed out in {} seconds.", connection_timeout_);
+                remote_disconnected_ = true;
+                // just nuke the connection TODO! i think this is safe??
+                enet_peer_disconnect_now(peer_, 0);
+
+                return NetConnectionResult::TimedOut;
+            }
+            LOG_TRACE("yeah");
+            return NetConnectionResult::ConnWaiting;
+        }
+
         {
-            chnl->update();
+            // we can acquire a read lock here bc most internal objects are thread safe
+            auto lock = map_lock_.read();
+            // update all channels (runs the callbacks for recieved/parsed data)
+            for (auto& [name, chnl] : c_insts_)
+            {
+                chnl->update();
+            }
         }
 
         // destroys the consumed packets
@@ -156,6 +180,8 @@ namespace v {
         {
             enet_packet_destroy(packet);
         }
+
+        return NetConnectionResult::Success;
     }
 
 
