@@ -28,7 +28,7 @@ namespace v {
     class NetConnection;
 
     /// Network events that need to be processed on the main thread
-    enum class NetworkEventType { NewConnection, ConnectionClosed };
+    enum class NetworkEventType { NewConnection, ConnectionClosed, ActivateConnection, DestroyConnection };
 
     struct NetworkEvent {
         NetworkEventType               type;
@@ -56,7 +56,7 @@ namespace v {
         /// Creates a new connection object that represents an outgoing connection.
         /// @note connection_timeout's max value is 5, it will not extend beyond 5.
         std::shared_ptr<NetConnection>
-        create_connection(const std::string& host, u16 port, f64 connection_timeout=5.f);
+        create_connection(const std::string& host, u16 port, f64 connection_timeout=4.f);
 
         FORCEINLINE std::shared_ptr<NetConnection>
                     get_connection(const std::string& host, u16 port)

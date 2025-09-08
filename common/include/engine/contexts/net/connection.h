@@ -69,6 +69,9 @@ namespace v {
         /// is gone.
         void request_close();
 
+        /// Activate the connection (called from main thread)
+        void activate_connection();
+
         // FORCEINLINE const std::string& host() { return host_; }
 
         // FORCEINLINE const u16 port() { return port_; }
@@ -97,6 +100,12 @@ namespace v {
         // if its not, we have to handle removing it from maps and internal tracking,
         // if it WAS disconnected by us, its already gone.
         std::atomic_bool remote_disconnected_{};
+
+        // whether the connection is pending activation from main thread
+        std::atomic_bool pending_activation_{ true };
+        
+        // packets received while pending activation
+        moodycamel::ConcurrentQueue<ENetPacket*> pending_packets_{};
 
         struct NetChannelInfo {
             std::string           name;

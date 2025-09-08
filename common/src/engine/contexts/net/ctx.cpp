@@ -131,15 +131,17 @@ namespace v {
             {
             case ENET_EVENT_TYPE_CONNECT:
                 {
-                    // TODO! peer is guarenteed to exist, but
-                    // peer->data may not be a valid pointer to a connection object,
-                    // if the NetConnection object was destroyed right after creation,
-                    // this is kinda hard lol
                     if (event.peer->data)
                     {
                         // the connection object already exists, and therefore is an
-                        // outgoing connection
-                        LOG_TRACE("Outgoing connection confirmed, {}", event.peer->data);
+                        // outgoing connection - queue activation event
+                        auto con = static_cast<NetConnection*>(event.peer->data);
+                        auto shared_con = connections_.read()->at(event.peer);
+                        
+                        NetworkEvent activate_event{ NetworkEventType::ActivateConnection, shared_con, nullptr };
+                        event_queue_.enqueue(std::move(activate_event));
+                        
+                        LOG_TRACE("Outgoing connection confirmed, queued activation");
                         break;
                     }
 
@@ -152,6 +154,10 @@ namespace v {
                     auto res = connections_.write()->emplace(
                         const_cast<ENetPeer*>(con->peer()), con);
 
+                    // Queue activation event for main thread processing
+                    NetworkEvent activate_event{ NetworkEventType::ActivateConnection, con, nullptr };
+                    event_queue_.enqueue(std::move(activate_event));
+                    
                     // Queue new connection event for main thread processing
                     NetworkEvent event{ NetworkEventType::NewConnection, con, server };
                     event_queue_.enqueue(std::move(event));
@@ -168,22 +174,18 @@ namespace v {
             // this event is generated when we call enet_peer_disconnect.
             // in the case it was disconnected remotely, we still have to remove
             // the internal tracking state
-            case ENET_EVENT_TYPE_DISCONNECT:
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
+                LOG_ERROR("Connection timed out.");
+            case ENET_EVENT_TYPE_DISCONNECT:
                 NetPeer peer = event.peer;
-                // if data is NULL, then we disconnected locally.
-                // TODO! URGENT! this is kinda bad?? the destructor runs on the main thread and it sets this
-                // data field to NULL, but this is on a separate io thread and theres no sync.
                 if (!peer->data)
                     break;
 
                 // otherwise the disconnect was triggered remotely, and our connection
-                // is still valid. remove internal tracking stuff
-                // Queue connection close event for main thread processing
+                // is still valid. Queue connection close event for main thread processing
                 auto con = (NetConnection*)(peer->data);
 
                 con->remote_disconnected_ = true;
-                event.peer->data          = NULL;
 
                 // Find the shared_ptr for this connection
                 std::shared_ptr<NetConnection> shared_con;
@@ -217,6 +219,31 @@ namespace v {
         {
             switch (event.type)
             {
+            case NetworkEventType::ActivateConnection:
+                if (event.connection)
+                {
+                    event.connection->activate_connection();
+                }
+                break;
+            
+            case NetworkEventType::DestroyConnection:
+                if (event.connection)
+                {
+                    cleanup_tracking(const_cast<ENetPeer*>(event.connection->peer()));
+                    
+                    auto lock = event.connection->map_lock_.write();
+                    // delete all channel pointers
+                    for (auto& [a, b] : event.connection->c_insts_)
+                    {
+                        delete b;
+                    }
+                    
+                    event.connection->c_insts_.clear();
+                    event.connection->recv_c_ids_.clear();
+                    event.connection->recv_c_info_.clear();
+                }
+                break;
+
             case NetworkEventType::NewConnection:
                 if (event.server)
                     event.server->handle_new_connection(event.connection);
@@ -230,7 +257,10 @@ namespace v {
                     if (event.server)
                         event.server->handle_disconnection(event.connection);
 
-                    event.connection->request_close();
+                    // Queue destruction event instead of direct cleanup
+                    NetworkEvent destroy_event{ NetworkEventType::DestroyConnection, 
+                                              event.connection, nullptr };
+                    event_queue_.enqueue(std::move(destroy_event));
                 }
                 break;
             }
@@ -244,7 +274,6 @@ namespace v {
 
         std::vector<std::shared_ptr<NetConnection>>* to_close{ nullptr };
 
-        LOG_DEBUG("UPDATING CONNECTIONS");
         // Update all active connections
         for (auto& [peer, net_con] : *connections_.read())
         {
@@ -252,14 +281,11 @@ namespace v {
 
             if (UNLIKELY(res == NetConnectionResult::TimedOut))
             {
-                LOG_DEBUG("GOT TIMEOUT REQ");
                 if (!to_close)
                     to_close = new std::vector<std::shared_ptr<NetConnection>>();
                 to_close->push_back(net_con);
             }
         }
-
-        LOG_DEBUG("FINISH UPDATING CONNS");
 
         // close timed out connection attempts
         if (to_close) {
@@ -267,7 +293,6 @@ namespace v {
                 net_con->request_close();
             }
 
-            LOG_ERROR("KILLED!!");
             delete to_close;
         }
     }

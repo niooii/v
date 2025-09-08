@@ -13,8 +13,10 @@
 
 namespace v {
     // create an outgoing connection
-    NetConnection::NetConnection(NetworkContext* ctx, const std::string& host, u16 port, f64 connection_timeout) :
-        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_), connection_timeout_(connection_timeout)
+    NetConnection::NetConnection(
+        NetworkContext* ctx, const std::string& host, u16 port, f64 connection_timeout) :
+        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_),
+        connection_timeout_(connection_timeout)
     {
         ENetAddress address;
         if (enet_address_set_host(&address, host.c_str()) != 0)
@@ -55,12 +57,23 @@ namespace v {
         // if remote_disconnected_, then the peer may no longer be a valid pointer
         if (!remote_disconnected_)
         {
-            // make it known that the connection was disconnected locally
-            peer_->data = NULL;
-
             enet_peer_disconnect(peer_, 0);
         }
 
+        // clear the peer data pointer - safe to do here since destructor runs on main
+        // thread after all lifecycle events have been processed
+        if (peer_->data == (void*)this)
+        {
+            peer_->data = NULL;
+        }
+
+        ENetPacket* packet;
+        while (pending_packets_.try_dequeue(packet))
+        {
+            enet_packet_destroy(packet);
+        }
+
+        // TODO! this doesnt run for some reason on natural enet timeout??
         LOG_TRACE("Connection destroyed");
     }
 
@@ -132,27 +145,41 @@ namespace v {
 
     void NetConnection::request_close()
     {
-        net_ctx_->cleanup_tracking(peer_);
+        // Queue destruction event to main thread instead of direct cleanup
+        NetworkEvent event{ NetworkEventType::DestroyConnection,
+                            net_ctx_->get_connection(peer_), nullptr };
+        net_ctx_->event_queue_.enqueue(std::move(event));
+    }
 
-        auto lock = map_lock_.write();
-        // delete all channel pointers
-        for (auto& [a, b] : c_insts_)
+    void NetConnection::activate_connection()
+    {
+        pending_activation_ = false;
+
+        // Process any packets that arrived while pending
+        ENetPacket* packet;
+        while (pending_packets_.try_dequeue(packet))
         {
-            delete b;
+            handle_raw_packet(packet);
         }
 
-        c_insts_.clear();
-        recv_c_ids_.clear();
-        recv_c_info_.clear();
+        LOG_TRACE("Connection activated");
     }
 
     NetConnectionResult NetConnection::update()
     {
-            LOG_TRACE("CHECKING");
         // TODO! need ENET_PEER_STATE_CONNECTION_ACKNOWLEDGING?
-        if (peer_->state != ENET_PEER_STATE_CONNECTED || peer_->state != ENET_PEER_STATE_CONNECTION_SUCCEEDED) {
-            // check for timeout
-            if (since_open_.elapsed() > connection_timeout_) {
+        // exclude DISCONNECTED because that means enet already did it for us, no need to
+        // do anything
+        // also exclude acknowledged etc because that means we connected/trying to,
+        // also not excluding it fucks up incoming NetConnection objects (0 connection_timeout_)
+        if (peer_->state != ENET_PEER_STATE_CONNECTED &&
+            peer_->state != ENET_PEER_STATE_CONNECTION_SUCCEEDED &&
+            peer_->state != ENET_PEER_STATE_ACKNOWLEDGING_CONNECT &&
+            peer_->state != ENET_PEER_STATE_CONNECTION_SUCCEEDED &&
+            peer_->state != ENET_PEER_STATE_DISCONNECTED)
+        {
+            if (since_open_.elapsed() > connection_timeout_)
+            {
                 LOG_ERROR("Connection timed out in {} seconds.", connection_timeout_);
                 remote_disconnected_ = true;
                 // just nuke the connection TODO! i think this is safe??
@@ -160,7 +187,7 @@ namespace v {
 
                 return NetConnectionResult::TimedOut;
             }
-            LOG_TRACE("yeah");
+
             return NetConnectionResult::ConnWaiting;
         }
 
@@ -187,6 +214,13 @@ namespace v {
 
     void NetConnection::handle_raw_packet(ENetPacket* packet)
     {
+        // If connection is pending activation, queue the packet
+        if (pending_activation_)
+        {
+            pending_packets_.enqueue(packet);
+            return;
+        }
+
         // TODO! auto channel creation, routing, etc
         LOG_TRACE("Got packet");
         // check if its a channel creation request
