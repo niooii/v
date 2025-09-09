@@ -74,7 +74,7 @@ int main()
             }
         });
 
-    connection->create_channel<ChatChannel>();
+    auto& conn = connection->create_channel<ChatChannel>();
 
     // engine.on_tick.connect(
     //     {}, {}, "windows",

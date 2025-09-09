@@ -2,11 +2,14 @@
 // Created by niooi on 7/24/25.
 //
 
+#include <engine/contexts/net/chat_channel.h>
+#include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <iostream>
 #include <prelude.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
+#include "engine/contexts/net/listener.h"
 
 using namespace v;
 
@@ -29,11 +32,18 @@ int main()
     // Create server component to handle connections
     ServerComponent& server_comp = listener->create_component(engine.entity());
 
-    // server_comp.on_connect = [](std::shared_ptr<NetConnection> con)
-    // { LOG_INFO("Client connected successfully!"); };
+    server_comp.on_connect = [&engine](std::shared_ptr<NetConnection> con)
+    {
+        LOG_INFO("Client connected successfully!");
+        auto& channel = con->create_channel<ChatChannel>();
 
-    // server_comp.on_disconnect = [](std::shared_ptr<NetConnection> con)
-    // { LOG_INFO("Client disconnected"); };
+        auto& channel_comp   = channel.create_component(engine.entity());
+        channel_comp.on_recv = [](const std::string& msg)
+        { LOG_INFO("Got message {} from client", msg); };
+    };
+
+    server_comp.on_disconnect = [](std::shared_ptr<NetConnection> con)
+    { LOG_INFO("Client disconnected"); };
 
     Stopwatch        stopwatch{};
     std::atomic_bool running{ true };

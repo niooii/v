@@ -9,7 +9,14 @@
 #include <engine/contexts/net/ctx.h>
 #include <entt/entt.hpp>
 #include <string>
+#include <format>
 #include "engine/engine.h"
+
+// Forward declaration for runtime_type_id function
+namespace v {
+    template <typename T>
+    inline uint32_t runtime_type_id();
+}
 #include "moodycamel/concurrentqueue.h"
 #include "unordered_dense.h"
 
@@ -27,6 +34,7 @@ namespace v {
     template <typename T>
     concept DerivedFromChannel =
         HasPayloadAlias<T> && std::is_base_of_v<NetChannel<T, typename T::PayloadT>, T>;
+
 
     enum class NetConnectionResult {
         TimedOut = 0,
@@ -50,7 +58,60 @@ namespace v {
         /// channel. Until then, messages are sent but accumulated on the reciever's side
         /// in a queue.
         template <DerivedFromChannel T>
-        NetChannel<T, typename T::PayloadT>& create_channel();
+        NetChannel<T, typename T::PayloadT>& create_channel()
+        {
+            if (auto comp = engine_.registry().try_get<T*>(entity_))
+            {
+                LOG_WARN("Channel {} not created, as it already exists...", T::unique_name());
+                return static_cast<NetChannel<T, typename T::PayloadT>&>(**comp);
+            }
+
+            auto channel = engine_.registry().emplace<T*>(entity_, new T());
+            channel->set_connection(shared_con_);
+
+            {
+                // acquire all the mapping info locks so
+                // the network io thread must halt as we're checking to see if we can
+                // fill in the information right now
+
+                auto lock = map_lock_.write();
+
+                c_insts_[std::string(T::unique_name())] = channel;
+
+                auto id_it = recv_c_ids_.find(std::string(T::unique_name()));
+                if (id_it != recv_c_ids_.end())
+                {
+                    u32   id     = id_it->second;
+                    auto& info   = (recv_c_info_)[id];
+                    info.channel = channel;
+                    // drain the precreation queue into the incoming queue
+                    ENetPacket* packet;
+                    while (info.before_creation_packets->try_dequeue(packet))
+                    {
+                        channel->take_packet(packet);
+                    }
+
+                    delete info.before_creation_packets;
+                }
+            }
+
+            LOG_TRACE("Local channel created");
+
+            // send over creation data and our runtime uid
+            std::string message =
+                std::format("CHANNEL|{}|{}", T::unique_name(), runtime_type_id<T>());
+
+            ENetPacket* packet = enet_packet_create(
+                message.c_str(),
+                message.length() + 1, // including null terminator
+                ENET_PACKET_FLAG_RELIABLE);
+
+            enet_peer_send(peer_, 0, packet); // Use channel 0 for control messages
+
+            LOG_TRACE("Queued channel creation packet send");
+
+            return static_cast<NetChannel<T, typename T::PayloadT>&>(*channel);
+        }
 
         /// Returns a NetChannel or nullptr if it doesn't exist.
         template <DerivedFromChannel T>

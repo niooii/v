@@ -13,6 +13,8 @@ namespace v {
     public:
         using PayloadT = std::string;
 
+        ChatChannel() = default;
+
         static std::string parse(const u8* bytes, u64 len)
         {
             const u8* string_data = bytes;

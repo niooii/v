@@ -94,81 +94,126 @@ namespace v {
             return type_name<Derived>();
         }
 
-        void send(char* buf, u64 len) override;
-
-    protected:
-        /// A function to construct a parsed type from bytes. The bytes* ptr will stay
-        /// alive until after the payload is consumed by listener(s). Any implementation
-        /// of this function should be thread safe or isolated, as it runs on the
-        /// networking io thread.
-        /// @note Default implementation is for Bytes (std::span<const char*>), for other
-        /// payload types, the derived class must manually implement this method.
-        static Payload parse(const u8* bytes, u64 len)
+        void send(char* buf, u64 len) override
         {
-            if constexpr (std::is_same_v<Payload, Bytes>)
+            u32 channel_id = runtime_type_id<Derived>();
+
+            // create packet with u32 prefix + payload data
+            const u64   total_len = sizeof(u32) + len;
+            ENetPacket* packet =
+                enet_packet_create(nullptr, total_len, ENET_PACKET_FLAG_RELIABLE);
+
+            if (!packet)
             {
-                return std::span<const char>(reinterpret_cast<const char*>(bytes), len);
+                LOG_ERROR(
+                    "Failed to create packet for channel {}", Derived::unique_name());
+                return;
             }
-            else
+
+            // write channel ID as first 4 bytes
+            std::memcpy(packet->data, &channel_id, sizeof(u32));
+
+            // write payload data after the channel ID
+            std::memcpy(packet->data + sizeof(u32), buf, len);
+
+            // send the packet
+            if (enet_peer_send(conn_->peer_, 0, packet) != 0)
             {
-                // Call the derived class's parse method
-                return Derived::parse(bytes, len);
-            }
-        }
-
-    private:
-        NetChannel() = default;
-
-        void set_connection(std::shared_ptr<NetConnection> c) { conn_ = c; }
-        std::shared_ptr<NetConnection> connection() const { return conn_; }
-
-        /// Calls the listeners and hands packets back to the NetConnection.
-        void update() override
-        {
-            // call all the components
-            // i could avoid the nested loop but if i batch them users have to concern
-            // themselves with consistency so its whatever
-
-            std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem;
-
-            Engine& engine = conn_->net_ctx_->engine_;
-
-            auto view =
-                engine.registry().template view<NetChannelComponent<Derived, Payload>>();
-
-            while (incoming_.try_dequeue(elem))
-            {
-                for (auto [entity, comp] : view.each())
+                u32 state = conn_->peer_->state;
+                if (state == ENET_PEER_STATE_CONNECTING ||
+                    state == ENET_PEER_STATE_CONNECTION_PENDING ||
+                    state == ENET_PEER_STATE_CONNECTION_SUCCEEDED)
                 {
-                    if (comp.on_recv)
-                        comp.on_recv(std::get<Payload>(*elem));
+                    LOG_WARN("Connection is not yet open, queueing packet send");
+                    LOG_ERROR("TODO! Packet queueing not implemented yet");
+                    // TODO! when implementing make sure that enet_packet_destroy isnt
+                    // called
                 }
-
-                // hand packet back to owning connection for destruction
-                conn_->packet_destroy_queue_.enqueue(std::get<ENetPacket*>(*elem));
+                else
+                {
+                    LOG_ERROR(
+                        "Failed to send packet on channel {}", Derived::unique_name());
+                }
+                enet_packet_destroy(packet);
             }
         }
 
-        void take_packet(ENetPacket* packet) override
-        {
-            // exclude the channel id header
-            // TODO! or just use some enet property? idk
-            Payload p = parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
-            std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
-                std::make_unique<std::tuple<Payload, ENetPacket*>>(p, packet);
+        protected:
+            /// A function to construct a parsed type from bytes. The bytes* ptr will stay
+            /// alive until after the payload is consumed by listener(s). Any
+            /// implementation of this function should be thread safe or isolated, as it
+            /// runs on the networking io thread.
+            /// @note Default implementation is for Bytes (std::span<const char*>), for
+            /// other payload types, the derived class must manually implement this
+            /// method.
+            static Payload parse(const u8* bytes, u64 len)
+            {
+                if constexpr (std::is_same_v<Payload, Bytes>)
+                {
+                    return std::span<const char>(
+                        reinterpret_cast<const char*>(bytes), len);
+                }
+                else
+                {
+                    // Call the derived class's parse method
+                    return Derived::parse(bytes, len);
+                }
+            }
 
-            incoming_.enqueue(std::move(elem));
-        }
+        protected:
+            NetChannel() = default;
 
-        moodycamel::ConcurrentQueue<std::unique_ptr<std::tuple<Payload, ENetPacket*>>>
-            incoming_{};
+            void set_connection(std::shared_ptr<NetConnection> c) { conn_ = c; }
+            std::shared_ptr<NetConnection> connection() const { return conn_; }
 
-        // pointer to the owning netconnection, which is guarenteed to be valid
-        // shared ptr so the owning connection can only destroy itself when all
-        // channels are gone (will be destroyed when requesting a connection close)
-        std::shared_ptr<NetConnection> conn_;
-    };
+            /// Calls the listeners and hands packets back to the NetConnection.
+            void update() override
+            {
+                // call all the components
+                // i could avoid the nested loop but if i batch them users have to concern
+                // themselves with consistency so its whatever
 
-    /// A channel to make sure the program builds correctly
-    class TestChannel : NetChannel<TestChannel> {};
-} // namespace v
+                std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem;
+
+                Engine& engine = conn_->net_ctx_->engine_;
+
+                auto view = engine.registry()
+                                .template view<NetChannelComponent<Derived, Payload>>();
+
+                while (incoming_.try_dequeue(elem))
+                {
+                    for (auto [entity, comp] : view.each())
+                    {
+                        if (comp.on_recv)
+                            comp.on_recv(std::get<Payload>(*elem));
+                    }
+
+                    // hand packet back to owning connection for destruction
+                    conn_->packet_destroy_queue_.enqueue(std::get<ENetPacket*>(*elem));
+                }
+            }
+
+            void take_packet(ENetPacket * packet) override
+            {
+                // exclude the channel id header
+                // TODO! or just use some enet property? idk
+                Payload p =
+                    parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
+                std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
+                    std::make_unique<std::tuple<Payload, ENetPacket*>>(p, packet);
+
+                incoming_.enqueue(std::move(elem));
+            }
+
+            moodycamel::ConcurrentQueue<std::unique_ptr<std::tuple<Payload, ENetPacket*>>>
+                incoming_{};
+
+            // pointer to the owning netconnection, which is guarenteed to be valid
+            // shared ptr so the owning connection can only destroy itself when all
+            // channels are gone (will be destroyed when requesting a connection close)
+            std::shared_ptr<NetConnection> conn_;
+        };
+
+        /// A channel to make sure the program builds correctly
+        class TestChannel : NetChannel<TestChannel> {};
+    } // namespace v
