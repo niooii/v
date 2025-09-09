@@ -9,6 +9,7 @@
 #include <memory>
 #include "engine/contexts/net/listener.h"
 #include "moodycamel/concurrentqueue.h"
+#include "unordered_dense.h"
 
 namespace v {
     inline std::atomic<u32>& _global_type_counter()
@@ -32,6 +33,10 @@ namespace v {
     template <typename Derived, typename Payload>
     struct NetChannelComponent {
         OnRecvCallback<Payload> on_recv;
+    };
+
+    struct NetDestructionTracker {
+        u8;
     };
 
     class NetChannelBase {
@@ -68,15 +73,25 @@ namespace v {
             {
                 conn_->packet_destroy_queue_.enqueue(std::get<ENetPacket*>(*elem));
             }
+
+            entt_conn_.release();
         }
 
         NetChannelComponent<Derived, Payload>& create_component(entt::entity id)
         {
             Engine& engine = conn_->net_ctx_->engine_;
 
-            auto& component =
-                engine.registry().emplace<NetChannelComponent<Derived, Payload>>(id);
-            return component;
+            // TODO! use find buddy
+            if (components_.contains(id)) {
+                LOG_WARN("Entity already has a NetChannelComponent component");
+                return components_.at(id);
+            }
+
+            components_[id] = NetChannelComponent<Derived, Payload>{};
+
+            engine.registry().emplace<NetDestructionTracker>(id);
+
+            return components_[id];
         }
 
         /// Get the owning NetConnection.
@@ -138,82 +153,105 @@ namespace v {
             }
         }
 
-        protected:
-            /// A function to construct a parsed type from bytes. The bytes* ptr will stay
-            /// alive until after the payload is consumed by listener(s). Any
-            /// implementation of this function should be thread safe or isolated, as it
-            /// runs on the networking io thread.
-            /// @note Default implementation is for Bytes (std::span<const char*>), for
-            /// other payload types, the derived class must manually implement this
-            /// method.
-            static Payload parse(const u8* bytes, u64 len)
+    protected:
+        /// A function to construct a parsed type from bytes. The bytes* ptr will stay
+        /// alive until after the payload is consumed by listener(s). Any
+        /// implementation of this function should be thread safe or isolated, as it
+        /// runs on the networking io thread.
+        /// @note Default implementation is for Bytes (std::span<const char*>), for
+        /// other payload types, the derived class must manually implement this
+        /// method.
+        static Payload parse(const u8* bytes, u64 len)
+        {
+            if constexpr (std::is_same_v<Payload, Bytes>)
             {
-                if constexpr (std::is_same_v<Payload, Bytes>)
-                {
-                    return std::span<const char>(
-                        reinterpret_cast<const char*>(bytes), len);
-                }
-                else
-                {
-                    // Call the derived class's parse method
-                    return Derived::parse(bytes, len);
-                }
+                return std::span<const char>(reinterpret_cast<const char*>(bytes), len);
             }
-
-        protected:
-            NetChannel() = default;
-
-            void set_connection(std::shared_ptr<NetConnection> c) { conn_ = c; }
-            std::shared_ptr<NetConnection> connection() const { return conn_; }
-
-            /// Calls the listeners and hands packets back to the NetConnection.
-            void update() override
+            else
             {
-                // call all the components
-                // i could avoid the nested loop but if i batch them users have to concern
-                // themselves with consistency so its whatever
-
-                std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem;
-
-                Engine& engine = conn_->net_ctx_->engine_;
-
-                auto view = engine.registry()
-                                .template view<NetChannelComponent<Derived, Payload>>();
-
-                while (incoming_.try_dequeue(elem))
-                {
-                    for (auto [entity, comp] : view.each())
-                    {
-                        if (comp.on_recv)
-                            comp.on_recv(std::get<Payload>(*elem));
-                    }
-
-                    // hand packet back to owning connection for destruction
-                    conn_->packet_destroy_queue_.enqueue(std::get<ENetPacket*>(*elem));
-                }
+                // Call the derived class's parse method
+                return Derived::parse(bytes, len);
             }
+        }
 
-            void take_packet(ENetPacket * packet) override
+    protected:
+        NetChannel() = default;
+
+    private:
+
+        // explicit init beacuse i dont want derived class to have to explicitly
+        // define constructors
+        void init(std::shared_ptr<NetConnection> c)
+        {
+            conn_ = c;
+            entt_conn_ = conn_->engine_.registry()
+                .on_destroy<NetDestructionTracker>()
+                .connect<&NetChannel<Derived, Payload>::cleanup_component_on_entity_destroy>(this);
+            ;
+        }
+        std::shared_ptr<NetConnection> connection() const { return conn_; }
+
+        /// Calls the listeners and hands packets back to the NetConnection.
+        void update() override
+        {
+            // call all the components
+            // i could avoid the nested loop but if i batch them users have to concern
+            // themselves with consistency so its whatever
+
+            std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem;
+
+            Engine& engine = conn_->net_ctx_->engine_;
+
+            while (incoming_.try_dequeue(elem))
             {
-                // exclude the channel id header
-                // TODO! or just use some enet property? idk
-                Payload p =
-                    parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
-                std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
-                    std::make_unique<std::tuple<Payload, ENetPacket*>>(p, packet);
+                for (auto& [entity, comp] : components_)
+                {
+                    if (comp.on_recv)
+                        comp.on_recv(std::get<Payload>(*elem));
+                }
 
-                incoming_.enqueue(std::move(elem));
+                // hand packet back to owning connection for destruction
+                conn_->packet_destroy_queue_.enqueue(std::get<ENetPacket*>(*elem));
             }
+        }
 
-            moodycamel::ConcurrentQueue<std::unique_ptr<std::tuple<Payload, ENetPacket*>>>
-                incoming_{};
+        void take_packet(ENetPacket* packet) override
+        {
+            // exclude the channel id header
+            // TODO! or just use some enet property? idk
+            Payload p =
+                parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
+            std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
+                std::make_unique<std::tuple<Payload, ENetPacket*>>(p, packet);
 
-            // pointer to the owning netconnection, which is guarenteed to be valid
-            // shared ptr so the owning connection can only destroy itself when all
-            // channels are gone (will be destroyed when requesting a connection close)
-            std::shared_ptr<NetConnection> conn_;
+            incoming_.enqueue(std::move(elem));
+        }
+
+        moodycamel::ConcurrentQueue<std::unique_ptr<std::tuple<Payload, ENetPacket*>>>
+            incoming_{};
+
+        // pointer to the owning netconnection, which is guarenteed to be valid
+        // shared ptr so the owning connection can only destroy itself when all
+        // channels are gone (will be destroyed when requesting a connection close)
+        std::shared_ptr<NetConnection> conn_;
+
+        entt::connection entt_conn_;
+
+        // don't use the registry unfortunately, theres no way to make these components
+        // unique to each connection, so we keep the public API but implement it
+        // differently. for this reason we cannot query netchannelcomponents through the
+        // main registry
+        ankerl::unordered_dense::map<entt::entity, NetChannelComponent<Derived, Payload>>
+            components_{};
+
+        // called when any component of NetDestructionTracker is destroyed
+        void cleanup_component_on_entity_destroy(entt::registry& r, entt::entity e) {
+            if (components_.contains(e)) {
+                components_.erase(e);
+            }
         };
+    };
 
-        /// A channel to make sure the program builds correctly
-        class TestChannel : NetChannel<TestChannel> {};
-    } // namespace v
+    /// A channel to make sure the program builds correctly
+    class TestChannel : NetChannel<TestChannel> {};
+} // namespace v

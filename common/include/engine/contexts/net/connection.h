@@ -67,7 +67,7 @@ namespace v {
             }
 
             auto channel = engine_.registry().emplace<T*>(entity_, new T());
-            channel->set_connection(shared_con_);
+            channel->init(shared_con_);
 
             {
                 // acquire all the mapping info locks so
