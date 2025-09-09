@@ -286,10 +286,11 @@ namespace v {
                     {
                         // the channel instance already exists locally
                         info.channel = inst->second;
+                        info.drain_queue(info.channel);                
+                        LOG_DEBUG("Set channel instance locally ({})", (void*)inst->second);
                     }
                     else
                     {
-                        LOG_DEBUG("could not find {} locally", event.created_channel.name);
                         if (!info.before_creation_packets)
                             info.before_creation_packets = new moodycamel::ConcurrentQueue<ENetPacket*>();
                     }

@@ -85,9 +85,7 @@ namespace v {
 
                 auto lock = map_lock_.write();
 
-                auto channel_name = std::string(T::unique_name());
-                LOG_DEBUG("inserting into name map: {}.", channel_name);
-                c_insts_[channel_name] = channel;
+                c_insts_[T::unique_name()] = channel;
 
                 auto id_it = recv_c_ids_.find(std::string(T::unique_name()));
                 if (id_it != recv_c_ids_.end())
@@ -96,14 +94,7 @@ namespace v {
                     auto& info   = (recv_c_info_)[id];
                     info.channel = channel;
                     // drain the precreation queue into the incoming queue
-                    ENetPacket* packet;
-                    while (info.before_creation_packets->try_dequeue(packet))
-                    {
-                        LOG_TRACE("Processed a message sent before local channel creation.");
-                        channel->take_packet(packet);
-                    }
-
-                    delete info.before_creation_packets;
+                    info.drain_queue(channel);                
                 }
             }
 
@@ -201,8 +192,11 @@ namespace v {
                 if (before_creation_packets)
                     delete before_creation_packets;
             }
+            
+            void drain_queue(class NetChannelBase* channel);
+
             std::string           name;
-            class NetChannelBase* channel{ nullptr };
+            NetChannelBase* channel{ nullptr };
             // we queue the packets recieved before initialization
             moodycamel::ConcurrentQueue<ENetPacket*>* before_creation_packets{ nullptr };
         };

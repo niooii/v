@@ -256,14 +256,29 @@ namespace v {
                 return;
             }
 
+            LOG_DEBUG("Found mapping {} -> {}", channel_id, it->second.name);
+
             auto& info = it->second;
             if (!info.channel) {
-                if (!info.before_creation_packets)
                     info.before_creation_packets = new moodycamel::ConcurrentQueue<ENetPacket*>();
                 info.before_creation_packets->enqueue(packet);
             }
             else
                 info.channel->take_packet(packet);
         }
+    }
+
+    void NetConnection::NetChannelInfo::drain_queue(NetChannelBase* channel) {
+        if (!before_creation_packets)
+            return;
+        ENetPacket* packet;
+        while (before_creation_packets->try_dequeue(packet))
+        {
+            LOG_TRACE("Processed a message sent before local channel creation.");
+            channel->take_packet(packet);
+        }
+
+        delete before_creation_packets;
+        before_creation_packets = nullptr;
     }
 } // namespace v
