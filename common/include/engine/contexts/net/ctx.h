@@ -27,17 +27,30 @@ namespace v {
 
     class NetConnection;
 
-    /// Network events that need to be processed on the main thread
-    enum class NetworkEventType { NewConnection, ConnectionClosed, ActivateConnection, DestroyConnection };
+    enum class NetworkEventType {
+        NewConnection,
+        NewChannel,
+        ConnectionClosed,
+        ActivateConnection,
+        DestroyConnection
+    };
 
+    /// Network events that are to be processed on the main thread
     struct NetworkEvent {
         NetworkEventType               type;
         std::shared_ptr<NetConnection> connection;
-        NetListener*                   server; // only used for NewConnection events
+
+        union {
+            /// only used for NewConnection events
+            NetListener* server;
+            struct {
+                std::string name;
+                u32 remote_uid;
+            } created_channel;
+        };
     };
 
     /// A context that creates and manages network connections.
-    /// NetworkContext is thread-safe.
     class NetworkContext : public Context {
         friend NetConnection;
         friend NetListener;
@@ -55,8 +68,8 @@ namespace v {
         // clients? auto create connectiondomain??? probably. ConnectionDomain*
         /// Creates a new connection object that represents an outgoing connection.
         /// @note connection_timeout's max value is 5, it will not extend beyond 5.
-        std::shared_ptr<NetConnection>
-        create_connection(const std::string& host, u16 port, f64 connection_timeout=4.f);
+        std::shared_ptr<NetConnection> create_connection(
+            const std::string& host, u16 port, f64 connection_timeout = 4.f);
 
         FORCEINLINE std::shared_ptr<NetConnection>
                     get_connection(const std::string& host, u16 port)

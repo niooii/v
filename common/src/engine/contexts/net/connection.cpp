@@ -259,7 +259,7 @@ namespace v {
                 }
 
                 // populate info maps
-
+                // TODO! move this to the NewChannel event case? we still need to read from the map, and then we no longer need a map for the c_insts. only need it for the recv id mapping. this is good.
                 auto lock = map_lock_.write();
 
                 recv_c_ids_[channel_name] = c_id;
@@ -267,17 +267,21 @@ namespace v {
                 auto& info                = it->second;
                 info.name                 = std::move(channel_name);
 
-                auto inst = c_insts_.find(channel_name);
-                if (inst != c_insts_.end())
-                {
-                    // the channel instance already exists locally
-                    info.channel = inst->second;
-                }
-                else
-                {
-                    info.before_creation_packets =
-                        new moodycamel::ConcurrentQueue<ENetPacket*>();
-                }
+                NetworkEvent event{};
+                // TODO!
+                net_ctx_->event_queue_.enqueue();
+
+                // auto inst = c_insts_.find(channel_name);
+                // if (inst != c_insts_.end())
+                // {
+                //     // the channel instance already exists locally
+                //     info.channel = inst->second;
+                // }
+                // else
+                // {
+                //     info.before_creation_packets =
+                //         new moodycamel::ConcurrentQueue<ENetPacket*>();
+                // }
                 LOG_TRACE("Channel maps populated");
             }
             else
@@ -315,13 +319,9 @@ namespace v {
 
             auto& info = it->second;
             if (!info.channel)
-            {
                 info.before_creation_packets->enqueue(packet);
-            }
             else
-            {
                 info.channel->take_packet(packet);
-            }
         }
     }
 } // namespace v
