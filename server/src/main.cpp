@@ -37,6 +37,9 @@ int main()
         LOG_INFO("Client connected successfully!");
         auto& channel = con->create_channel<ChatChannel>();
 
+        // TODO! this crashes on seconnd connection.
+        // ChannelComponent is not unique amongst multiple connections,
+        // pretty bad tbh. architecture issues probably
         auto& channel_comp   = channel.create_component(engine.entity());
         channel_comp.on_recv = [](const std::string& msg)
         { LOG_INFO("Got message {} from client", msg); };
