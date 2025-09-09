@@ -13,4 +13,8 @@ namespace v {
     {
         entity_ = engine_.registry().create();
     }
+
+    Domain::~Domain() {
+        engine_.registry().destroy(entity_);
+    }
 } // namespace v

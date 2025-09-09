@@ -17,7 +17,7 @@ namespace v {
     public:
         Domain(class Engine& engine, std::string name = "Unnamed Domain");
 
-        virtual ~Domain() = default;
+        virtual ~Domain();
 
         /// Override this method to add components TODO! is this necessary?
         virtual void init_standard_components() {}
