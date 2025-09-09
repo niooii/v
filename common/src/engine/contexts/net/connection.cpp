@@ -145,9 +145,11 @@ namespace v {
 
     void NetConnection::request_close()
     {
-        // Queue destruction event to main thread instead of direct cleanup
         NetworkEvent event{ NetworkEventType::DestroyConnection,
                             net_ctx_->get_connection(peer_), nullptr };
+
+        // delete the internal shared ptr no leak yes
+        shared_con_ = nullptr;
         net_ctx_->event_queue_.enqueue(std::move(event));
     }
 
@@ -171,7 +173,8 @@ namespace v {
         // exclude DISCONNECTED because that means enet already did it for us, no need to
         // do anything
         // also exclude acknowledged etc because that means we connected/trying to,
-        // also not excluding it fucks up incoming NetConnection objects (0 connection_timeout_)
+        // also not excluding it fucks up incoming NetConnection objects (0
+        // connection_timeout_)
         if (peer_->state != ENET_PEER_STATE_CONNECTED &&
             peer_->state != ENET_PEER_STATE_CONNECTION_SUCCEEDED &&
             peer_->state != ENET_PEER_STATE_ACKNOWLEDGING_CONNECT &&
@@ -192,8 +195,6 @@ namespace v {
         }
 
         {
-            // we can acquire a read lock here bc most internal objects are thread safe
-            auto lock = map_lock_.read();
             // update all channels (runs the callbacks for recieved/parsed data)
             for (auto& [name, chnl] : c_insts_)
             {
@@ -259,30 +260,24 @@ namespace v {
                 }
 
                 // populate info maps
-                // TODO! move this to the NewChannel event case? we still need to read from the map, and then we no longer need a map for the c_insts. only need it for the recv id mapping. this is good.
-                auto lock = map_lock_.write();
+                {
+                    auto lock = map_lock_.write();
 
-                recv_c_ids_[channel_name] = c_id;
-                auto [it, inserted]       = recv_c_info_.try_emplace(c_id);
-                auto& info                = it->second;
-                info.name                 = std::move(channel_name);
+                    recv_c_ids_[channel_name] = c_id;
+                    auto [it, inserted]       = recv_c_info_.try_emplace(c_id);
+                    auto& info                = it->second;
+                    info.name                 = channel_name;
+                }
 
-                NetworkEvent event{};
-                // TODO!
-                net_ctx_->event_queue_.enqueue();
+                NetworkEvent event{
+                    .type                       = NetworkEventType::ChannelLink,
+                    .connection                 = shared_con_,
+                    .created_channel.name       = std::move(channel_name),
+                    .created_channel.remote_uid = c_id,
+                };
+                net_ctx_->event_queue_.enqueue(std::move(event));
 
-                // auto inst = c_insts_.find(channel_name);
-                // if (inst != c_insts_.end())
-                // {
-                //     // the channel instance already exists locally
-                //     info.channel = inst->second;
-                // }
-                // else
-                // {
-                //     info.before_creation_packets =
-                //         new moodycamel::ConcurrentQueue<ENetPacket*>();
-                // }
-                LOG_TRACE("Channel maps populated");
+                LOG_TRACE("Channel {} linked to remote uid {}", channel_name, channel_id);
             }
             else
             {

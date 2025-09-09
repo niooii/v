@@ -36,6 +36,7 @@ namespace v {
 
     class NetConnection : public Domain {
         friend class NetworkContext;
+        friend struct NetworkEvent;
 
         template <typename T, typename P>
         friend class NetChannel;
@@ -117,10 +118,14 @@ namespace v {
         // maps for tracking channel stuff
         ankerl::unordered_dense::map<u32, NetChannelInfo>               recv_c_info_{};
         ankerl::unordered_dense::map<std::string, u32>                  recv_c_ids_{};
-        ankerl::unordered_dense::map<std::string_view, NetChannelBase*> c_insts_{};
 
         // a mutex for all the maps above
+        // TODO! wrap the maps in this for raii stuff
         RwLock<int> map_lock_;
+
+        // instances of channels mapped to their string name. will only be accessed
+        // from the main thread
+        ankerl::unordered_dense::map<std::string_view, NetChannelBase*> c_insts_{};
 
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
         
@@ -132,5 +137,8 @@ namespace v {
 
         // Pointer guarenteed to be alive here
         NetworkContext* net_ctx_;
+
+        // For convenience, set by the creator of the net connections.
+        std::shared_ptr<NetConnection> shared_con_;
     };
 } // namespace v

@@ -29,7 +29,7 @@ namespace v {
 
     enum class NetworkEventType {
         NewConnection,
-        NewChannel,
+        ChannelLink,
         ConnectionClosed,
         ActivateConnection,
         DestroyConnection
@@ -39,15 +39,14 @@ namespace v {
     struct NetworkEvent {
         NetworkEventType               type;
         std::shared_ptr<NetConnection> connection;
-
-        union {
-            /// only used for NewConnection events
-            NetListener* server;
-            struct {
-                std::string name;
-                u32 remote_uid;
-            } created_channel;
-        };
+        /// only used for NewConnection events
+        /// TODO! union these big waste
+        NetListener* server {};
+        /// only used for ChannelLink events
+        struct {
+            std::string name;
+            u32 remote_uid;
+        } created_channel;
     };
 
     /// A context that creates and manages network connections.
@@ -64,8 +63,6 @@ namespace v {
         ~NetworkContext();
 
         // TODO! return atomic counted intrusive handle
-        // TODO! this kinda works for client to server but what abotu server accepting
-        // clients? auto create connectiondomain??? probably. ConnectionDomain*
         /// Creates a new connection object that represents an outgoing connection.
         /// @note connection_timeout's max value is 5, it will not extend beyond 5.
         std::shared_ptr<NetConnection> create_connection(
@@ -131,6 +128,7 @@ namespace v {
                         "not happen.");
                     return;
                 }
+                auto con = conns->at(peer);
                 conns->erase(peer);
             }
 

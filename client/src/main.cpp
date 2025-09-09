@@ -7,6 +7,8 @@
 #include <contexts/window.h>
 #include <domain/test.h>
 #include <engine/contexts/net/ctx.h>
+#include <engine/contexts/net/chat_channel.h>
+#include <engine/contexts/net/connection.h>
 #include <iostream>
 #include <prelude.h>
 #include <time/stopwatch.h>
@@ -71,6 +73,8 @@ int main()
                 }
             }
         });
+
+    connection->create_channel<ChatChannel>();
 
     // engine.on_tick.connect(
     //     {}, {}, "windows",

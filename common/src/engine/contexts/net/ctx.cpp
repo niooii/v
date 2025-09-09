@@ -136,11 +136,13 @@ namespace v {
                         // the connection object already exists, and therefore is an
                         // outgoing connection - queue activation event
                         auto con = static_cast<NetConnection*>(event.peer->data);
-                        auto shared_con = connections_.read()->at(event.peer);
-                        
-                        NetworkEvent activate_event{ NetworkEventType::ActivateConnection, shared_con, nullptr };
+
+                        NetworkEvent activate_event{
+                            .type       = NetworkEventType::ActivateConnection,
+                            .connection = con->shared_con_,
+                        };
                         event_queue_.enqueue(std::move(activate_event));
-                        
+
                         LOG_TRACE("Outgoing connection confirmed, queued activation");
                         break;
                     }
@@ -154,12 +156,17 @@ namespace v {
                     auto res = connections_.write()->emplace(
                         const_cast<ENetPeer*>(con->peer()), con);
 
-                    // Queue activation event for main thread processing
-                    NetworkEvent activate_event{ NetworkEventType::ActivateConnection, con, nullptr };
+                    NetworkEvent activate_event{
+                        .type       = NetworkEventType::ActivateConnection,
+                        .connection = con,
+                    };
                     event_queue_.enqueue(std::move(activate_event));
-                    
-                    // Queue new connection event for main thread processing
-                    NetworkEvent event{ NetworkEventType::NewConnection, con, server };
+
+                    NetworkEvent event{
+                        .type       = NetworkEventType::NewConnection,
+                        .connection = con,
+                        .server     = server,
+                    };
                     event_queue_.enqueue(std::move(event));
                 }
                 break;
@@ -178,6 +185,7 @@ namespace v {
                 LOG_ERROR("Connection timed out.");
             case ENET_EVENT_TYPE_DISCONNECT:
                 NetPeer peer = event.peer;
+                // if data is NULL, then we triggered the disconnect locally
                 if (!peer->data)
                     break;
 
@@ -187,23 +195,15 @@ namespace v {
 
                 con->remote_disconnected_ = true;
 
-                // Find the shared_ptr for this connection
-                std::shared_ptr<NetConnection> shared_con;
+                if (con->shared_con_)
                 {
-                    auto connections = connections_.read();
-                    auto it          = connections->find(peer);
-                    if (it != connections->end())
-                    {
-                        shared_con = it->second;
-                    }
-                }
-
-                if (shared_con)
-                {
-                    // Pass server info if this disconnect came from a server host
+                    // pass server info if this disconnect came from a server host
                     NetListener* server = static_cast<NetListener*>(data);
-                    NetworkEvent event{ NetworkEventType::ConnectionClosed, shared_con,
-                                        server };
+                    NetworkEvent event{
+                        .type       = NetworkEventType::ConnectionClosed,
+                        .connection = con->shared_con_,
+                        .server     = server,
+                    };
                     event_queue_.enqueue(std::move(event));
                 }
                 break;
@@ -225,19 +225,17 @@ namespace v {
                     event.connection->activate_connection();
                 }
                 break;
-            
+
             case NetworkEventType::DestroyConnection:
                 if (event.connection)
                 {
                     cleanup_tracking(const_cast<ENetPeer*>(event.connection->peer()));
-                    
+
                     auto lock = event.connection->map_lock_.write();
                     // delete all channel pointers
                     for (auto& [a, b] : event.connection->c_insts_)
-                    {
                         delete b;
-                    }
-                    
+
                     event.connection->c_insts_.clear();
                     event.connection->recv_c_ids_.clear();
                     event.connection->recv_c_info_.clear();
@@ -257,10 +255,31 @@ namespace v {
                     if (event.server)
                         event.server->handle_disconnection(event.connection);
 
-                    // Queue destruction event instead of direct cleanup
-                    NetworkEvent destroy_event{ NetworkEventType::DestroyConnection, 
-                                              event.connection, nullptr };
+                    NetworkEvent destroy_event{
+                        .type       = NetworkEventType::DestroyConnection,
+                        .connection = event.connection,
+                    };
                     event_queue_.enqueue(std::move(destroy_event));
+                }
+                break;
+
+            case NetworkEventType::ChannelLink:
+                auto& c_insts = event.connection->c_insts_;
+                auto inst = c_insts.find(event.created_channel.name);
+
+                {
+                    auto lock = event.connection->map_lock_.write();
+                    auto& info = event.connection->recv_c_info_.at(event.created_channel.remote_uid);
+
+                    if (inst != c_insts.end()) {
+                        // the channel instance already exists locally
+                        info.channel = inst->second;
+                    }
+                    else
+                    {
+                        info.before_creation_packets =
+                            new moodycamel::ConcurrentQueue<ENetPacket*>();
+                    }
                 }
                 break;
             }
@@ -288,8 +307,10 @@ namespace v {
         }
 
         // close timed out connection attempts
-        if (to_close) {
-            for (auto& net_con : *to_close) {
+        if (to_close)
+        {
+            for (auto& net_con : *to_close)
+            {
                 net_con->request_close();
             }
 
