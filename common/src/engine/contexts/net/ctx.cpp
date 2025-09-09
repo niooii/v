@@ -10,6 +10,7 @@
 #include <time/stopwatch.h>
 #include "enet.h"
 #include "engine/contexts/net/connection.h"
+#include <engine/contexts/net/channel.h>
 #include "engine/contexts/net/listener.h"
 #include "engine/sync.h"
 #include "time/time.h"
@@ -93,6 +94,7 @@ namespace v {
 
         auto con = std::shared_ptr<NetConnection>(
             new NetConnection(this, host, port, connection_timeout));
+        con->shared_con_ = con;
         auto res = connections_.write()->emplace(const_cast<ENetPeer*>(con->peer()), con);
 
         link_peer_conn_info(const_cast<ENetPeer*>(con->peer()), host, port);
@@ -142,8 +144,6 @@ namespace v {
                             .connection = con->shared_con_,
                         };
                         event_queue_.enqueue(std::move(activate_event));
-
-                        LOG_TRACE("Outgoing connection confirmed, queued activation");
                         break;
                     }
 
@@ -152,6 +152,7 @@ namespace v {
 
                     auto con = std::shared_ptr<NetConnection>(
                         new NetConnection(this, event.peer));
+                    con->shared_con_ = con;
 
                     auto res = connections_.write()->emplace(
                         const_cast<ENetPeer*>(con->peer()), con);
@@ -187,7 +188,9 @@ namespace v {
                 NetPeer peer = event.peer;
                 // if data is NULL, then we triggered the disconnect locally
                 if (!peer->data)
+                {
                     break;
+                }
 
                 // otherwise the disconnect was triggered remotely, and our connection
                 // is still valid. Queue connection close event for main thread processing
@@ -213,7 +216,7 @@ namespace v {
 
     void NetworkContext::update()
     {
-        // Process queued network events from IO thread
+        // process queued network events from IO thread first
         NetworkEvent event;
         while (event_queue_.try_dequeue(event))
         {
@@ -236,9 +239,14 @@ namespace v {
                     for (auto& [a, b] : event.connection->c_insts_)
                         delete b;
 
+                    // remove all the channel components we connected to it (the pointers are dead now)
+                    engine_.registry().destroy(event.connection->entity_);
+
                     event.connection->c_insts_.clear();
                     event.connection->recv_c_ids_.clear();
                     event.connection->recv_c_info_.clear();
+
+                    event.connection->shared_con_.reset();
                 }
                 break;
 
@@ -265,20 +273,25 @@ namespace v {
 
             case NetworkEventType::ChannelLink:
                 auto& c_insts = event.connection->c_insts_;
-                auto inst = c_insts.find(event.created_channel.name);
+                auto  inst    = c_insts.find(event.created_channel.name);
 
                 {
-                    auto lock = event.connection->map_lock_.write();
-                    auto& info = event.connection->recv_c_info_.at(event.created_channel.remote_uid);
+                    auto  lock = event.connection->map_lock_.write();
+                    auto& info = event.connection->recv_c_info_.at(
+                        event.created_channel.remote_uid);
 
-                    if (inst != c_insts.end()) {
+                    LOG_DEBUG("lf channel name locally: {}.", event.created_channel.name);
+
+                    if (inst != c_insts.end())
+                    {
                         // the channel instance already exists locally
                         info.channel = inst->second;
                     }
                     else
                     {
-                        info.before_creation_packets =
-                            new moodycamel::ConcurrentQueue<ENetPacket*>();
+                        LOG_DEBUG("could not find {} locally", event.created_channel.name);
+                        if (!info.before_creation_packets)
+                            info.before_creation_packets = new moodycamel::ConcurrentQueue<ENetPacket*>();
                     }
                 }
                 break;

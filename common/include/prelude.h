@@ -11,5 +11,5 @@
 namespace spd = spdlog;
 
 namespace v {
-    void init();
+    void init(const char* argv0);
 }

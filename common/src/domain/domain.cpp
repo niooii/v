@@ -14,7 +14,8 @@ namespace v {
         entity_ = engine_.registry().create();
     }
 
-    Domain::~Domain() {
-        engine_.registry().destroy(entity_);
+    Domain::~Domain()
+    {
+        // Entity destruction is handled by the engine's domain destruction queue
     }
 } // namespace v

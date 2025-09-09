@@ -100,12 +100,21 @@ template <typename T>
 constexpr std::string_view type_name()
 {
     constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
-    constexpr std::string_view prefix{ "constexpr std::string_view type_name() [T = " };
+    constexpr std::string_view prefix{ "[T = " };
     constexpr std::string_view suffix{ "]" };
     const auto                 start = func_name.find(prefix) + prefix.size();
     const auto                 end   = func_name.rfind(suffix);
     return func_name.substr(start, end - start);
 }
+
+// temp version for debugging
+template <typename T>
+void type_name_dbg()
+{
+    constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
+    LOG_DEBUG("type_name_dbg: {}", func_name);
+}
+
 #endif
 
 STATIC_ASSERT(sizeof(u8) == 1, "expected u8 to be 1 byte.");

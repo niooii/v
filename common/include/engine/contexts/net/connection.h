@@ -60,6 +60,15 @@ namespace v {
         template <DerivedFromChannel T>
         NetChannel<T, typename T::PayloadT>& create_channel()
         {
+            if (!engine_.registry().valid(entity_))
+            {
+                LOG_WARN("Connection is dead, not creating channel..");
+                // because entity is destroyed in handling DestroyConnection, which should process all the
+                // queued events with this connection as well, and destroy this object.
+                LOG_ERROR("You should not be on this branch, something is wrong..");
+                assert(false);
+            }
+
             if (auto comp = engine_.registry().try_get<T*>(entity_))
             {
                 LOG_WARN("Channel {} not created, as it already exists...", T::unique_name());
@@ -76,7 +85,9 @@ namespace v {
 
                 auto lock = map_lock_.write();
 
-                c_insts_[std::string(T::unique_name())] = channel;
+                auto channel_name = std::string(T::unique_name());
+                LOG_DEBUG("inserting into name map: {}.", channel_name);
+                c_insts_[channel_name] = channel;
 
                 auto id_it = recv_c_ids_.find(std::string(T::unique_name()));
                 if (id_it != recv_c_ids_.end())
@@ -88,6 +99,7 @@ namespace v {
                     ENetPacket* packet;
                     while (info.before_creation_packets->try_dequeue(packet))
                     {
+                        LOG_TRACE("Processed a message sent before local channel creation.");
                         channel->take_packet(packet);
                     }
 
@@ -98,6 +110,8 @@ namespace v {
             LOG_TRACE("Local channel created");
 
             // send over creation data and our runtime uid
+            // type_name_dbg<T>();
+            LOG_DEBUG("Local channel has unique name {}", T::unique_name());
             std::string message =
                 std::format("CHANNEL|{}|{}", T::unique_name(), runtime_type_id<T>());
 
@@ -106,7 +120,19 @@ namespace v {
                 message.length() + 1, // including null terminator
                 ENET_PACKET_FLAG_RELIABLE);
 
-            enet_peer_send(peer_, 0, packet); // Use channel 0 for control messages
+            if (pending_activation_)
+            {
+                // allocate outgoing queue on demand
+                if (!outgoing_packets_) {
+                    outgoing_packets_ = new moodycamel::ConcurrentQueue<ENetPacket*>();
+                }
+                
+                outgoing_packets_->enqueue(packet);
+            }
+            else
+            {
+                enet_peer_send(peer_, 0, packet); // Use channel 0 for control messages
+            }
 
             LOG_TRACE("Queued channel creation packet send");
 
@@ -170,6 +196,11 @@ namespace v {
         moodycamel::ConcurrentQueue<ENetPacket*> pending_packets_{};
 
         struct NetChannelInfo {
+            ~NetChannelInfo() {
+                // yea no leaks today pls
+                if (before_creation_packets)
+                    delete before_creation_packets;
+            }
             std::string           name;
             class NetChannelBase* channel{ nullptr };
             // we queue the packets recieved before initialization
@@ -189,6 +220,9 @@ namespace v {
         ankerl::unordered_dense::map<std::string_view, NetChannelBase*> c_insts_{};
 
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
+        
+        // outgoing packet queue for packets sent before connection is ready
+        moodycamel::ConcurrentQueue<ENetPacket*>* outgoing_packets_{ nullptr };
         
         /// The amount of elapsed time since we requested the connection (since construction)
         Stopwatch since_open_{};

@@ -15,9 +15,9 @@ using namespace v;
 
 constexpr f64 SERVER_UPDATE_RATE = 1.0 / 60.0; // 60 FPS
 
-int main()
+int main(int argc, char** argv)
 {
-    init();
+    init(argv[0]);
 
     LOG_INFO("Starting v server on 127.0.0.1:25566");
 

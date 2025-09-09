@@ -31,6 +31,7 @@ target_link_libraries(vlib
 	 	absl::algorithm
     	absl::synchronization
     	absl::strings
+    	absl::failure_signal_handler
 )
 
 # Set output directories

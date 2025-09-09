@@ -72,6 +72,14 @@ namespace v {
         {
             enet_packet_destroy(packet);
         }
+        
+        // cleanup outgoing packets if they weren't sent
+        if (outgoing_packets_) {
+            while (outgoing_packets_->try_dequeue(packet)) {
+                enet_packet_destroy(packet);
+            }
+            delete outgoing_packets_;
+        }
 
         // TODO! this doesnt run for some reason on natural enet timeout??
         LOG_TRACE("Connection destroyed");
@@ -84,7 +92,6 @@ namespace v {
                             net_ctx_->get_connection(peer_), nullptr };
 
         // delete the internal shared ptr no leak yes
-        shared_con_ = nullptr;
         net_ctx_->event_queue_.enqueue(std::move(event));
     }
 
@@ -99,22 +106,23 @@ namespace v {
             handle_raw_packet(packet);
         }
 
+        // send any packets that were queued to go out
+        if (outgoing_packets_) {
+            ENetPacket* packet;
+            while (outgoing_packets_->try_dequeue(packet)) {
+                enet_peer_send(peer_, 0, packet);
+            }
+            
+            delete outgoing_packets_;
+            outgoing_packets_ = nullptr;
+        }
+
         LOG_TRACE("Connection activated");
     }
 
     NetConnectionResult NetConnection::update()
     {
-        // TODO! need ENET_PEER_STATE_CONNECTION_ACKNOWLEDGING?
-        // exclude DISCONNECTED because that means enet already did it for us, no need to
-        // do anything
-        // also exclude acknowledged etc because that means we connected/trying to,
-        // also not excluding it fucks up incoming NetConnection objects (0
-        // connection_timeout_)
-        if (peer_->state != ENET_PEER_STATE_CONNECTED &&
-            peer_->state != ENET_PEER_STATE_CONNECTION_SUCCEEDED &&
-            peer_->state != ENET_PEER_STATE_ACKNOWLEDGING_CONNECT &&
-            peer_->state != ENET_PEER_STATE_CONNECTION_SUCCEEDED &&
-            peer_->state != ENET_PEER_STATE_DISCONNECTED)
+        if (pending_activation_)
         {
             if (since_open_.elapsed() > connection_timeout_)
             {
@@ -207,7 +215,7 @@ namespace v {
                 NetworkEvent event{
                     .type                       = NetworkEventType::ChannelLink,
                     .connection                 = shared_con_,
-                    .created_channel.name       = std::move(channel_name),
+                    .created_channel.name       = channel_name,
                     .created_channel.remote_uid = c_id,
                 };
                 net_ctx_->event_queue_.enqueue(std::move(event));
@@ -238,6 +246,7 @@ namespace v {
         std::memcpy(&channel_id, packet->data, sizeof(u32));
 
         {
+            LOG_DEBUG("lf resources for cid {}", channel_id);
             auto lock = map_lock_.read();
             auto it   = recv_c_info_.find(channel_id);
             if (it == recv_c_info_.end())
@@ -248,8 +257,11 @@ namespace v {
             }
 
             auto& info = it->second;
-            if (!info.channel)
+            if (!info.channel) {
+                if (!info.before_creation_packets)
+                    info.before_creation_packets = new moodycamel::ConcurrentQueue<ENetPacket*>();
                 info.before_creation_packets->enqueue(packet);
+            }
             else
                 info.channel->take_packet(packet);
         }

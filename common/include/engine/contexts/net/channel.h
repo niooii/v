@@ -43,6 +43,7 @@ namespace v {
         friend NetConnection;
 
     public:
+        virtual ~NetChannelBase() = default;
         virtual void send(char* buf, u64 len) = 0;
 
     protected:
@@ -63,7 +64,7 @@ namespace v {
     public:
         using PayloadT = Payload;
 
-        ~NetChannel()
+        ~NetChannel() override
         {
             // give packets back to owning connection for destruction
 
@@ -75,6 +76,8 @@ namespace v {
             }
 
             entt_conn_.release();
+
+            conn_.reset();
         }
 
         NetChannelComponent<Derived, Payload>& create_component(entt::entity id)
@@ -89,7 +92,8 @@ namespace v {
 
             components_[id] = NetChannelComponent<Derived, Payload>{};
 
-            engine.registry().emplace<NetDestructionTracker>(id);
+            // tag it so we can listen for its destruction
+            engine.registry().emplace_or_replace<NetDestructionTracker>(id);
 
             return components_[id];
         }
@@ -132,23 +136,22 @@ namespace v {
             std::memcpy(packet->data + sizeof(u32), buf, len);
 
             // send the packet
+            if (conn_->pending_activation_)
+            {
+                LOG_WARN("Connection is not yet open, queueing packet send");
+                
+                // allocate outgoing queue on demand
+                if (!conn_->outgoing_packets_) {
+                    conn_->outgoing_packets_ = new moodycamel::ConcurrentQueue<ENetPacket*>();
+                }
+                
+                conn_->outgoing_packets_->enqueue(packet);
+                return; // don't destroy packet, it will be sent later
+            }
+            
             if (enet_peer_send(conn_->peer_, 0, packet) != 0)
             {
-                u32 state = conn_->peer_->state;
-                if (state == ENET_PEER_STATE_CONNECTING ||
-                    state == ENET_PEER_STATE_CONNECTION_PENDING ||
-                    state == ENET_PEER_STATE_CONNECTION_SUCCEEDED)
-                {
-                    LOG_WARN("Connection is not yet open, queueing packet send");
-                    LOG_ERROR("TODO! Packet queueing not implemented yet");
-                    // TODO! when implementing make sure that enet_packet_destroy isnt
-                    // called
-                }
-                else
-                {
-                    LOG_ERROR(
-                        "Failed to send packet on channel {}", Derived::unique_name());
-                }
+                LOG_ERROR("Failed to send packet on channel {}", Derived::unique_name());
                 enet_packet_destroy(packet);
             }
         }
@@ -247,6 +250,7 @@ namespace v {
         // called when any component of NetDestructionTracker is destroyed
         void cleanup_component_on_entity_destroy(entt::registry& r, entt::entity e) {
             if (components_.contains(e)) {
+                LOG_TRACE("Cleaning up channel component for destroyed entity");
                 components_.erase(e);
             }
         };

@@ -18,9 +18,9 @@ constexpr i32 TEMP_MAX_FPS = 10;
 
 using namespace v;
 
-int main()
+int main(int argc, char** argv)
 {
-    init();
+    init(argv[0]);
 
     // test some time stuff
     auto          stopwatch = Stopwatch();
@@ -74,7 +74,9 @@ int main()
             }
         });
 
-    auto& conn = connection->create_channel<ChatChannel>();
+    auto& channel = connection->create_channel<ChatChannel>();
+    auto& comp = channel.create_component(engine.entity());
+    channel.send("hi server man", strlen("hi server man"));
 
     // engine.on_tick.connect(
     //     {}, {}, "windows",
