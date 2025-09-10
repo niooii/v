@@ -98,11 +98,9 @@ namespace v {
                 }
             }
 
-            LOG_TRACE("Local channel created");
-
             // send over creation data and our runtime uid
             // type_name_dbg<T>();
-            LOG_DEBUG("Local channel has unique name {}", T::unique_name());
+            LOG_TRACE("Local channel created with unique name {}", T::unique_name());
             std::string message =
                 std::format("CHANNEL|{}|{}", T::unique_name(), runtime_type_id<T>());
 

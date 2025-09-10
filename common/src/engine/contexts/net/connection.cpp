@@ -246,7 +246,6 @@ namespace v {
         std::memcpy(&channel_id, packet->data, sizeof(u32));
 
         {
-            LOG_DEBUG("lf resources for cid {}", channel_id);
             auto lock = map_lock_.read();
             auto it   = recv_c_info_.find(channel_id);
             if (it == recv_c_info_.end())
@@ -255,8 +254,6 @@ namespace v {
                 enet_packet_destroy(packet);
                 return;
             }
-
-            LOG_DEBUG("Found mapping {} -> {}", channel_id, it->second.name);
 
             auto& info = it->second;
             if (!info.channel) {

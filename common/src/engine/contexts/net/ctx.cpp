@@ -280,14 +280,11 @@ namespace v {
                     auto& info = event.connection->recv_c_info_.at(
                         event.created_channel.remote_uid);
 
-                    LOG_DEBUG("lf channel name locally: {}.", event.created_channel.name);
-
                     if (inst != c_insts.end())
                     {
                         // the channel instance already exists locally
                         info.channel = inst->second;
                         info.drain_queue(info.channel);                
-                        LOG_DEBUG("Set channel instance locally ({})", (void*)inst->second);
                     }
                     else
                     {
