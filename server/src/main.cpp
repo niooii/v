@@ -23,13 +23,11 @@ int main(int argc, char** argv)
 
     Engine engine{};
 
-    // Create network context with 120Hz update rate
-    auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 120.0);
+    // attempts to update every 1ms
+    auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 1000.0);
 
-    // Listen on 127.0.0.1:25566
     auto listener = net_ctx->listen_on("127.0.0.1", 25566, 32);
 
-    // Create server component to handle connections
     ServerComponent& server_comp = listener->create_component(engine.entity());
 
     server_comp.on_connect = [&engine](std::shared_ptr<NetConnection> con)
@@ -37,9 +35,6 @@ int main(int argc, char** argv)
         LOG_INFO("Client connected successfully!");
         auto& channel = con->create_channel<ChatChannel>();
 
-        // TODO! this crashes on seconnd connection.
-        // ChannelComponent is not unique amongst multiple connections,
-        // pretty bad tbh. architecture issues probably
         auto& channel_comp   = channel.create_component(engine.entity());
         channel_comp.on_recv = [](const std::string& msg)
         { LOG_INFO("Got message {} from client", msg); };

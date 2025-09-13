@@ -65,6 +65,8 @@ namespace v {
                     f64 sleep_time = stopwatch.until(update_rate_);
                     if (sleep_time > 0)
                         v::time::sleep_ns(static_cast<u64>(sleep_time * 1e9));
+                    else 
+                        LOG_WARN("Network I/O thread fell behind by {}ms.", static_cast<u32>(sleep_time * -1,000));
                 }
             });
     }

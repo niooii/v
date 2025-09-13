@@ -28,18 +28,16 @@ int main(int argc, char** argv)
 
     Engine engine{};
 
-    // auto sdl_ctx    = engine.add_context<SDLContext>(engine);
-    // auto window_ctx = engine.add_context<WindowContext>(engine);
+    auto sdl_ctx    = engine.add_context<SDLContext>(engine);
+    auto window_ctx = engine.add_context<WindowContext>(engine);
 
     // Test event stuff
-    // auto window = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
+    auto window = window_ctx->create_window("hjey", { 600, 600 }, { 600, 600 });
 
-    // auto render_ctx = engine.add_context<RenderContext>(engine);
+    auto render_ctx = engine.add_context<RenderContext>(engine);
 
-    // Add network context
-    auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 120.0);
+    auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 1000);
 
-    // Connect to server
     LOG_INFO("Connecting to server...");
     auto connection = net_ctx->create_connection("127.0.0.1", 25566);
 
@@ -78,23 +76,23 @@ int main(int argc, char** argv)
     auto& comp = channel.create_component(engine.entity());
     channel.send("hi server man", strlen("hi server man"));
 
-    // engine.on_tick.connect(
-    //     {}, {}, "windows",
-    //     [sdl_ctx, window_ctx]()
-    //     {
-    //         sdl_ctx->update();
-    //         window_ctx->update();
-    //     });
+    engine.on_tick.connect(
+        {}, {}, "windows",
+        [sdl_ctx, window_ctx]()
+        {
+            sdl_ctx->update();
+            window_ctx->update();
+        });
 
-    // engine.on_tick.connect(
-    //     { "windows" }, {}, "render", [render_ctx]() { render_ctx->update(); });
+    engine.on_tick.connect(
+        { "windows" }, {}, "render", [render_ctx]() { render_ctx->update(); });
 
     engine.on_tick.connect({}, {}, "network", [net_ctx]() { net_ctx->update(); });
 
     std::atomic_bool running{ true };
 
-    // SDLComponent& sdl_comp = sdl_ctx->create_component(engine.entity());
-    // sdl_comp.on_quit       = [&running] { running = false; };
+    SDLComponent& sdl_comp = sdl_ctx->create_component(engine.entity());
+    sdl_comp.on_quit       = [&running] { running = false; };
 
     while (running)
     {
