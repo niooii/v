@@ -4,8 +4,10 @@
 
 #pragma once
 
+#include <algorithm>
 #include <defs.h>
 #include <engine/contexts/net/connection.h>
+#include <exception>
 #include <memory>
 #include "engine/contexts/net/listener.h"
 #include "moodycamel/concurrentqueue.h"
@@ -25,7 +27,21 @@ namespace v {
         return id;
     }
 
-    typedef std::span<const std::byte> Bytes;
+    /// Default payload of a net channel.
+    struct Bytes : public std::span<const std::byte> {
+        Bytes(const u8* bytes, u64 len) :
+            std::span<const std::byte>(
+                std::span<const char>(reinterpret_cast<const char*>(bytes), len)) {};
+
+        /// A function to construct a default Bytes payload. The bytes* ptr will stay
+        /// alive until after the payload is consumed by listener(s). Any
+        /// implementation of this function should be thread safe or isolated, as it
+        /// runs on the networking io thread.
+        static Bytes parse(const u8* bytes, u64 len)
+        {
+            return Bytes{bytes, len};
+        }
+    };
 
     template <typename Payload>
     using OnRecvCallback = std::function<void(const Payload&)>;
@@ -35,6 +51,8 @@ namespace v {
         OnRecvCallback<Payload> on_recv;
     };
 
+    // A fodder component to listen for the destruction of.
+    // has to have one field because entt does not allow 0 sized components
     struct NetDestructionTracker {
         u8;
     };
@@ -43,7 +61,7 @@ namespace v {
         friend NetConnection;
 
     public:
-        virtual ~NetChannelBase() = default;
+        virtual ~NetChannelBase()             = default;
         virtual void send(char* buf, u64 len) = 0;
 
     protected:
@@ -85,7 +103,8 @@ namespace v {
             Engine& engine = conn_->net_ctx_->engine_;
 
             // TODO! use find buddy
-            if (components_.contains(id)) {
+            if (components_.contains(id))
+            {
                 LOG_WARN("Entity already has a NetChannelComponent component");
                 return components_.at(id);
             }
@@ -139,16 +158,18 @@ namespace v {
             if (conn_->pending_activation_)
             {
                 LOG_WARN("Connection is not yet open, queueing packet send");
-                
+
                 // allocate outgoing queue on demand
-                if (!conn_->outgoing_packets_) {
-                    conn_->outgoing_packets_ = new moodycamel::ConcurrentQueue<ENetPacket*>();
+                if (!conn_->outgoing_packets_)
+                {
+                    conn_->outgoing_packets_ =
+                        new moodycamel::ConcurrentQueue<ENetPacket*>();
                 }
-                
+
                 conn_->outgoing_packets_->enqueue(packet);
                 return; // don't destroy packet, it will be sent later
             }
-            
+
             if (enet_peer_send(conn_->peer_, 0, packet) != 0)
             {
                 LOG_ERROR("Failed to send packet on channel {}", Derived::unique_name());
@@ -157,39 +178,19 @@ namespace v {
         }
 
     protected:
-        /// A function to construct a parsed type from bytes. The bytes* ptr will stay
-        /// alive until after the payload is consumed by listener(s). Any
-        /// implementation of this function should be thread safe or isolated, as it
-        /// runs on the networking io thread.
-        /// @note Default implementation is for Bytes (std::span<const char*>), for
-        /// other payload types, the derived class must manually implement this
-        /// method.
-        static Payload parse(const u8* bytes, u64 len)
-        {
-            if constexpr (std::is_same_v<Payload, Bytes>)
-            {
-                return std::span<const char>(reinterpret_cast<const char*>(bytes), len);
-            }
-            else
-            {
-                // Call the derived class's parse method
-                return Derived::parse(bytes, len);
-            }
-        }
-
-    protected:
         NetChannel() = default;
 
     private:
-
         // explicit init beacuse i dont want derived class to have to explicitly
         // define constructors
         void init(std::shared_ptr<NetConnection> c)
         {
             conn_ = c;
-            entt_conn_ = conn_->engine_.registry()
-                .on_destroy<NetDestructionTracker>()
-                .connect<&NetChannel<Derived, Payload>::cleanup_component_on_entity_destroy>(this);
+            entt_conn_ =
+                conn_->engine_.registry()
+                    .on_destroy<NetDestructionTracker>()
+                    .connect<&NetChannel<
+                        Derived, Payload>::cleanup_component_on_entity_destroy>(this);
             ;
         }
         std::shared_ptr<NetConnection> connection() const { return conn_; }
@@ -220,14 +221,31 @@ namespace v {
 
         void take_packet(ENetPacket* packet) override
         {
-            // exclude the channel id header
-            // TODO! or just use some enet property? idk
-            Payload p =
-                parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
-            std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
-                std::make_unique<std::tuple<Payload, ENetPacket*>>(p, packet);
+            try
+            {
+                // exclude the channel id header
+                Payload p =
+                    Payload::parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
 
-            incoming_.enqueue(std::move(elem));
+                std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
+                    std::make_unique<std::tuple<Payload, ENetPacket*>>(std::move(p), packet);
+
+                incoming_.enqueue(std::move(elem));
+            }
+            catch (std::exception const& ex)
+            {
+                LOG_ERROR(
+                    "[{}] Failed to parse, caught exception {}", unique_name(),
+                    ex.what());
+                // destroy..
+                conn_->packet_destroy_queue_.enqueue(packet);
+            }
+            catch (...)
+            {
+                LOG_ERROR(
+                    "[{}] Failed to parse, caught unknown exception.", unique_name());
+                conn_->packet_destroy_queue_.enqueue(packet);
+            }
         }
 
         moodycamel::ConcurrentQueue<std::unique_ptr<std::tuple<Payload, ENetPacket*>>>
@@ -248,8 +266,10 @@ namespace v {
             components_{};
 
         // called when any component of NetDestructionTracker is destroyed
-        void cleanup_component_on_entity_destroy(entt::registry& r, entt::entity e) {
-            if (components_.contains(e)) {
+        void cleanup_component_on_entity_destroy(entt::registry& r, entt::entity e)
+        {
+            if (components_.contains(e))
+            {
                 LOG_TRACE("Cleaning up channel component for destroyed entity");
                 components_.erase(e);
             }
