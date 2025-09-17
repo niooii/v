@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <defs.h>
 #include <engine/contexts/net/connection.h>
+#include <engine/serial/serde.h>
 #include <exception>
 #include <memory>
 #include "engine/contexts/net/listener.h"
@@ -28,19 +29,17 @@ namespace v {
     }
 
     /// Default payload of a net channel.
+    /// prefer the send_raw method. There is no serialize implementation.
     struct Bytes : public std::span<const std::byte> {
         Bytes(const u8* bytes, u64 len) :
-            std::span<const std::byte>(
-                std::span<const char>(reinterpret_cast<const char*>(bytes), len)) {};
+            std::span<const std::byte>(std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(bytes), len)) {};
 
         /// A function to construct a default Bytes payload. The bytes* ptr will stay
         /// alive until after the payload is consumed by listener(s). Any
         /// implementation of this function should be thread safe or isolated, as it
         /// runs on the networking io thread.
-        static Bytes parse(const u8* bytes, u64 len)
-        {
-            return Bytes{bytes, len};
-        }
+        static Bytes parse(const u8* bytes, u64 len) { return Bytes{ bytes, len }; }
     };
 
     template <typename Payload>
@@ -61,8 +60,8 @@ namespace v {
         friend NetConnection;
 
     public:
-        virtual ~NetChannelBase()             = default;
-        virtual void send(char* buf, u64 len) = 0;
+        virtual ~NetChannelBase()                 = default;
+        virtual void send_raw(char* buf, u64 len) = 0;
 
     protected:
         /// Takes ownership of a packet until consumed.
@@ -132,7 +131,20 @@ namespace v {
             return type_name<Derived>();
         }
 
-        void send(char* buf, u64 len) override
+        // Templated so that if a user doesn't call send(), then the 
+        // std::vector<std::byte> serialize function does not have to
+        // be implemented.
+        
+        /// Send a payload to the other end of the connection, Payload type
+        /// must implement std::vector<std::byte> serialize(const P& p) fn.
+        template<typename = u8>
+        void send(const Payload& payload) {
+            std::vector<std::byte> bytes = payload.serialize();
+            
+            send_raw(reinterpret_cast<char*>(bytes.data()), bytes.size());
+        }
+
+        void send_raw(char* buf, u64 len) override
         {
             u32 channel_id = runtime_type_id<Derived>();
 
@@ -224,11 +236,12 @@ namespace v {
             try
             {
                 // exclude the channel id header
-                Payload p =
-                    Payload::parse(packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
+                Payload p = Payload::parse(
+                    packet->data + sizeof(u32), packet->dataLength - sizeof(u32));
 
                 std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem =
-                    std::make_unique<std::tuple<Payload, ENetPacket*>>(std::move(p), packet);
+                    std::make_unique<std::tuple<Payload, ENetPacket*>>(
+                        std::move(p), packet);
 
                 incoming_.enqueue(std::move(elem));
             }

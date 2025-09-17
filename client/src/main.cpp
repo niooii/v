@@ -7,7 +7,7 @@
 #include <contexts/window.h>
 #include <domain/test.h>
 #include <engine/contexts/net/ctx.h>
-#include <engine/contexts/net/chat_channel.h>
+#include <net/channels.h>
 #include <engine/contexts/net/connection.h>
 #include <iostream>
 #include <prelude.h>
@@ -74,7 +74,10 @@ int main(int argc, char** argv)
 
     auto& channel = connection->create_channel<ChatChannel>();
     auto& comp = channel.create_component(engine.entity());
-    channel.send("hi server man", strlen("hi server man"));
+
+    ChatMessage msg;
+    msg.msg = "hi server man";
+    channel.send(msg);
 
     engine.on_tick.connect(
         {}, {}, "windows",

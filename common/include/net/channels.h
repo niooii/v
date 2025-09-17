@@ -20,7 +20,20 @@ namespace v {
         std::string uuid;
 
         SERIALIZE_FIELDS(uuid);
+
+        SERDE_IMPL(ConnectionRequest);
     };
+
     /// Requests a connection from a player to the server
-    class ConnectServerChannel : NetChannel<ConnectServerChannel, ConnectionRequest>{};
+    class ConnectServerChannel : v::NetChannel<ConnectServerChannel, ConnectionRequest>{};
+
+    struct ChatMessage {
+        std::string msg; 
+
+        SERIALIZE_FIELDS(msg); 
+
+        SERDE_IMPL(ChatMessage);
+    };
+
+    class ChatChannel : public NetChannel<ChatChannel, ChatMessage> {};
 }

@@ -2,7 +2,7 @@
 // Created by niooi on 7/24/25.
 //
 
-#include <engine/contexts/net/chat_channel.h>
+#include <net/channels.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <iostream>
@@ -36,8 +36,8 @@ int main(int argc, char** argv)
         auto& channel = con->create_channel<ChatChannel>();
 
         auto& channel_comp   = channel.create_component(engine.entity());
-        channel_comp.on_recv = [](const std::string& msg)
-        { LOG_INFO("Got message {} from client", msg); };
+        channel_comp.on_recv = [](const ChatMessage& msg)
+        { LOG_INFO("Got message {} from client", msg.msg); };
     };
 
     server_comp.on_disconnect = [](std::shared_ptr<NetConnection> con)
