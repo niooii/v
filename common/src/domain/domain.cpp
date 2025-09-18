@@ -16,6 +16,11 @@ namespace v {
 
     Domain::~Domain()
     {
-        // Entity destruction is handled by the engine's domain destruction queue
+        // entity destruction is handled by the engine's domain destruction queue
     }
+
+    template <typename Derived>
+    SDomain<Derived>::SDomain(Engine& engine, const std::string& name) :
+        Domain(engine, name)
+    {}
 } // namespace v

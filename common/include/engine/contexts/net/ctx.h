@@ -41,11 +41,11 @@ namespace v {
         std::shared_ptr<NetConnection> connection;
         /// only used for NewConnection events
         /// TODO! union these big waste
-        NetListener* server {};
+        NetListener* server{};
         /// only used for ChannelLink events
         struct {
             std::string name;
-            u32 remote_uid;
+            u32         remote_uid;
         } created_channel;
     };
 

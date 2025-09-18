@@ -5,12 +5,12 @@
 #include <vector>
 #define ENET_IMPLEMENTATION
 #include <defs.h>
+#include <engine/contexts/net/channel.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 #include <time/stopwatch.h>
 #include "enet.h"
 #include "engine/contexts/net/connection.h"
-#include <engine/contexts/net/channel.h>
 #include "engine/contexts/net/listener.h"
 #include "engine/sync.h"
 #include "time/time.h"
@@ -65,8 +65,10 @@ namespace v {
                     f64 sleep_time = stopwatch.until(update_rate_);
                     if (sleep_time > 0)
                         v::time::sleep_ns(static_cast<u64>(sleep_time * 1e9));
-                    else 
-                        LOG_WARN("Network I/O thread fell behind by {}ms.", static_cast<u32>(sleep_time * -1,000));
+                    else
+                        LOG_WARN(
+                            "Network I/O thread fell behind by {}ms.",
+                            static_cast<u32>(sleep_time * -1, 000));
                 }
             });
     }
@@ -241,7 +243,8 @@ namespace v {
                     for (auto& [a, b] : event.connection->c_insts_)
                         delete b;
 
-                    // remove all the channel components we connected to it (the pointers are dead now)
+                    // remove all the channel components we connected to it (the pointers
+                    // are dead now)
                     engine_.registry().destroy(event.connection->entity_);
 
                     event.connection->c_insts_.clear();
@@ -286,12 +289,13 @@ namespace v {
                     {
                         // the channel instance already exists locally
                         info.channel = inst->second;
-                        info.drain_queue(info.channel);                
+                        info.drain_queue(info.channel);
                     }
                     else
                     {
                         if (!info.before_creation_packets)
-                            info.before_creation_packets = new moodycamel::ConcurrentQueue<ENetPacket*>();
+                            info.before_creation_packets =
+                                new moodycamel::ConcurrentQueue<ENetPacket*>();
                     }
                 }
                 break;

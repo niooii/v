@@ -37,4 +37,11 @@ namespace v {
         entt::entity entity_;
     };
 
+    /// A singleton domain which does not permit the creation of multiple
+    /// instances of itself in the same Engine container.
+    template <typename Derived>
+    class SDomain : public Domain {
+    public:
+        SDomain(Engine& engine, const std::string& name = "Unnamed Singleton Domain");
+    };
 } // namespace v

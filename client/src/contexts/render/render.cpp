@@ -31,7 +31,7 @@ namespace v {
 
     RenderComponent& RenderContext::create_component(entt::entity id)
     {
-        return engine_.registry().emplace<RenderComponent>(id);
+        return engine_.add_component<RenderComponent>(id);
     }
 
     void RenderContext::update()

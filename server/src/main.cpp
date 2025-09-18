@@ -2,10 +2,10 @@
 // Created by niooi on 7/24/25.
 //
 
-#include <net/channels.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <iostream>
+#include <net/channels.h>
 #include <prelude.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
@@ -33,6 +33,9 @@ int main(int argc, char** argv)
     server_comp.on_connect = [&engine](std::shared_ptr<NetConnection> con)
     {
         LOG_INFO("Client connected successfully!");
+
+        auto& connection_channel = con->create_channel<ConnectServerChannel>();
+
         auto& channel = con->create_channel<ChatChannel>();
 
         auto& channel_comp   = channel.create_component(engine.entity());

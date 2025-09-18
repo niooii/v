@@ -8,8 +8,8 @@
 #include <defs.h>
 #include <engine/contexts/net/ctx.h>
 #include <entt/entt.hpp>
-#include <string>
 #include <format>
+#include <string>
 #include "engine/engine.h"
 
 // Forward declaration for runtime_type_id function
@@ -36,11 +36,7 @@ namespace v {
         HasPayloadAlias<T> && std::is_base_of_v<NetChannel<T, typename T::PayloadT>, T>;
 
 
-    enum class NetConnectionResult {
-        TimedOut = 0,
-        ConnWaiting,
-        Success
-    };
+    enum class NetConnectionResult { TimedOut = 0, ConnWaiting, Success };
 
     class NetConnection : public Domain {
         friend class NetworkContext;
@@ -60,22 +56,24 @@ namespace v {
         template <DerivedFromChannel T>
         NetChannel<T, typename T::PayloadT>& create_channel()
         {
-            if (!engine_.registry().valid(entity_))
+            if (!engine_.is_valid_entity(entity_))
             {
                 LOG_WARN("Connection is dead, not creating channel..");
-                // because entity is destroyed in handling DestroyConnection, which should process all the
-                // queued events with this connection as well, and destroy this object.
+                // because entity is destroyed in handling DestroyConnection, which should
+                // process all the queued events with this connection as well, and destroy
+                // this object.
                 LOG_ERROR("You should not be on this branch, something is wrong..");
                 assert(false);
             }
 
-            if (auto comp = engine_.registry().try_get<T*>(entity_))
+            if (auto comp = engine_.try_get_component<T*>(entity_))
             {
-                LOG_WARN("Channel {} not created, as it already exists...", T::unique_name());
+                LOG_WARN(
+                    "Channel {} not created, as it already exists...", T::unique_name());
                 return static_cast<NetChannel<T, typename T::PayloadT>&>(**comp);
             }
 
-            auto channel = engine_.registry().emplace<T*>(entity_, new T());
+            auto& channel = engine_.add_component<T*>(entity_, new T());
             channel->init(shared_con_);
 
             {
@@ -94,7 +92,7 @@ namespace v {
                     auto& info   = (recv_c_info_)[id];
                     info.channel = channel;
                     // drain the precreation queue into the incoming queue
-                    info.drain_queue(channel);                
+                    info.drain_queue(channel);
                 }
             }
 
@@ -112,10 +110,11 @@ namespace v {
             if (pending_activation_)
             {
                 // allocate outgoing queue on demand
-                if (!outgoing_packets_) {
+                if (!outgoing_packets_)
+                {
                     outgoing_packets_ = new moodycamel::ConcurrentQueue<ENetPacket*>();
                 }
-                
+
                 outgoing_packets_->enqueue(packet);
             }
             else
@@ -132,7 +131,7 @@ namespace v {
         template <DerivedFromChannel T>
         FORCEINLINE NetChannel<T, typename T::PayloadT>* get_channel()
         {
-            if (auto channel = net_ctx_->engine_.registry().try_get<T*>(entity_))
+            if (auto channel = net_ctx_->engine_.try_get_component<T*>(entity_))
             {
                 return channel;
             }
@@ -159,7 +158,9 @@ namespace v {
 
     private:
         /// The constructor for an outgoing connection.
-        NetConnection(class NetworkContext* ctx, const std::string& host, u16 port, f64 connection_timeout);
+        NetConnection(
+            class NetworkContext* ctx, const std::string& host, u16 port,
+            f64 connection_timeout);
         /// The constructor for an incoming connection.
         NetConnection(NetworkContext* ctx, ENetPeer* peer);
 
@@ -180,28 +181,29 @@ namespace v {
 
         // whether the connection is pending activation from main thread
         std::atomic_bool pending_activation_{ true };
-        
+
         // packets received while pending activation
         moodycamel::ConcurrentQueue<ENetPacket*> pending_packets_{};
 
         struct NetChannelInfo {
-            ~NetChannelInfo() {
+            ~NetChannelInfo()
+            {
                 // yea no leaks today pls
                 if (before_creation_packets)
                     delete before_creation_packets;
             }
-            
+
             void drain_queue(class NetChannelBase* channel);
 
-            std::string           name;
+            std::string     name;
             NetChannelBase* channel{ nullptr };
             // we queue the packets recieved before initialization
             moodycamel::ConcurrentQueue<ENetPacket*>* before_creation_packets{ nullptr };
         };
 
         // maps for tracking channel stuff
-        ankerl::unordered_dense::map<u32, NetChannelInfo>               recv_c_info_{};
-        ankerl::unordered_dense::map<std::string, u32>                  recv_c_ids_{};
+        ankerl::unordered_dense::map<u32, NetChannelInfo> recv_c_info_{};
+        ankerl::unordered_dense::map<std::string, u32>    recv_c_ids_{};
 
         // a mutex for all the maps above
         // TODO! wrap the maps in this for raii stuff
@@ -212,14 +214,16 @@ namespace v {
         ankerl::unordered_dense::map<std::string_view, NetChannelBase*> c_insts_{};
 
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
-        
+
         // outgoing packet queue for packets sent before connection is ready
         moodycamel::ConcurrentQueue<ENetPacket*>* outgoing_packets_{ nullptr };
-        
-        /// The amount of elapsed time since we requested the connection (since construction)
+
+        /// The amount of elapsed time since we requested the connection (since
+        /// construction)
         Stopwatch since_open_{};
 
-        /// Amount of time to wait for the connection to succeed until we nuke the connection
+        /// Amount of time to wait for the connection to succeed until we nuke the
+        /// connection
         f64 connection_timeout_;
 
         // Pointer guarenteed to be alive here

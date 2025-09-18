@@ -53,7 +53,7 @@ namespace v {
     // A fodder component to listen for the destruction of.
     // has to have one field because entt does not allow 0 sized components
     struct NetDestructionTracker {
-        u8;
+        u8 dummy;
     };
 
     class NetChannelBase {
@@ -111,7 +111,7 @@ namespace v {
             components_[id] = NetChannelComponent<Derived, Payload>{};
 
             // tag it so we can listen for its destruction
-            engine.registry().emplace_or_replace<NetDestructionTracker>(id);
+            engine.add_component<NetDestructionTracker>(id);
 
             return components_[id];
         }
@@ -131,16 +131,17 @@ namespace v {
             return type_name<Derived>();
         }
 
-        // Templated so that if a user doesn't call send(), then the 
+        // Templated so that if a user doesn't call send(), then the
         // std::vector<std::byte> serialize function does not have to
         // be implemented.
-        
+
         /// Send a payload to the other end of the connection, Payload type
         /// must implement std::vector<std::byte> serialize(const P& p) fn.
-        template<typename = u8>
-        void send(const Payload& payload) {
+        template <typename = u8>
+        void send(const Payload& payload)
+        {
             std::vector<std::byte> bytes = payload.serialize();
-            
+
             send_raw(reinterpret_cast<char*>(bytes.data()), bytes.size());
         }
 

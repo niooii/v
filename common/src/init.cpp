@@ -6,11 +6,11 @@
 #include <prelude.h>
 #include <time/time.h>
 
+#include <absl/container/btree_set.h>
+#include <absl/debugging/failure_signal_handler.h>
+#include <absl/debugging/symbolize.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <absl/debugging/failure_signal_handler.h>
-#include <absl/container/btree_set.h>
-#include <absl/debugging/symbolize.h>
 #include "spdlog/common.h"
 
 void init_loggers();
@@ -18,10 +18,8 @@ void init_loggers();
 void v::init(const char* argv0)
 {
     absl::InitializeSymbolizer(argv0);
-    absl::FailureSignalHandlerOptions fail_opts = {
-        .symbolize_stacktrace = true
-    };
-    
+    absl::FailureSignalHandlerOptions fail_opts = { .symbolize_stacktrace = true };
+
     absl::InstallFailureSignalHandler(fail_opts);
 
     init_loggers();

@@ -72,10 +72,12 @@ namespace v {
         {
             enet_packet_destroy(packet);
         }
-        
+
         // cleanup outgoing packets if they weren't sent
-        if (outgoing_packets_) {
-            while (outgoing_packets_->try_dequeue(packet)) {
+        if (outgoing_packets_)
+        {
+            while (outgoing_packets_->try_dequeue(packet))
+            {
                 enet_packet_destroy(packet);
             }
             delete outgoing_packets_;
@@ -107,12 +109,14 @@ namespace v {
         }
 
         // send any packets that were queued to go out
-        if (outgoing_packets_) {
+        if (outgoing_packets_)
+        {
             ENetPacket* packet;
-            while (outgoing_packets_->try_dequeue(packet)) {
+            while (outgoing_packets_->try_dequeue(packet))
+            {
                 enet_peer_send(peer_, 0, packet);
             }
-            
+
             delete outgoing_packets_;
             outgoing_packets_ = nullptr;
         }
@@ -256,8 +260,10 @@ namespace v {
             }
 
             auto& info = it->second;
-            if (!info.channel) {
-                    info.before_creation_packets = new moodycamel::ConcurrentQueue<ENetPacket*>();
+            if (!info.channel)
+            {
+                info.before_creation_packets =
+                    new moodycamel::ConcurrentQueue<ENetPacket*>();
                 info.before_creation_packets->enqueue(packet);
             }
             else
@@ -265,7 +271,8 @@ namespace v {
         }
     }
 
-    void NetConnection::NetChannelInfo::drain_queue(NetChannelBase* channel) {
+    void NetConnection::NetChannelInfo::drain_queue(NetChannelBase* channel)
+    {
         if (!before_creation_packets)
             return;
         ENetPacket* packet;

@@ -6,10 +6,10 @@
 #include <contexts/sdl.h>
 #include <contexts/window.h>
 #include <domain/test.h>
-#include <engine/contexts/net/ctx.h>
-#include <net/channels.h>
 #include <engine/contexts/net/connection.h>
+#include <engine/contexts/net/ctx.h>
 #include <iostream>
+#include <net/channels.h>
 #include <prelude.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
@@ -63,9 +63,7 @@ int main(int argc, char** argv)
             // Example domain usage: CountTo10Domain counts to 10, and then
             // destroys itself.
             {
-                const auto& reg = engine.registry();
-                for (auto view = reg.view<CountTo10Domain*>().each();
-                     auto [entity, domain] : view)
+                for (auto [entity, domain] : engine.view<CountTo10Domain>().each())
                 {
                     domain->update();
                 }
@@ -73,7 +71,7 @@ int main(int argc, char** argv)
         });
 
     auto& channel = connection->create_channel<ChatChannel>();
-    auto& comp = channel.create_component(engine.entity());
+    auto& comp    = channel.create_component(engine.entity());
 
     ChatMessage msg;
     msg.msg = "hi server man";

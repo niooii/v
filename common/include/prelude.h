@@ -6,8 +6,8 @@
 
 #include <defs.h>
 #include <engine/engine.h>
-#include <engine/serial/serde.h>
 #include <engine/serial/compress.h>
+#include <engine/serial/serde.h>
 #include <entt/entt.hpp>
 
 namespace spd = spdlog;

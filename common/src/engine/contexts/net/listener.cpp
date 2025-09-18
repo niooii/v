@@ -29,12 +29,12 @@ namespace v {
 
     ServerComponent& NetListener::create_component(entt::entity id)
     {
-        return net_ctx_->engine_.registry().emplace<ServerComponent>(id);
+        return net_ctx_->engine_.add_component<ServerComponent>(id);
     }
 
     void NetListener::handle_new_connection(std::shared_ptr<NetConnection> con)
     {
-        auto view = net_ctx_->engine_.registry().view<ServerComponent>();
+        auto view = net_ctx_->engine_.view<ServerComponent>();
 
         for (auto [entity, comp] : view.each())
         {
@@ -45,7 +45,7 @@ namespace v {
 
     void NetListener::handle_disconnection(std::shared_ptr<NetConnection> con)
     {
-        auto view = net_ctx_->engine_.registry().view<ServerComponent>();
+        auto view = net_ctx_->engine_.view<ServerComponent>();
 
         for (auto [entity, comp] : view.each())
         {
@@ -56,7 +56,7 @@ namespace v {
 
     void NetListener::update()
     {
-        auto view = net_ctx_->engine_.registry().view<ServerComponent>();
+        auto view = net_ctx_->engine_.view<ServerComponent>();
 
         for (auto [entity, comp] : view.each())
         {

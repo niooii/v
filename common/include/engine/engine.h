@@ -12,6 +12,7 @@
 #include <time/stopwatch.h>
 #include <unordered_dense.h>
 
+#include "entt/entity/fwd.hpp"
 #include "sink.h"
 
 template <typename T>
@@ -19,6 +20,9 @@ concept DerivedFromDomain = std::is_base_of_v<v::Domain, T>;
 
 template <typename T>
 concept DerivedFromContext = std::is_base_of_v<v::Context, T>;
+
+template <typename T>
+concept DerivedFromSDomain = std::is_base_of_v<v::SDomain<T>, T>;
 
 namespace v {
 
@@ -51,6 +55,98 @@ namespace v {
         /// Get a reference to the domain registry (ecs entity registry).
         FORCEINLINE entt::registry& registry() { return registry_; }
 
+
+        /// Get the first domain of type T, returns nullptr if none exist
+        template <DerivedFromDomain T>
+        T* get_domain()
+        {
+            auto view = registry_.view<T*>();
+            if (view.empty())
+                return nullptr;
+            return view.template get<T*>(*view.begin());
+        }
+
+        /// Try to get domain T from entity, returns nullptr if not found
+        template <DerivedFromDomain T>
+        FORCEINLINE T* try_get_domain(entt::entity entity)
+        {
+            return registry_.try_get<T*>(entity);
+        }
+
+        /// Directly query the entt registry
+        template <typename... Components>
+        FORCEINLINE auto raw_view()
+        {
+            return registry_.view<Components...>();
+        }
+
+    private:
+        /// Type trait to convert Domain types to Domain* but leave other types alone
+        template <typename T>
+        struct domain_to_pointer {
+            using type = std::conditional_t<DerivedFromDomain<T>, T*, T>;
+        };
+
+        template <typename T>
+        using domain_to_pointer_t = typename domain_to_pointer<T>::type;
+
+    public:
+        /// Queries for components from the main engine registry.
+        /// Domain types are automatically converted into their corresponding
+        /// type pointers.
+        ///
+        /// Ex.
+        /// engine.view<PlayerDomain, PoisonComponent>();
+        /// will work, though from querying the raw registry for Domains you'd need
+        /// to query via it's type pointer, Ex.
+        /// engine.view_raw<PlayerDomain*, PoisonComponent>();
+        template <typename... Types>
+        FORCEINLINE auto view()
+        {
+            return registry_.view<domain_to_pointer_t<Types>...>();
+        }
+
+        /// Check if entity has component T
+        template <typename T>
+        FORCEINLINE bool has_component(entt::entity entity)
+        {
+            return registry_.all_of<T>(entity);
+        }
+
+        /// Try to get component T from entity, returns nullptr if not found
+        template <typename T>
+        FORCEINLINE T* try_get_component(entt::entity entity)
+        {
+            return registry_.try_get<T>(entity);
+        }
+
+        /// Add/replace component T to entity
+        template <typename T, typename... Args>
+        FORCEINLINE T& add_component(entt::entity entity, Args&&... args)
+        {
+            return registry_.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
+        }
+
+        /// Check if entity is valid
+        FORCEINLINE bool is_valid_entity(entt::entity entity)
+        {
+            return registry_.valid(entity);
+        }
+
+        /// Get component T from entity, throws if component doesn't exist
+        template <typename T>
+        FORCEINLINE T& get_component(entt::entity entity)
+        {
+            return registry_.get<T>(entity);
+        }
+
+        /// Remove component T from entity, returns number of components removed
+        template <typename T>
+        FORCEINLINE std::size_t remove_component(entt::entity entity)
+        {
+            return registry_.remove<T>(entity);
+        }
+
         /// Adds a context to the engine, retrievable by type.
         /// @note Single-threaded engine - contexts are not thread-safe.
         template <DerivedFromContext T, typename... Args>
@@ -70,8 +166,8 @@ namespace v {
         }
 
         /// Create a new domain owned by the Engine, retrievable using
-        /// the registry and accessible by the type pointer.
-        /// e.g. engine.registry().view<T*>().
+        /// domain convenience methods.
+        /// e.g. engine.view<T>() or engine.get_domain<T>().
         /// @note Pointers to Domains may be stored, as they are heap allocated.
         /// Pointer stability is guaranteed UNTIL Engine::queue_destroy_domain
         /// has been called on it. After that, pointers are no longer guaranteed to exist.
@@ -79,6 +175,17 @@ namespace v {
         template <DerivedFromDomain T, typename... Args>
         T* add_domain(Args&&... args)
         {
+            // Check if this is a singleton domain and if it already exists
+            if constexpr (DerivedFromSDomain<T>)
+            {
+                if (auto existing = get_domain<T>())
+                {
+                    LOG_WARN(
+                        "Singleton domain {} already exists, returning existing instance",
+                        typeid(T).name());
+                    return existing;
+                }
+            }
 
             std::unique_ptr<T> domain = std::make_unique<T>(std::forward<Args>(args)...);
             T*                 ptr    = domain.get();
