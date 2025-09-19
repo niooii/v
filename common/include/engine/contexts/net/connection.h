@@ -38,7 +38,7 @@ namespace v {
 
     enum class NetConnectionResult { TimedOut = 0, ConnWaiting, Success };
 
-    class NetConnection : public Domain {
+    class NetConnection : public Domain<NetConnection> {
         friend class NetworkContext;
         friend struct NetworkEvent;
 
@@ -119,7 +119,7 @@ namespace v {
             }
             else
             {
-                enet_peer_send(peer_, 0, packet); // Use channel 0 for control messages
+                enet_peer_send(peer_, 0, packet); // use channel 0 for control messages
             }
 
             LOG_TRACE("Queued channel creation packet send");
@@ -230,6 +230,9 @@ namespace v {
         NetworkContext* net_ctx_;
 
         // For convenience, set by the creator of the net connections.
+        // TODO! holy lifetime graph just dont use shared ptr since
+        // we're not doing any sync with this object in particular?? :sob:
+        // OR JUST USE STATE MACHINE PLEASE
         std::shared_ptr<NetConnection> shared_con_;
     };
 } // namespace v

@@ -38,8 +38,6 @@ namespace v {
             {
                 if (registry_.valid(id))
                 {
-                    auto& owner_component = registry_.get<std::unique_ptr<Domain>>(id);
-                    owner_component.reset();
                     registry_.destroy(id);
                 }
             }

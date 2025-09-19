@@ -14,9 +14,10 @@
 
 #include "entt/entity/fwd.hpp"
 #include "sink.h"
+#include "traits.h"
 
 template <typename T>
-concept DerivedFromDomain = std::is_base_of_v<v::Domain, T>;
+concept DerivedFromDomain = std::is_base_of_v<v::Domain<T>, T>;
 
 template <typename T>
 concept DerivedFromContext = std::is_base_of_v<v::Context, T>;
@@ -60,17 +61,18 @@ namespace v {
         template <DerivedFromDomain T>
         T* get_domain()
         {
-            auto view = registry_.view<T*>();
+            auto view = registry_.view<query_transform_t<T>>();
             if (view.empty())
                 return nullptr;
-            return view.template get<T*>(*view.begin());
+            return view.template get<query_transform_t<T>>(*view.begin()).get();
         }
 
         /// Try to get domain T from entity, returns nullptr if not found
         template <DerivedFromDomain T>
         FORCEINLINE T* try_get_domain(entt::entity entity)
         {
-            return registry_.try_get<T*>(entity);
+            auto ptr = registry_.try_get<query_transform_t<T>>(entity);
+            return ptr ? ptr->get() : nullptr;
         }
 
         /// Directly query the entt registry
@@ -80,30 +82,19 @@ namespace v {
             return registry_.view<Components...>();
         }
 
-    private:
-        /// Type trait to convert Domain types to Domain* but leave other types alone
-        template <typename T>
-        struct domain_to_pointer {
-            using type = std::conditional_t<DerivedFromDomain<T>, T*, T>;
-        };
-
-        template <typename T>
-        using domain_to_pointer_t = typename domain_to_pointer<T>::type;
-
-    public:
         /// Queries for components from the main engine registry.
-        /// Domain types are automatically converted into their corresponding
-        /// type pointers.
+        /// Types that inherit from QueryBy are automatically transformed
+        /// into their specified query types.
         ///
         /// Ex.
         /// engine.view<PlayerDomain, PoisonComponent>();
-        /// will work, though from querying the raw registry for Domains you'd need
-        /// to query via it's type pointer, Ex.
-        /// engine.view_raw<PlayerDomain*, PoisonComponent>();
+        /// works along with 
+        /// engine.raw_view<std::unique_ptr<PlayerDomain>, PoisonComponent>();
+        /// because all Domains inherit from QueryBy<std::unique_ptr<Derived>>
         template <typename... Types>
         FORCEINLINE auto view()
         {
-            return registry_.view<domain_to_pointer_t<Types>...>();
+            return registry_.view<query_transform_t<Types>...>();
         }
 
         /// Check if entity has component T
@@ -194,14 +185,8 @@ namespace v {
             // TODO!
             // ptr->init_render_components();
 
-            // Attach the domain (ptr) itself to its own entity
-            // After careful consideration i have decided its more worth
-            // to store the pointer even though it leads to more cache misses,
-            // since domains won't usually be small enough for it to matter anyway
-            registry_.emplace<T*>(ptr->entity(), ptr);
-
-            // Attach the actual unique ptr to itself for lifetime management
-            registry_.emplace<std::unique_ptr<Domain>>(ptr->entity(), std::move(domain));
+            // Attach the unique ptr for lifetime management
+            registry_.emplace<query_transform_t<T>>(ptr->entity(), std::move(domain));
 
             return ptr;
         }

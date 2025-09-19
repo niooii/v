@@ -3,6 +3,7 @@
 //
 
 #include <engine/contexts/net/connection.h>
+#include <server.h>
 #include <engine/contexts/net/ctx.h>
 #include <iostream>
 #include <net/channels.h>
@@ -26,25 +27,8 @@ int main(int argc, char** argv)
     // attempts to update every 1ms
     auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 1000.0);
 
-    auto listener = net_ctx->listen_on("127.0.0.1", 25566, 32);
-
-    ServerComponent& server_comp = listener->create_component(engine.entity());
-
-    server_comp.on_connect = [&engine](std::shared_ptr<NetConnection> con)
-    {
-        LOG_INFO("Client connected successfully!");
-
-        auto& connection_channel = con->create_channel<ConnectServerChannel>();
-
-        auto& channel = con->create_channel<ChatChannel>();
-
-        auto& channel_comp   = channel.create_component(engine.entity());
-        channel_comp.on_recv = [](const ChatMessage& msg)
-        { LOG_INFO("Got message {} from client", msg.msg); };
-    };
-
-    server_comp.on_disconnect = [](std::shared_ptr<NetConnection> con)
-    { LOG_INFO("Client disconnected"); };
+    ServerConfig config{"127.0.0.1", 25566};
+    engine.add_domain<ServerDomain>(config, engine);
 
     Stopwatch        stopwatch{};
     std::atomic_bool running{ true };

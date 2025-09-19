@@ -7,7 +7,7 @@
 
 namespace v {
     CountTo10Domain::CountTo10Domain(Engine& engine, const std::string& name) :
-        Domain(engine, name), counter_(1)
+        Domain<CountTo10Domain>(engine, name), counter_(1)
     {}
 
     void CountTo10Domain::update()

@@ -8,6 +8,7 @@
 #include <defs.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/serial/serde.h>
+#include <engine/traits.h>
 #include <exception>
 #include <memory>
 #include "engine/contexts/net/listener.h"
@@ -75,7 +76,7 @@ namespace v {
     /// channel, inherit from this class.
     /// E.g. class ChatChannel : public NetChannel<ChatChannel> {};
     template <typename Derived, typename Payload = Bytes>
-    class NetChannel : NetChannelBase {
+    class NetChannel : NetChannelBase, public QueryBy<Derived*> {
         friend NetConnection;
 
     public:

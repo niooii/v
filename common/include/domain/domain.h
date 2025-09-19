@@ -9,15 +9,17 @@
 #pragma once
 
 #include <defs.h>
+#include <engine/traits.h>
 #include <entt/entt.hpp>
+#include <memory>
 
 namespace v {
-    /// The base class for any Domain
-    class Domain {
-    public:
-        Domain(class Engine& engine, std::string name = "Unnamed Domain");
+    class Engine;
 
-        virtual ~Domain();
+    class DomainBase {
+    public:
+        DomainBase(Engine& engine, std::string name);
+        virtual ~DomainBase();
 
         /// Override this method to add components TODO! is this necessary?
         virtual void init_standard_components() {}
@@ -37,11 +39,25 @@ namespace v {
         entt::entity entity_;
     };
 
+    template <typename Derived>
+    class Domain : public DomainBase, public QueryBy<std::unique_ptr<Derived>> {
+    public:
+        Domain(Engine& engine, std::string name = std::string{ type_name<Derived>() }) :
+            DomainBase(engine, std::move(name))
+        {}
+
+        virtual ~Domain() = default;
+    };
+
     /// A singleton domain which does not permit the creation of multiple
     /// instances of itself in the same Engine container.
     template <typename Derived>
-    class SDomain : public Domain {
+    class SDomain : public Domain<Derived> {
     public:
-        SDomain(Engine& engine, const std::string& name = "Unnamed Singleton Domain");
+        SDomain(
+            Engine&            engine,
+            const std::string& name = std::string{ type_name<Derived>() }) :
+            Domain<Derived>(engine, name)
+        {}
     };
 } // namespace v
