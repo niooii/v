@@ -61,12 +61,17 @@ def _ensure_configured(release: bool) -> None:
 
 @arguably.command
 def build(
-    target: str | None = None, *, release: bool = False, verbose: bool = False
+    target: str | None = None,
+    *,
+    release: bool = False,
+    verbose: bool = False,
+    full: bool = False,
 ) -> None:
     """Build targets via CMake presets
 
     :param target: Optional target (vclient, vserver, vlib). If omitted, builds all
     :param release: Build in Release mode (default Debug)
+    :param full: Show full build output (not just fatal)
     """
     _ensure_configured(release)
     preset = _build_preset(target, release)
@@ -74,7 +79,56 @@ def build(
     env = os.environ.copy()
     if verbose:
         env["V_LOG_LEVEL"] = "trace"
-    _run(["cmake", "--build", "--preset", preset], env=env)
+
+    if full:
+        _run(["cmake", "--build", "--preset", preset], env=env)
+        return
+
+    # Capture build output and surface only fatal errors with context by default
+    import subprocess as _sp
+
+    proc = _sp.Popen(
+        ["cmake", "--build", "--preset", preset],
+        env=env,
+        stdout=_sp.PIPE,
+        stderr=_sp.STDOUT,
+        text=True,
+    )
+    assert proc.stdout is not None
+    lines: list[str] = []
+    for line in proc.stdout:
+        lines.append(line)
+    rc = proc.wait()
+
+    # Grep-like output: show lines with 'fatal error' and +/- 5 lines of context
+    key = "fatal error"
+    idxs: list[int] = []
+    for i, l in enumerate(lines):
+        if key in l.lower():
+            idxs.append(i)
+
+    if idxs:
+        print("[build] fatal error excerpts (-C5):")
+        shown = set()
+        for i in idxs:
+            start = max(0, i - 5)
+            end = min(len(lines), i + 6)
+            for j in range(start, end):
+                if j in shown:
+                    continue
+                print(lines[j], end="")
+                shown.add(j)
+            print("----")
+    else:
+        print("[build] no 'fatal error' found in output")
+
+    if rc != 0:
+        # If build failed, also echo the last 50 lines to aid debugging
+        tail = "".join(lines[-50:]) if lines else ""
+        if tail:
+            print("[build] last 50 lines:")
+            print(tail, end="")
+        raise SystemExit(rc)
 
 
 def _exe_name(name: str) -> str:
@@ -84,15 +138,22 @@ def _exe_name(name: str) -> str:
 
 
 @arguably.command
-def run(target: str, *, release: bool = False, verbose: bool = False) -> None:
+def run(
+    target: str,
+    *,
+    release: bool = False,
+    verbose: bool = False,
+    full: bool = False,
+) -> None:
     """Run an executable target (vclient or vserver)
 
     :param target: vclient or vserver
     :param release: Use Release build dir
+    :param full: Show full build output (not just fatal)
     """
     if target not in {"vclient", "vserver"}:
         raise arguably.ArgumentError("target must be 'vclient' or 'vserver'")
-    build(target=target, release=release)
+    build(target=target, release=release, full=full, verbose=verbose)
     exe = _build_dir(release) / _exe_name(target)
     if not exe.exists():
         raise FileNotFoundError(f"Executable not found: {exe}")
@@ -215,14 +276,15 @@ def _find_test_exes(release: bool) -> list[Path]:
 
 
 @arguably.command
-def test(*, release: bool = False, verbose: bool = False) -> None:
+def test(*, release: bool = False, verbose: bool = False, full: bool = False) -> None:
     """Build (if needed) and run all tests under build/tests/ starting with vtest_
 
     :param release: Use Release build
     :param verbose: Pass --verbose to tests (enables TRACE output)
+    :param full: Show full build output (not just fatal)
     """
     # Build everything to ensure tests are up-to-date
-    build(target=None, release=release)
+    build(target=None, release=release, verbose=verbose, full=full)
     # Discover tests
     exes = _find_test_exes(release)
     if not exes:
