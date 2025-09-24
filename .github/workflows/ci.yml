@@ -32,7 +32,7 @@ jobs:
                 git curl python
                 base-devel zip unzip tar
                 clang cmake ninja pkgconf lld
-                glslang shaderc spirv-tools
+                glslang shaderc spirv-tools glm
                 vulkan-headers vulkan-icd-loader vulkan-validation-layers
                 # SDL windowing backends (X11/Wayland) for Linux builds
                 libx11 xorgproto libxext libxcb libxkbcommon wayland wayland-protocols
