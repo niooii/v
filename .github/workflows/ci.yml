@@ -19,14 +19,17 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            shaderc vulkan-memory-allocator-dev \
+            libvulkan-dev vulkan-validationlayers-dev
 
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "${HOME}/.local/bin" >> $GITHUB_PATH
 
-      - name: Run tests
+      - name: Build + Test (Debug)
         env:
           # Keep test logs concise by default; v.py --verbose 
           # switches to V_LOG_LEVEL=trace automatically.
@@ -36,3 +39,9 @@ jobs:
           uv run python --version
           uv run v.py test
 
+      - name: Build + Test (Release)
+        env:
+          V_LOG_LEVEL: info
+        run: |
+          uv run v.py build --release
+          uv run v.py test --release
