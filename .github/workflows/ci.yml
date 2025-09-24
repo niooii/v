@@ -28,9 +28,11 @@ jobs:
               # Base toolchain and essentials
               pacman -S --noconfirm --needed \
                 git curl python \
-                clang cmake ninja pkgconf \
+                clang cmake ninja pkgconf lld \
                 glslang shaderc spirv-tools \
-                vulkan-headers vulkan-icd-loader vulkan-validation-layers
+                vulkan-headers vulkan-icd-loader vulkan-validation-layers \
+                # SDL windowing backends (X11/Wayland) for Linux builds
+                libx11 xorgproto libxext libxcb libxkbcommon wayland wayland-protocols
 
               # Install uv (Python packaging/runner)
               curl -LsSf https://astral.sh/uv/install.sh | sh
