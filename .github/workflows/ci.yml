@@ -9,6 +9,8 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    env:
+      ARCH_IMAGE: archlinux:base
 
     steps:
       - name: Checkout
@@ -21,18 +23,20 @@ jobs:
           docker run --rm \
             -v "${{ github.workspace }}:/work" \
             -w /work \
-            archlinux:latest \
+            "$ARCH_IMAGE" \
             bash -lc '
               set -euxo pipefail
               pacman -Syu --noconfirm
               # Base toolchain and essentials
-              pacman -S --noconfirm --needed \
-                git curl python \
-                clang cmake ninja pkgconf lld \
-                glslang shaderc spirv-tools \
-                vulkan-headers vulkan-icd-loader vulkan-validation-layers \
+              pkgs=(
+                git curl python
+                clang cmake ninja pkgconf lld
+                glslang shaderc spirv-tools
+                vulkan-headers vulkan-icd-loader vulkan-validation-layers
                 # SDL windowing backends (X11/Wayland) for Linux builds
                 libx11 xorgproto libxext libxcb libxkbcommon wayland wayland-protocols
+              )
+              pacman -S --noconfirm --needed "${pkgs[@]}"
 
               # Install uv (Python packaging/runner)
               curl -LsSf https://astral.sh/uv/install.sh | sh
