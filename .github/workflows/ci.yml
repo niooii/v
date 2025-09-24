@@ -30,6 +30,7 @@ jobs:
               # Base toolchain and essentials
               pkgs=(
                 git curl python
+                base-devel zip unzip tar
                 clang cmake ninja pkgconf lld
                 glslang shaderc spirv-tools
                 vulkan-headers vulkan-icd-loader vulkan-validation-layers
