@@ -19,10 +19,22 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
+          # Base toolchain
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config \
-            shaderc vulkan-memory-allocator-dev \
-            libvulkan-dev vulkan-validationlayers-dev
+            libvulkan-dev
+          # Vulkan utility libraries (replaces vulkan-validationlayers-dev on newer Ubuntu)
+          sudo apt-get install -y vulkan-utility-libraries-dev || \
+            sudo apt-get install -y vulkan-validationlayers-dev
+          # Shaderc tools provide `glslc` (name varies across Ubuntu versions)
+          sudo apt-get install -y shaderc-tools || sudo apt-get install -y shaderc
+          # Headers for shaderc (safe to always install)
+          sudo apt-get install -y libshaderc-dev
+          # glslang dev libraries are required by daxa's pipeline manager
+          sudo apt-get install -y glslang-dev
+          # VMA package name may be unavailable on newer images; it's pulled by the
+          # utility meta package above. Try to install but ignore if missing.
+          sudo apt-get install -y vulkan-memory-allocator-dev || true
 
       - name: Install uv
         run: |

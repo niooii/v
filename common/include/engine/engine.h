@@ -200,8 +200,6 @@ namespace v {
             return ptr;
         }
 
-        /// Legacy helper: queue a domain to be destroyed post tick.
-        /// Prefer calling post_tick directly in new code.
         FORCEINLINE void queue_destroy_domain(const entt::entity domain_id)
         {
             post_tick([this, domain_id]() {

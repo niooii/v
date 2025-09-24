@@ -11,7 +11,31 @@ namespace v {
         ctx_entity_{ ctx_registry_.create() }, engine_entity_{ registry_.create() }
     {}
 
-    Engine::~Engine() { on_destroy.execute(); }
+    Engine::~Engine()
+    {
+        on_destroy.execute(); 
+
+        // run deferred post-tick tasks
+        {
+            std::function<void()> fn;
+            while (post_tick_queue_.try_dequeue(fn))
+            {
+                try
+                {
+                    if (fn)
+                        fn();
+                }
+                catch (const std::exception& ex)
+                {
+                    LOG_ERROR("post_tick callback threw: {}", ex.what());
+                }
+                catch (...)
+                {
+                    LOG_ERROR("post_tick callback threw unknown exception");
+                }
+            }
+        }
+    }
 
     void Engine::tick()
     {
