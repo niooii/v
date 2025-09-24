@@ -33,11 +33,16 @@ jobs:
                 clang cmake ninja pkgconf lld
                 glslang shaderc spirv-tools
                 vulkan-headers vulkan-icd-loader vulkan-validation-layers
-                vulkan-memory-allocator
                 # SDL windowing backends (X11/Wayland) for Linux builds
                 libx11 xorgproto libxext libxcb libxkbcommon wayland wayland-protocols
               )
               pacman -S --noconfirm --needed "${pkgs[@]}"
+
+              # Provide VulkanMemoryAllocator via vcpkg (Arch package not available/providing CMake config)
+              git clone --depth 1 https://github.com/microsoft/vcpkg /opt/vcpkg
+              /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+              export VCPKG_ROOT=/opt/vcpkg
+              /opt/vcpkg/vcpkg install vulkan-memory-allocator
 
               # Install uv (Python packaging/runner)
               curl -LsSf https://astral.sh/uv/install.sh | sh
