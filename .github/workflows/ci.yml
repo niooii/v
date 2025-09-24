@@ -54,6 +54,7 @@ jobs:
 
               export V_LOG_LEVEL=info
               # Debug build + tests
+              uv run v.py build
               uv run v.py test
               # Release build + tests
               uv run v.py build --release

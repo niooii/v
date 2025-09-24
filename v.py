@@ -76,6 +76,7 @@ def build(
     _ensure_configured(release)
     preset = _build_preset(target, release)
     print(f"[build] cmake --build --preset {preset}")
+    print("Starting build")
     env = os.environ.copy()
     if verbose:
         env["V_LOG_LEVEL"] = "trace"
@@ -84,7 +85,6 @@ def build(
         _run(["cmake", "--build", "--preset", preset], env=env)
         return
 
-    # Capture build output and surface only fatal errors with context by default
     import subprocess as _sp
 
     proc = _sp.Popen(
@@ -100,7 +100,7 @@ def build(
         lines.append(line)
     rc = proc.wait()
 
-    # Grep-like output: show lines with 'fatal error' and +/- 5 lines of context
+    # grep simulation (windows maynot have)
     key = "fatal error"
     idxs: list[int] = []
     for i, l in enumerate(lines):
@@ -108,7 +108,7 @@ def build(
             idxs.append(i)
 
     if idxs:
-        print("[build] fatal error excerpts (-C5):")
+        print("[build] fatal errors:")
         shown = set()
         for i in idxs:
             start = max(0, i - 5)
@@ -120,7 +120,7 @@ def build(
                 shown.add(j)
             print("----")
     else:
-        print("[build] no 'fatal error' found in output")
+        print("[build] Completed without fatal errors")
 
     if rc != 0:
         # If build failed, also echo the last 50 lines to aid debugging
