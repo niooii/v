@@ -33,6 +33,7 @@ jobs:
                 clang cmake ninja pkgconf lld
                 glslang shaderc spirv-tools
                 vulkan-headers vulkan-icd-loader vulkan-validation-layers
+                vulkan-memory-allocator
                 # SDL windowing backends (X11/Wayland) for Linux builds
                 libx11 xorgproto libxext libxcb libxkbcommon wayland wayland-protocols
               )
