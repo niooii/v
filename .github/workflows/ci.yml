@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -y
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
+      - name: Run tests
+        env:
+          # Keep test logs concise by default; v.py --verbose 
+          # switches to V_LOG_LEVEL=trace automatically.
+          V_LOG_LEVEL: info
+        run: |
+          uv --version
+          uv run python --version
+          uv run v.py test
+

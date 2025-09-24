@@ -4,10 +4,10 @@
 
 #pragma once
 
+#include <containers/ud_set.h>
 #include <defs.h>
 #include <enet.h>
 #include <entt/entt.hpp>
-#include <unordered_dense.h>
 
 namespace v {
     class NetConnection;
@@ -59,6 +59,6 @@ namespace v {
         NetworkContext* net_ctx_;
         ENetHost*       host_;
 
-        ankerl::unordered_dense::set<ENetPeer*> connected_;
+        ud_set<ENetPeer*> connected_;
     };
 } // namespace v

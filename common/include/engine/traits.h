@@ -8,10 +8,11 @@
 
 namespace v {
 
-    /// Inherit from this type to specify what type a type should be coerced to when querying the engine's registry via engine::view<Type...>(). 
+    /// Inherit from this type to specify what type a type should be coerced to when
+    /// querying the engine's registry via engine::view<Type...>().
     ///
     /// For types that are stored in a registry as a pointer, for example,
-    /// this trait allows users to use the engine::view<> method to query by a 
+    /// this trait allows users to use the engine::view<> method to query by a
     /// simple typename instead of the type pointer by inheriting from QueryBy<Type*>.
     template <typename QueryType>
     struct QueryBy {

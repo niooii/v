@@ -8,3 +8,6 @@ build/
 .nvim-cache
 compile_commands.json
 .cache
+__pycache__
+.venv
+.idea

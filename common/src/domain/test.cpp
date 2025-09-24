@@ -20,7 +20,10 @@ namespace v {
 
         if (counter_ > 10)
         {
-            engine_.queue_destroy_domain(entity_);
+            const entt::entity id = entity_;
+            engine_.post_tick([this, id]() {
+                if (engine_.registry().valid(id)) engine_.registry().destroy(id);
+            });
         }
     }
 } // namespace v

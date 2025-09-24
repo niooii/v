@@ -4,11 +4,11 @@
 
 #pragma once
 
+#include <containers/ud_map.h>
 #include <defs.h>
 #include <functional>
 #include <string>
 #include <taskflow/taskflow.hpp>
-#include <unordered_dense.h>
 #include <vector>
 
 struct TaskDefinition {
@@ -64,7 +64,7 @@ private:
             return;
         }
 
-        ankerl::unordered_dense::map<std::string, tf::Task> handles;
+        v::ud_map<std::string, tf::Task> handles;
 
         // Create all task nodes
         for (const auto& [name, def] : registered_tasks_)
@@ -97,6 +97,6 @@ private:
         }
     }
 
-    ankerl::unordered_dense::map<std::string, TaskDefinition> registered_tasks_;
-    tf::Taskflow                                              taskflow_;
+    v::ud_map<std::string, TaskDefinition> registered_tasks_;
+    tf::Taskflow                           taskflow_;
 };

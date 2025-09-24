@@ -8,6 +8,7 @@
 #include <domain/context.h>
 #include <domain/domain.h>
 #include <entt/entt.hpp>
+#include <functional>
 #include <moodycamel/concurrentqueue.h>
 #include <time/stopwatch.h>
 #include <unordered_dense.h>
@@ -56,6 +57,14 @@ namespace v {
         /// Get a reference to the domain registry (ecs entity registry).
         FORCEINLINE entt::registry& registry() { return registry_; }
 
+        /// Enqueue a callback to run right after this frame's on_tick callbacks.
+        /// Multiple threads may call post_tick; execution happens
+        /// on the main thread within Engine::tick().
+        void post_tick(std::function<void()> fn)
+        {
+            post_tick_queue_.enqueue(std::move(fn));
+        }
+
 
         /// Get the first domain of type T, returns nullptr if none exist
         template <DerivedFromDomain T>
@@ -88,7 +97,7 @@ namespace v {
         ///
         /// Ex.
         /// engine.view<PlayerDomain, PoisonComponent>();
-        /// works along with 
+        /// works along with
         /// engine.raw_view<std::unique_ptr<PlayerDomain>, PoisonComponent>();
         /// because all Domains inherit from QueryBy<std::unique_ptr<Derived>>
         template <typename... Types>
@@ -191,11 +200,14 @@ namespace v {
             return ptr;
         }
 
-        /// Queues a domain to be destroyed on the next tick.
-        /// @note Any pointers to a domain with the id domain_id are no longer safe
+        /// Legacy helper: queue a domain to be destroyed post tick.
+        /// Prefer calling post_tick directly in new code.
         FORCEINLINE void queue_destroy_domain(const entt::entity domain_id)
         {
-            domain_destroy_queue_.enqueue(domain_id);
+            post_tick([this, domain_id]() {
+                if (registry_.valid(domain_id))
+                    registry_.destroy(domain_id);
+            });
         }
 
         /// Runs every time Engine::tick is called
@@ -216,8 +228,8 @@ namespace v {
         /// A central registry to store domains
         entt::registry registry_{};
 
-        /// A queue for the destruction of domains
-        moodycamel::ConcurrentQueue<entt::entity> domain_destroy_queue_{};
+        /// A queue for deferred work to run after each tick()
+        moodycamel::ConcurrentQueue<std::function<void()>> post_tick_queue_{};
 
         /// The engine's private entity for storing contexts. This allows us to have
         /// 'contexts' (essentially singleton components) that we can fetch

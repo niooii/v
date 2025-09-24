@@ -70,6 +70,9 @@ add_subdirectory(common)
 add_subdirectory(client)
 add_subdirectory(server)
 
+# Tests (build after core targets)
+add_subdirectory(tests)
+
 # Set output directories for all targets (will be applied to client/server when they're created)
 function(set_output_directories TARGET_NAME)
     set_target_properties(${TARGET_NAME}
@@ -79,5 +82,4 @@ function(set_output_directories TARGET_NAME)
             ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     )
 endfunction()
-
 

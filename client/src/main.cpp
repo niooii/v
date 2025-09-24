@@ -13,6 +13,7 @@
 #include <prelude.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
+#include <world/world.h>
 
 constexpr i32 TEMP_MAX_FPS = 10;
 
@@ -27,6 +28,9 @@ int main(int argc, char** argv)
     constexpr f64 TEMP_SPF  = 1.0 / TEMP_MAX_FPS;
 
     Engine engine{};
+
+    // Shared world domain (client-side view/state)
+    auto world = engine.add_domain<WorldDomain>(engine);
 
     auto sdl_ctx    = engine.add_context<SDLContext>(engine);
     auto window_ctx = engine.add_context<WindowContext>(engine);

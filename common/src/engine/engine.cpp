@@ -9,16 +9,9 @@
 namespace v {
     Engine::Engine() :
         ctx_entity_{ ctx_registry_.create() }, engine_entity_{ registry_.create() }
-    {
-        LOG_INFO("Initialized the engine.");
-    }
+    {}
 
-    Engine::~Engine()
-    {
-        LOG_INFO("Engine shutting down..");
-
-        on_destroy.execute();
-    }
+    Engine::~Engine() { on_destroy.execute(); }
 
     void Engine::tick()
     {
@@ -31,20 +24,29 @@ namespace v {
 
         current_tick_++;
 
-        // process domain destruction queue
+        // run tick callbacks with dependency management
+        on_tick.execute();
+
+        // run deferred post-tick tasks
         {
-            entt::entity id;
-            while (domain_destroy_queue_.try_dequeue(id))
+            std::function<void()> fn;
+            while (post_tick_queue_.try_dequeue(fn))
             {
-                if (registry_.valid(id))
+                try
                 {
-                    registry_.destroy(id);
+                    if (fn)
+                        fn();
+                }
+                catch (const std::exception& ex)
+                {
+                    LOG_ERROR("post_tick callback threw: {}", ex.what());
+                }
+                catch (...)
+                {
+                    LOG_ERROR("post_tick callback threw unknown exception");
                 }
             }
         }
-
-        // run tick callbacks with dependency management
-        on_tick.execute();
 
         // LOG_TRACE("Finished tick {} ", current_tick_);
 

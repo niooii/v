@@ -17,8 +17,8 @@ namespace v {
     template <typename T>
     inline uint32_t runtime_type_id();
 }
+#include <containers/ud_map.h>
 #include "moodycamel/concurrentqueue.h"
-#include "unordered_dense.h"
 
 extern "C" {
 #include <enet.h>
@@ -202,8 +202,8 @@ namespace v {
         };
 
         // maps for tracking channel stuff
-        ankerl::unordered_dense::map<u32, NetChannelInfo> recv_c_info_{};
-        ankerl::unordered_dense::map<std::string, u32>    recv_c_ids_{};
+        ud_map<u32, NetChannelInfo> recv_c_info_{};
+        ud_map<std::string, u32>    recv_c_ids_{};
 
         // a mutex for all the maps above
         // TODO! wrap the maps in this for raii stuff
@@ -211,7 +211,7 @@ namespace v {
 
         // instances of channels mapped to their string name. will only be accessed
         // from the main thread
-        ankerl::unordered_dense::map<std::string_view, NetChannelBase*> c_insts_{};
+        ud_map<std::string_view, NetChannelBase*> c_insts_{};
 
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
 

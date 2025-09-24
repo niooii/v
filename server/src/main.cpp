@@ -3,13 +3,14 @@
 //
 
 #include <engine/contexts/net/connection.h>
-#include <server.h>
 #include <engine/contexts/net/ctx.h>
 #include <iostream>
 #include <net/channels.h>
 #include <prelude.h>
+#include <server.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
+#include <world/world.h>
 #include "engine/contexts/net/listener.h"
 
 using namespace v;
@@ -24,10 +25,13 @@ int main(int argc, char** argv)
 
     Engine engine{};
 
+    // Shared world domain (authoritative on server)
+    auto world = engine.add_domain<WorldDomain>(engine);
+
     // attempts to update every 1ms
     auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 1000.0);
 
-    ServerConfig config{"127.0.0.1", 25566};
+    ServerConfig config{ "127.0.0.1", 25566 };
     engine.add_domain<ServerDomain>(config, engine);
 
     Stopwatch        stopwatch{};

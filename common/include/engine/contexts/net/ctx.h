@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <containers/ud_map.h>
 #include <defs.h>
 #include <domain/context.h>
 #include <engine/engine.h>
@@ -12,7 +13,6 @@
 #include <fcntl.h>
 #include <memory>
 #include <string>
-#include <unordered_dense.h>
 #include "moodycamel/concurrentqueue.h"
 
 #include "listener.h"
@@ -155,20 +155,18 @@ namespace v {
         std::atomic_bool is_alive_{ true };
 
         // for outgoing and incoming connections
-        RwLock<ankerl::unordered_dense::map<NetPeer, std::shared_ptr<NetConnection>>>
-            connections_{};
+        RwLock<ud_map<NetPeer, std::shared_ptr<NetConnection>>> connections_{};
 
         // for listeners
         // TODO! is this bad? do i have an illness?
-        RwLock<ankerl::unordered_dense::map<NetHost, std::shared_ptr<NetListener>>>
-            servers_{};
+        RwLock<ud_map<NetHost, std::shared_ptr<NetListener>>> servers_{};
 
         // literally just two maps
         template <typename K, typename T>
         struct DeMap {
-            ankerl::unordered_dense::map<K, T> forward{};
+            ud_map<K, T> forward{};
 
-            ankerl::unordered_dense::map<T, K> backward{};
+            ud_map<T, K> backward{};
         };
 
         // for outgoing connection management

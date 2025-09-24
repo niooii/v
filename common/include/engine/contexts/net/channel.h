@@ -5,6 +5,7 @@
 #pragma once
 
 #include <algorithm>
+#include <containers/ud_map.h>
 #include <defs.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/serial/serde.h>
@@ -13,7 +14,6 @@
 #include <memory>
 #include "engine/contexts/net/listener.h"
 #include "moodycamel/concurrentqueue.h"
-#include "unordered_dense.h"
 
 namespace v {
     inline std::atomic<u32>& _global_type_counter()
@@ -277,8 +277,7 @@ namespace v {
         // unique to each connection, so we keep the public API but implement it
         // differently. for this reason we cannot query netchannelcomponents through the
         // main registry
-        ankerl::unordered_dense::map<entt::entity, NetChannelComponent<Derived, Payload>>
-            components_{};
+        ud_map<entt::entity, NetChannelComponent<Derived, Payload>> components_{};
 
         // called when any component of NetDestructionTracker is destroyed
         void cleanup_component_on_entity_destroy(entt::registry& r, entt::entity e)

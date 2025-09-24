@@ -1,0 +1,15 @@
+[project]
+name = "v-cli"
+version = "0.1.0"
+description = "Portable build/run/test CLI for the v project"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "arguably>=1.0.0",
+]
+
+[project.scripts]
+v = "v:cli"
+
+[dependency-groups]
+dev = []

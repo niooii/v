@@ -9,8 +9,12 @@
 #include <absl/container/btree_set.h>
 #include <absl/debugging/failure_signal_handler.h>
 #include <absl/debugging/symbolize.h>
+#include <cstdlib>
+#include <cctype>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <string>
+#include <string_view>
 #include "spdlog/common.h"
 
 void init_loggers();
@@ -42,11 +46,41 @@ void init_loggers()
 
     const auto logger = std::make_shared<spd::logger>("", sinks.begin(), sinks.end());
 
+    // defualt level
     logger->set_level(spd::level::trace);
 
     logger->flush_on(spd::level::err);
 
     set_default_logger(logger);
 
-    LOG_INFO("hi starting up...");
+    // logging env override: V_LOG_LEVEL=trace|debug|info|warn|error|critical|off
+    if (const char* env = std::getenv("V_LOG_LEVEL"))
+    {
+        auto s        = std::string_view(env);
+        auto to_lower = [](char c)
+        { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); };
+        std::string level_str;
+        level_str.reserve(s.size());
+        for (char c : s)
+            level_str.push_back(to_lower(c));
+
+        spd::level::level_enum lvl = spd::level::trace;
+        if (level_str == "trace")
+            lvl = spd::level::trace;
+        else if (level_str == "debug")
+            lvl = spd::level::debug;
+        else if (level_str == "info")
+            lvl = spd::level::info;
+        else if (level_str == "warn" || level_str == "warning")
+            lvl = spd::level::warn;
+        else if (level_str == "error")
+            lvl = spd::level::err;
+        else if (level_str == "critical" || level_str == "fatal")
+            lvl = spd::level::critical;
+        else if (level_str == "off" || level_str == "none")
+            lvl = spd::level::off;
+
+        spd::set_level(lvl);
+        logger->set_level(lvl);
+    }
 }

@@ -14,6 +14,6 @@ namespace v {
 
     DomainBase::~DomainBase()
     {
-        // entity destruction is handled by the engine's domain destruction queue
+        // Entity lifetime is managed externally; do not access other domains/contexts here.
     }
 } // namespace v

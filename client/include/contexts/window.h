@@ -11,11 +11,11 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
 #include <array>
+#include <containers/ud_map.h>
 #include <entt/signal/sigh.hpp>
 #include <glm/vec2.hpp>
 #include <memory>
 #include <string>
-#include <unordered_dense.h>
 
 #include "SDL3/SDL_vulkan.h"
 
@@ -276,7 +276,7 @@ namespace v {
         /// Called by SDLContext as a friend class
         void handle_events(const SDL_Event& event);
 
-        ankerl::unordered_dense::map<Uint32, std::unique_ptr<Window>> windows_;
+        ud_map<Uint32, std::unique_ptr<Window>> windows_;
 
         Window* singleton_{ nullptr };
     };
