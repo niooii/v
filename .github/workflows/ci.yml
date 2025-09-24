@@ -16,44 +16,33 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install build tools
+      - name: Build + Test (Arch Linux)
         run: |
-          sudo apt-get update
-          # Base toolchain
-          sudo apt-get install -y \
-            clang cmake ninja-build pkg-config \
-            libvulkan-dev
-          # Vulkan utility libraries (replaces vulkan-validationlayers-dev on newer Ubuntu)
-          sudo apt-get install -y vulkan-utility-libraries-dev || \
-            sudo apt-get install -y vulkan-validationlayers-dev
-          # Shaderc tools provide `glslc` (name varies across Ubuntu versions)
-          sudo apt-get install -y shaderc-tools || sudo apt-get install -y shaderc
-          # Headers for shaderc (safe to always install)
-          sudo apt-get install -y libshaderc-dev
-          # glslang dev libraries are required by daxa's pipeline manager
-          sudo apt-get install -y glslang-dev
-          # VMA package name may be unavailable on newer images; it's pulled by the
-          # utility meta package above. Try to install but ignore if missing.
-          sudo apt-get install -y vulkan-memory-allocator-dev || true
+          docker run --rm \
+            -v "${{ github.workspace }}:/work" \
+            -w /work \
+            archlinux:latest \
+            bash -lc '
+              set -euxo pipefail
+              pacman -Syu --noconfirm
+              # Base toolchain and essentials
+              pacman -S --noconfirm --needed \
+                git curl python \
+                clang cmake ninja pkgconf \
+                glslang shaderc spirv-tools \
+                vulkan-headers vulkan-icd-loader vulkan-validation-layers
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+              # Install uv (Python packaging/runner)
+              curl -LsSf https://astral.sh/uv/install.sh | sh
+              export PATH="$HOME/.local/bin:$PATH"
 
-      - name: Build + Test (Debug)
-        env:
-          # Keep test logs concise by default; v.py --verbose 
-          # switches to V_LOG_LEVEL=trace automatically.
-          V_LOG_LEVEL: info
-        run: |
-          uv --version
-          uv run python --version
-          uv run v.py test
+              uv --version
+              uv run python --version
 
-      - name: Build + Test (Release)
-        env:
-          V_LOG_LEVEL: info
-        run: |
-          uv run v.py build --release
-          uv run v.py test --release
+              export V_LOG_LEVEL=info
+              # Debug build + tests
+              uv run v.py test
+              # Release build + tests
+              uv run v.py build --release
+              uv run v.py test --release
+            '
