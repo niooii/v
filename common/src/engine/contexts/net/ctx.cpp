@@ -284,9 +284,12 @@ namespace v {
 
                     // remove all the channel components we connected to it post-tick
                     const entt::entity id = event.connection->entity_;
-                    engine_.post_tick([this, id]() {
-                        if (engine_.registry().valid(id)) engine_.registry().destroy(id);
-                    });
+                    engine_.post_tick(
+                        [this, id]()
+                        {
+                            if (engine_.registry().valid(id))
+                                engine_.registry().destroy(id);
+                        });
 
                     event.connection->c_insts_.clear();
                     event.connection->recv_c_ids_.clear();

@@ -5,6 +5,9 @@
 
 #pragma once
 
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+
 #include <spdlog/spdlog.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -93,29 +96,30 @@ typedef unsigned char byte;
     #define PREFETCH(x)      __builtin_prefetch(x)
     #define MEMORY_BARRIER() __asm__ volatile("" ::: "memory")
 
-/// Returns a unique typename for a given type.
-/// I'm not defining this for msvc and others because
-/// I'm kind of locked into clang/gcc at this point.
-template <typename T>
-constexpr std::string_view type_name()
-{
-    constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
-    constexpr std::string_view prefix{ "[T = " };
-    constexpr std::string_view suffix{ "]" };
-    const auto                 start = func_name.find(prefix) + prefix.size();
-    const auto                 end   = func_name.rfind(suffix);
-    return func_name.substr(start, end - start);
-}
-
-// temp version for debugging
-template <typename T>
-void type_name_dbg()
-{
-    constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
-    LOG_DEBUG("type_name_dbg: {}", func_name);
-}
-
 #endif
+
+namespace v {
+    /// Returns a unique typename for a given type.
+    /// Using __PRETTY_FUNCTION__ which works with both GCC and Clang
+    template <typename T>
+    constexpr std::string_view type_name()
+    {
+        constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
+        constexpr std::string_view prefix{ "[T = " };
+        constexpr std::string_view suffix{ "]" };
+        const auto                 start = func_name.find(prefix) + prefix.size();
+        const auto                 end   = func_name.rfind(suffix);
+        return func_name.substr(start, end - start);
+    }
+
+    // temp version for debugging
+    template <typename T>
+    void type_name_dbg()
+    {
+        constexpr std::string_view func_name{ __PRETTY_FUNCTION__ };
+        LOG_DEBUG("type_name_dbg: {}", func_name);
+    }
+} // namespace v
 
 STATIC_ASSERT(sizeof(u8) == 1, "expected u8 to be 1 byte.");
 STATIC_ASSERT(sizeof(u16) == 2, "expected u16 to be 2 bytes.");

@@ -13,7 +13,7 @@ namespace v {
 
     Engine::~Engine()
     {
-        on_destroy.execute(); 
+        on_destroy.execute();
 
         // run deferred post-tick tasks
         {

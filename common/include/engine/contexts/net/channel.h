@@ -129,7 +129,7 @@ namespace v {
         /// (e.g. "v::Chat::ChatChannel").
         static constexpr const std::string_view unique_name()
         {
-            return type_name<Derived>();
+            return v::type_name<Derived>();
         }
 
         // Templated so that if a user doesn't call send(), then the

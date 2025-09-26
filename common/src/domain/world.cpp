@@ -2,8 +2,8 @@
 // Created by niooi on 9/24/2025.
 //
 
-#include <world/world.h>
 #include <engine/engine.h>
+#include <world/world.h>
 
 namespace v {
 
@@ -59,7 +59,8 @@ namespace v {
         if (it != chunks_.end())
             return *it->second;
 
-        std::string name = "Chunk(" + std::to_string(cp.x) + "," + std::to_string(cp.y) + "," + std::to_string(cp.z) + ")";
+        std::string name = "Chunk(" + std::to_string(cp.x) + "," + std::to_string(cp.y) +
+            "," + std::to_string(cp.z) + ")";
         auto* chunk = engine_.add_domain<ChunkDomain>(engine_, cp, name);
         chunks_.emplace(cp, chunk);
         return *chunk;
@@ -73,9 +74,12 @@ namespace v {
         if (it->second)
         {
             entt::entity id = it->second->entity();
-            engine_.post_tick([this, id]() {
-                if (engine_.registry().valid(id)) engine_.registry().destroy(id);
-            });
+            engine_.post_tick(
+                [this, id]()
+                {
+                    if (engine_.registry().valid(id))
+                        engine_.registry().destroy(id);
+                });
         }
         chunks_.erase(it);
         return true;
@@ -86,7 +90,10 @@ namespace v {
     u16 WorldDomain::get_voxel(WorldPos wp) const
     {
         auto [cp, lp] = world_to_chunk(wp);
-        if (auto it = chunks_.find(cp); it != chunks_.end()) { return it->second->get(lp); }
+        if (auto it = chunks_.find(cp); it != chunks_.end())
+        {
+            return it->second->get(lp);
+        }
         return 0;
     }
 

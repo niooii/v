@@ -31,11 +31,10 @@ namespace v {
         }
 
         // Create daxa instance
-        instance = daxa::create_instance(
-            {
-                .engine_name = "vengine",
-                .app_name    = "vengine",
-            });
+        instance = daxa::create_instance({
+            .engine_name = "vengine",
+            .app_name    = "vengine",
+        });
 
         LOG_DEBUG("Daxa instance created successfully");
 

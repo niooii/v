@@ -101,14 +101,14 @@ def build(
     rc = proc.wait()
 
     # grep simulation (windows maynot have)
-    key = "fatal error"
+    key = "error: "
     idxs: list[int] = []
     for i, l in enumerate(lines):
         if key in l.lower():
             idxs.append(i)
 
     if idxs:
-        print("[build] fatal errors:")
+        print("[build] errors:")
         shown = set()
         for i in idxs:
             start = max(0, i - 5)
@@ -120,7 +120,7 @@ def build(
                 shown.add(j)
             print("----")
     else:
-        print("[build] Completed without fatal errors")
+        print("[build] Completed without errors")
 
     if rc != 0:
         # If build failed, also echo the last 50 lines to aid debugging
@@ -324,4 +324,7 @@ def cli() -> int:  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(cli())
+    try:
+        sys.exit(cli())
+    except KeyboardInterrupt:
+        print("Keyboard int received, stopping")

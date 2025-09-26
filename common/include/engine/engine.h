@@ -202,10 +202,12 @@ namespace v {
 
         FORCEINLINE void queue_destroy_domain(const entt::entity domain_id)
         {
-            post_tick([this, domain_id]() {
-                if (registry_.valid(domain_id))
-                    registry_.destroy(domain_id);
-            });
+            post_tick(
+                [this, domain_id]()
+                {
+                    if (registry_.valid(domain_id))
+                        registry_.destroy(domain_id);
+                });
         }
 
         /// Runs every time Engine::tick is called

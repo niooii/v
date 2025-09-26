@@ -21,9 +21,12 @@ namespace v {
         if (counter_ > 10)
         {
             const entt::entity id = entity_;
-            engine_.post_tick([this, id]() {
-                if (engine_.registry().valid(id)) engine_.registry().destroy(id);
-            });
+            engine_.post_tick(
+                [this, id]()
+                {
+                    if (engine_.registry().valid(id))
+                        engine_.registry().destroy(id);
+                });
         }
     }
 } // namespace v

@@ -14,6 +14,7 @@ namespace v {
 
     DomainBase::~DomainBase()
     {
-        // Entity lifetime is managed externally; do not access other domains/contexts here.
+        // Entity lifetime is managed externally; do not access other domains/contexts
+        // here.
     }
 } // namespace v

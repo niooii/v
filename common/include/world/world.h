@@ -68,7 +68,7 @@ namespace v {
         FORCEINLINE SparseVoxelOctree128&       svo() { return svo_; }
         FORCEINLINE const SparseVoxelOctree128& svo() const { return svo_; }
 
-        u16 get(VoxelPos lp) const { return svo_.get(lp.x, lp.y, lp.z); }
+        u16  get(VoxelPos lp) const { return svo_.get(lp.x, lp.y, lp.z); }
         void set(VoxelPos lp, u16 v)
         {
             svo_.set(lp.x, lp.y, lp.z, v);

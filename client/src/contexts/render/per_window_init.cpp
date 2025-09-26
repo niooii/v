@@ -82,31 +82,30 @@ namespace v {
         {
             try
             {
-                swapchain = daxa_resources_->device.create_swapchain(
+                swapchain         = daxa_resources_->device.create_swapchain({
+                            .native_window           = native_handle,
+                            .native_window_platform  = native_platform,
+                            .surface_format_selector = [](daxa::Format format) -> i32
                     {
-                        .native_window           = native_handle,
-                        .native_window_platform  = native_platform,
-                        .surface_format_selector = [](daxa::Format format) -> i32
+                        switch (format)
                         {
-                            switch (format)
-                            {
-                            case daxa::Format::B8G8R8A8_SRGB:
-                                return 100;
-                            case daxa::Format::R8G8B8A8_SRGB:
-                                return 90;
-                            case daxa::Format::B8G8R8A8_UNORM:
-                                return 80;
-                            case daxa::Format::R8G8B8A8_UNORM:
-                                return 70;
-                            default:
-                                return daxa::default_format_score(format);
-                            }
-                        },
-                        .present_mode = present_mode,
-                        .image_usage  = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
-                        .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
-                        .name                         = "swapchain",
-                    });
+                        case daxa::Format::B8G8R8A8_SRGB:
+                            return 100;
+                        case daxa::Format::R8G8B8A8_SRGB:
+                            return 90;
+                        case daxa::Format::B8G8R8A8_UNORM:
+                            return 80;
+                        case daxa::Format::R8G8B8A8_UNORM:
+                            return 70;
+                        default:
+                            return daxa::default_format_score(format);
+                        }
+                    },
+                            .present_mode = present_mode,
+                            .image_usage  = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
+                            .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
+                            .name                         = "swapchain",
+                });
                 swapchain_created = true;
                 LOG_INFO(
                     "Created swapchain with present mode: {}",
@@ -141,12 +140,11 @@ namespace v {
 
         LOG_TRACE("created swapchain, creating task graph now");
 
-        render_graph = daxa::TaskGraph(
-            {
-                .device    = daxa_resources_->device,
-                .swapchain = swapchain,
-                .name      = "main loop graph",
-            });
+        render_graph = daxa::TaskGraph({
+            .device    = daxa_resources_->device,
+            .swapchain = swapchain,
+            .name      = "main loop graph",
+        });
 
         render_graph.use_persistent_image(task_swapchain_image);
 

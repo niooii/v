@@ -3,10 +3,10 @@
 //
 
 #include <contexts/render.h>
-#include <engine/contexts/window/sdl.h>
-#include <engine/contexts/window/window.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
+#include <engine/contexts/window/sdl.h>
+#include <engine/contexts/window/window.h>
 #include <iostream>
 #include <net/channels.h>
 #include <prelude.h>
@@ -14,7 +14,7 @@
 #include <time/time.h>
 #include <world/world.h>
 
-constexpr i32 TEMP_MAX_FPS = 10;
+constexpr i32 TEMP_MAX_FPS = 60;
 
 using namespace v;
 
@@ -65,12 +65,17 @@ int main(int argc, char** argv)
         {
             sdl_ctx->update();
             window_ctx->update();
+            LOG_TRACE("UPdated window");
         });
 
     engine.on_tick.connect(
-        { "windows" }, {}, "render", [render_ctx]() { render_ctx->update(); });
+        { "windows" }, {}, "render",
+        [render_ctx]
+        {
+            render_ctx->update();
+        });
 
-    engine.on_tick.connect({}, {}, "network", [net_ctx]() { net_ctx->update(); });
+    engine.on_tick.connect({}, {}, "network", [net_ctx] { net_ctx->update(); });
 
     std::atomic_bool running{ true };
 

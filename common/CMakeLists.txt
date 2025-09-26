@@ -26,6 +26,8 @@ target_link_libraries(vlib
         EnTT::EnTT
         spdlog::spdlog
         Taskflow::Taskflow
+        SDL3::SDL3
+        glm::glm
 		absl::base
 		absl::debugging
 	 	absl::algorithm

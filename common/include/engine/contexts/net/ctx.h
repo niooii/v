@@ -11,9 +11,9 @@
 #include <engine/sync.h>
 #include <entt/entt.hpp>
 #include <fcntl.h>
+#include <functional>
 #include <memory>
 #include <string>
-#include <functional>
 #include "moodycamel/concurrentqueue.h"
 
 #include "listener.h"

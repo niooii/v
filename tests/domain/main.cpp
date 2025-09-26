@@ -58,8 +58,10 @@ int main()
     }
 
     // Final hard assert
-    testing::assert_now(tctx, *engine, all_domains_updated, "domains completed lifecycle");
-    testing::assert_now(tctx, *engine, engine->view<CountTo10Domain>().size() == 0, "no domains remain");
+    testing::assert_now(
+        tctx, *engine, all_domains_updated, "domains completed lifecycle");
+    testing::assert_now(
+        tctx, *engine, engine->view<CountTo10Domain>().size() == 0, "no domains remain");
 
     if (tctx.failures > 0)
     {

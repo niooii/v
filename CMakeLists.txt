@@ -11,6 +11,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Fix Windows macro conflicts
+add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+
 find_program(GLSLC glslc REQUIRED)
 
 # Common external dependencies used by both client and server
@@ -25,6 +28,9 @@ add_subdirectory(extern/entt)
 add_subdirectory(extern/hfsm2)
 add_subdirectory(extern/spdlog)
 add_subdirectory(extern/glm)
+
+# SDL3 (needed by common library for window context)
+add_subdirectory(extern/sdl3)
 
 set(ABSL_PROPAGATE_CXX_STD ON)  
 #set(ABSL_BUILD_TESTING OFF)

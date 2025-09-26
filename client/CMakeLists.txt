@@ -1,8 +1,4 @@
 # Client-specific dependencies
-add_subdirectory(
-        ${CMAKE_SOURCE_DIR}/extern/sdl3
-        ${CMAKE_BINARY_DIR}/extern/sdl3
-)
 
 # Add imgui as a library (header-only, needs manual setup)
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/extern/imgui)
