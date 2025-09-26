@@ -5,7 +5,6 @@
 #include <contexts/render.h>
 #include <contexts/sdl.h>
 #include <contexts/window.h>
-#include <domain/test.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <iostream>
@@ -47,32 +46,11 @@ int main(int argc, char** argv)
 
     LOG_INFO("Connection created, attempting to connect...");
 
-    // 8 example CountTo10Domain instances
-    for (i32 i = 0; i < 8; ++i)
-    {
-        engine.add_domain<CountTo10Domain>(
-            engine, "CountTo10Domain_" + std::to_string(i));
-    }
-
     // window->capture_raw_input(true);
     auto lambda = [](glm::ivec2 _pos, glm::ivec2 rel_movement)
     { LOG_DEBUG("Mouse motion: {}, {}!", rel_movement.x, rel_movement.y); };
 
     // window->on_mouse_moved.connect<lambda>();
-
-    engine.on_tick.connect(
-        {}, {}, "domain updates",
-        [&engine]()
-        {
-            // Example domain usage: CountTo10Domain counts to 10, and then
-            // destroys itself.
-            {
-                for (auto [entity, domain] : engine.view<CountTo10Domain>().each())
-                {
-                    domain->update();
-                }
-            }
-        });
 
     auto& channel = connection->create_channel<ChatChannel>();
     auto& comp    = channel.create_component(engine.entity());

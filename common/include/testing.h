@@ -15,7 +15,7 @@ namespace v::testing {
         u64         failures{ 0 };
     };
 
-    // Initialize logging/time and return a fresh engine
+    // Initialize core subsystems and return a fresh engine
     inline std::unique_ptr<Engine> init_test(const char* name = "vtest")
     {
         v::init(name);

@@ -19,6 +19,17 @@ function(v_add_test NAME SRC)
     endif()
 endfunction()
 
-v_add_test(vtest_net ${CMAKE_CURRENT_SOURCE_DIR}/net/main.cpp)
-v_add_test(vtest_svo ${CMAKE_CURRENT_SOURCE_DIR}/svo/main.cpp)
+# Auto-discover tests from directory structure
+file(GLOB TEST_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/*/")
+
+foreach(TEST_DIR ${TEST_DIRS})
+    if(IS_DIRECTORY ${TEST_DIR})
+        get_filename_component(TEST_NAME ${TEST_DIR} NAME)
+        set(TEST_MAIN_FILE "${TEST_DIR}/main.cpp")
+
+        if(EXISTS ${TEST_MAIN_FILE})
+            v_add_test(vtest_${TEST_NAME} ${TEST_MAIN_FILE})
+        endif()
+    endif()
+endforeach()
 

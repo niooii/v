@@ -81,7 +81,7 @@ int main()
         testing::expect_before(
             tctx, *engine, client_got_echo.load(), 1200, "client received echo");
 
-        // Give IO thread breathing room
+        // sleep main thread for 1ms, so at most 1000 ticks per sec
         v::time::sleep_ms(1);
     }
 
