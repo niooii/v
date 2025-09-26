@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <memory>
 #include <string>
+#include <functional>
 #include "moodycamel/concurrentqueue.h"
 
 #include "listener.h"
@@ -105,6 +106,9 @@ namespace v {
         /// Handles network flushing and updating
         void update();
 
+        /// Queue work to run on the IO thread.
+        void enqueue_io(std::function<void()> fn);
+
     private:
         // data is either a pointer to NetListener (for access to the callbacks)
         // or nothing.
@@ -181,5 +185,8 @@ namespace v {
 
         /// Queue for network events that need to be processed on the main thread
         moodycamel::ConcurrentQueue<NetworkEvent> event_queue_;
+
+        /// Pending tasks the IO thread should execute in order
+        moodycamel::ConcurrentQueue<std::function<void()>> io_commands_{};
     };
 } // namespace v

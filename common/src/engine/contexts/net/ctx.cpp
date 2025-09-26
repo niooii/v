@@ -9,6 +9,7 @@
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
 #include <time/stopwatch.h>
+#include <utility>
 #include "enet.h"
 #include "engine/contexts/net/connection.h"
 #include "engine/contexts/net/listener.h"
@@ -46,9 +47,38 @@ namespace v {
             [this]()
             {
                 Stopwatch stopwatch{};
+                auto      run_io_task = [](std::function<void()>& fn)
+                {
+                    if (!fn)
+                        return;
+                    try
+                    {
+                        fn();
+                    }
+                    catch (const std::exception& ex)
+                    {
+                        LOG_ERROR("Network IO task threw: {}", ex.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_ERROR("Network IO task threw unknown exception");
+                    }
+                };
+
+                auto drain_commands = [this, &run_io_task]()
+                {
+                    std::function<void()> fn;
+                    while (io_commands_.try_dequeue(fn))
+                    {
+                        run_io_task(fn);
+                    }
+                };
+
                 while (is_alive_)
                 {
                     stopwatch.reset();
+
+                    drain_commands();
 
                     {
                         auto host = outgoing_host_.write();
@@ -62,6 +92,8 @@ namespace v {
                         }
                     }
 
+                    drain_commands();
+
                     f64 sleep_time = stopwatch.until(update_rate_);
                     if (sleep_time > 0)
                         v::time::sleep_ns(static_cast<u64>(sleep_time * 1e9));
@@ -70,6 +102,8 @@ namespace v {
                             "Network I/O thread fell behind by {}ms.",
                             static_cast<u32>(sleep_time * -1, 000));
                 }
+
+                drain_commands();
             });
     }
 
@@ -103,6 +137,11 @@ namespace v {
 
         link_peer_conn_info(const_cast<ENetPeer*>(con->peer()), host, port);
         return res.first->second;
+    }
+
+    void NetworkContext::enqueue_io(std::function<void()> fn)
+    {
+        io_commands_.enqueue(std::move(fn));
     }
 
     std::shared_ptr<NetListener>

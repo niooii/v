@@ -57,6 +57,8 @@ namespace v {
         // if remote_disconnected_, then the peer may no longer be a valid pointer
         if (!remote_disconnected_)
         {
+            // TODO! ERROR! this is a race condition lol
+            // enqueue onto the IO thread
             enet_peer_disconnect(peer_, 0);
         }
 
