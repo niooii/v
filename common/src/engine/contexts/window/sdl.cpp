@@ -3,8 +3,8 @@
 //
 
 #include <SDL3/SDL.h>
-#include <contexts/sdl.h>
-#include <contexts/window.h>
+#include <engine/contexts/window/sdl.h>
+#include <engine/contexts/window/window.h>
 
 #include "engine/engine.h"
 

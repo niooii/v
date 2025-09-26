@@ -3,8 +3,8 @@
 //
 
 #include <contexts/render.h>
-#include <contexts/sdl.h>
-#include <contexts/window.h>
+#include <engine/contexts/window/sdl.h>
+#include <engine/contexts/window/window.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <iostream>
