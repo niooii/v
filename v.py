@@ -270,7 +270,7 @@ def _find_test_exes(release: bool) -> list[Path]:
         return []
     exes: list[Path] = []
     for p in tests_dir.iterdir():
-        if p.is_file() and p.name.startswith("vtest_"):
+        if p.is_file() and p.name.startswith("vtest_") and p.name == _exe_name(p.stem):
             exes.append(p)
     return exes
 

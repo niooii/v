@@ -65,7 +65,6 @@ int main(int argc, char** argv)
         {
             sdl_ctx->update();
             window_ctx->update();
-            LOG_TRACE("UPdated window");
         });
 
     engine.on_tick.connect(
