@@ -270,7 +270,7 @@ def _find_test_exes(release: bool) -> list[Path]:
         return []
     exes: list[Path] = []
     for p in tests_dir.iterdir():
-        if p.is_file() and p.name.startswith(_exe_name("vtest_")):
+        if p.is_file() and p.name.startswith("vtest_"):
             exes.append(p)
     return exes
 
@@ -288,7 +288,8 @@ def test(*, release: bool = False, verbose: bool = False, full: bool = False) ->
     # Discover tests
     exes = _find_test_exes(release)
     if not exes:
-        raise RuntimeError("No test executables found under build/tests")
+        tests_dir = _build_dir(release) / "tests"
+        raise RuntimeError(f"No test executables found under {tests_dir}")
     print(f"[test] Running {len(exes)} tests...")
     failures = 0
     for exe in exes:

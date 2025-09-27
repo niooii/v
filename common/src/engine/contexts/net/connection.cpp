@@ -57,35 +57,27 @@ namespace v {
         // if remote_disconnected_, then the peer may no longer be a valid pointer
         if (!remote_disconnected_)
         {
-            // TODO! ERROR! this is a race condition lol
-            // enqueue onto the IO thread
-            enet_peer_disconnect(peer_, 0);
+            // enqueue onto the IO thread no race condition
+            net_ctx_->enqueue_io([this] { enet_peer_disconnect(peer_, 0); });
         }
 
         // clear the peer data pointer - safe to do here since destructor runs on main
         // thread after all lifecycle events have been processed
         if (peer_->data == (void*)this)
-        {
             peer_->data = NULL;
-        }
 
         ENetPacket* packet;
         while (pending_packets_.try_dequeue(packet))
-        {
             enet_packet_destroy(packet);
-        }
 
         // cleanup outgoing packets if they weren't sent
         if (outgoing_packets_)
         {
             while (outgoing_packets_->try_dequeue(packet))
-            {
                 enet_packet_destroy(packet);
-            }
             delete outgoing_packets_;
         }
 
-        // TODO! this doesnt run for some reason on natural enet timeout??
         LOG_TRACE("Connection destroyed");
     }
 
@@ -135,7 +127,7 @@ namespace v {
                 LOG_ERROR("Connection timed out in {} seconds.", connection_timeout_);
                 remote_disconnected_ = true;
                 // just nuke the connection TODO! i think this is safe??
-                enet_peer_disconnect_now(peer_, 0);
+                net_ctx_->enqueue_io([this] { enet_peer_disconnect_now(peer_, 0); });
 
                 return NetConnectionResult::TimedOut;
             }
