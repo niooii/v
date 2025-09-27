@@ -25,7 +25,7 @@ jobs:
             vcpkg-cache/installed
             vcpkg-cache/buildtrees
             vcpkg-cache/packages
-          key: vcpkg-linux-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-2024.07.12
+          key: vcpkg-linux-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-1de2026f28ead93ff1773e6e680387643e914ea1
           restore-keys: |
             vcpkg-linux-
 
@@ -54,7 +54,8 @@ jobs:
 
               # Setup vcpkg with caching
               if [ ! -d "/opt/vcpkg" ]; then
-                git clone --depth 1 --branch 2024.07.12 https://github.com/microsoft/vcpkg /opt/vcpkg
+                git clone --filter=blob:none https://github.com/microsoft/vcpkg /opt/vcpkg
+                cd /opt/vcpkg && git checkout 1de2026f28ead93ff1773e6e680387643e914ea1
                 /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
               fi
               export VCPKG_ROOT=/opt/vcpkg
@@ -132,7 +133,7 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: '${{ runner.temp }}/vcpkg'
-          vcpkgGitCommitId: '2024.07.12'
+          vcpkgGitCommitId: '1de2026f28ead93ff1773e6e680387643e914ea1'
 
       - name: Cache vcpkg binaries
         uses: actions/cache@v4
@@ -141,7 +142,7 @@ jobs:
             ${{ runner.temp }}/vcpkg/installed
             ${{ runner.temp }}/vcpkg/buildtrees
             ${{ runner.temp }}/vcpkg/packages
-          key: vcpkg-windows-x64-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-2024.07.12
+          key: vcpkg-windows-x64-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-1de2026f28ead93ff1773e6e680387643e914ea1
           restore-keys: |
             vcpkg-windows-x64-
 

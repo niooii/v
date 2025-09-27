@@ -8,7 +8,7 @@
 #include "domain/context.h"
 
 namespace v {
-    class ClientContext : public Context {
-
+    class Client : public Context {
+        Client(Engine& engine);
     };
-};
+}
