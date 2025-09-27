@@ -18,10 +18,23 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg-cache/installed
+            vcpkg-cache/buildtrees
+            vcpkg-cache/packages
+          key: vcpkg-linux-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-2024.07.12
+          restore-keys: |
+            vcpkg-linux-
+
       - name: Build + Test (Arch Linux)
         run: |
+          mkdir -p vcpkg-cache
           docker run --rm \
             -v "${{ github.workspace }}:/work" \
+            -v "${{ github.workspace }}/vcpkg-cache:/vcpkg-cache" \
             -w /work \
             "$ARCH_IMAGE" \
             bash -lc '
@@ -39,11 +52,25 @@ jobs:
               )
               pacman -S --noconfirm --needed "${pkgs[@]}"
 
-              # Provide VulkanMemoryAllocator via vcpkg (Arch package not available/providing CMake config)
-              git clone --depth 1 https://github.com/microsoft/vcpkg /opt/vcpkg
-              /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+              # Setup vcpkg with caching
+              if [ ! -d "/opt/vcpkg" ]; then
+                git clone --depth 1 --branch 2024.07.12 https://github.com/microsoft/vcpkg /opt/vcpkg
+                /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+              fi
               export VCPKG_ROOT=/opt/vcpkg
+
+              # Use cached directories if available
+              if [ -d "/vcpkg-cache/installed" ]; then
+                cp -r /vcpkg-cache/* /opt/vcpkg/ || true
+              fi
+
               /opt/vcpkg/vcpkg install vulkan-memory-allocator
+
+              # Update cache
+              mkdir -p /vcpkg-cache
+              cp -r /opt/vcpkg/installed /vcpkg-cache/ || true
+              cp -r /opt/vcpkg/buildtrees /vcpkg-cache/ || true
+              cp -r /opt/vcpkg/packages /vcpkg-cache/ || true
 
               # Install uv (Python packaging/runner)
               curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -102,11 +129,26 @@ jobs:
           python -m pip install arguably
 
       - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ runner.temp }}/vcpkg'
+          vcpkgGitCommitId: '2024.07.12'
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/vcpkg/installed
+            ${{ runner.temp }}/vcpkg/buildtrees
+            ${{ runner.temp }}/vcpkg/packages
+          key: vcpkg-windows-x64-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}-2024.07.12
+          restore-keys: |
+            vcpkg-windows-x64-
+
+      - name: Install vcpkg packages
         shell: pwsh
         run: |
           $vcpkgRoot = Join-Path $env:RUNNER_TEMP 'vcpkg'
-          git clone --depth 1 https://github.com/microsoft/vcpkg $vcpkgRoot
-          & (Join-Path $vcpkgRoot 'bootstrap-vcpkg.bat') -disableMetrics
           "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           & (Join-Path $vcpkgRoot 'vcpkg.exe') install vulkan:x64-windows vulkan-memory-allocator:x64-windows shaderc:x64-windows
 
