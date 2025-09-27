@@ -22,23 +22,29 @@ namespace v {
             if (!net_ctx)
             {
                 LOG_WARN("Created default network context");
-                net_ctx = engine.add_ctx<NetworkContext>(engine, 1 / 1000.0);
+                net_ctx = engine.add_ctx<NetworkContext>(engine, 1 / 500.0);
             }
 
             listener_ = net_ctx->listen_on(conf.host, conf.port);
 
-            ServerComponent& server_comp = listener_->create_component(engine.entity());
+            ServerComponent& server_comp = listener_->create_component(entity_);
 
-            server_comp.on_connect = [&engine](std::shared_ptr<NetConnection> con)
+            server_comp.on_connect = [this, &engine](std::shared_ptr<NetConnection> con)
             {
                 LOG_INFO("Client connected successfully!");
 
                 auto& connection_channel = con->create_channel<ConnectServerChannel>();
 
+                auto& conn_comp = connection_channel.create_component(entity_);
+
+                conn_comp.on_recv = [](const ConnectServerChannel::PayloadT& req) {
+                    LOG_INFO("New player {}", req.uuid);
+                };
+
                 // test some quick channel stuff via chat channel
                 auto& cc = con->create_channel<ChatChannel>();
 
-                auto& cc_comp = cc.create_component(engine.entity());
+                auto& cc_comp = cc.create_component(entity_);
 
                 cc_comp.on_recv = [&engine](const ChatMessage& msg)
                 {

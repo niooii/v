@@ -5,6 +5,7 @@
 
 #include <prelude.h>
 #include <time/time.h>
+#include <rand.h>
 
 #include <absl/container/btree_set.h>
 #include <absl/debugging/failure_signal_handler.h>
@@ -29,6 +30,7 @@ void v::init(const char* argv0)
     init_loggers();
 
     time::init();
+    rand::init();
 }
 
 void init_loggers()

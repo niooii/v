@@ -55,6 +55,12 @@ namespace v {
         // handle the sdl quit event (includes keyboard interrupt)
         SDLComponent& sdl_comp = sdl_ctx_->create_component(engine_.entity());
         sdl_comp.on_quit       = [this]() { running_ = false; };
+
+        // TODO! temporarily connect to the server with dummy info
+        auto name = std::format("Player-{}", rand::irange(0, 1'000'000));
+        LOG_INFO("Generated new random name {}", name);
+        auto& connect_chnl = connection_->create_channel<ConnectServerChannel>();
+        connect_chnl.send({.uuid = name});
     }
 
     void Client::update() { engine_.tick(); }

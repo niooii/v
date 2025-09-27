@@ -1,5 +1,6 @@
 //
 // Created by niooi on 7/27/2025.
+// WYSI!!
 //
 
 #pragma once
@@ -9,6 +10,10 @@
 #include <engine/serial/compress.h>
 #include <engine/serial/serde.h>
 #include <entt/entt.hpp>
+
+// engine subsystems
+#include <time/time.h>
+#include <rand.h>
 
 namespace spd = spdlog;
 

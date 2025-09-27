@@ -9,6 +9,7 @@
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <stdexcept>
+#include <memory>
 #include "moodycamel/concurrentqueue.h"
 
 namespace v {
@@ -244,7 +245,8 @@ namespace v {
         std::memcpy(&channel_id, packet->data, sizeof(u32));
 
         {
-            auto lock = map_lock_.read();
+            // we mutate info here, so take write lock
+            auto lock = map_lock_.write();
             auto it   = recv_c_info_.find(channel_id);
             if (it == recv_c_info_.end())
             {
@@ -256,12 +258,17 @@ namespace v {
             auto& info = it->second;
             if (!info.channel)
             {
-                info.before_creation_packets =
-                    new moodycamel::ConcurrentQueue<ENetPacket*>();
+                if (!info.before_creation_packets)
+                {
+                    info.before_creation_packets =
+                        std::make_unique<moodycamel::ConcurrentQueue<ENetPacket*>>();
+                }
                 info.before_creation_packets->enqueue(packet);
             }
             else
+            {
                 info.channel->take_packet(packet);
+            }
         }
     }
 
@@ -276,7 +283,7 @@ namespace v {
             channel->take_packet(packet);
         }
 
-        delete before_creation_packets;
-        before_creation_packets = nullptr;
+        // queue is no longer needed after draining
+        before_creation_packets.reset();
     }
 } // namespace v

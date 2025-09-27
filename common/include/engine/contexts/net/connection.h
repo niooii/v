@@ -19,6 +19,7 @@ namespace v {
 }
 #include <containers/ud_map.h>
 #include "moodycamel/concurrentqueue.h"
+#include <memory>
 
 extern "C" {
 #include <enet.h>
@@ -88,6 +89,7 @@ namespace v {
                 auto id_it = recv_c_ids_.find(std::string(T::unique_name()));
                 if (id_it != recv_c_ids_.end())
                 {
+                    LOG_DEBUG("Found channel {} locally", std::string(T::unique_name()));
                     u32   id     = id_it->second;
                     auto& info   = (recv_c_info_)[id];
                     info.channel = channel;
@@ -186,19 +188,12 @@ namespace v {
         moodycamel::ConcurrentQueue<ENetPacket*> pending_packets_{};
 
         struct NetChannelInfo {
-            ~NetChannelInfo()
-            {
-                // yea no leaks today pls
-                if (before_creation_packets)
-                    delete before_creation_packets;
-            }
-
             void drain_queue(class NetChannelBase* channel);
 
             std::string     name;
             NetChannelBase* channel{ nullptr };
             // we queue the packets recieved before initialization
-            moodycamel::ConcurrentQueue<ENetPacket*>* before_creation_packets{ nullptr };
+            std::unique_ptr<moodycamel::ConcurrentQueue<ENetPacket*>> before_creation_packets{ nullptr };
         };
 
         // maps for tracking channel stuff
