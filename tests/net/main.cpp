@@ -15,7 +15,7 @@ int main()
     testing::TestContext tctx{ .name = "net" };
 
     // network context and local loopback server + client
-    auto* net = engine->add_context<NetworkContext>(*engine, 1.0 / 1000.0);
+    auto* net = engine->add_ctx<NetworkContext>(*engine, 1.0 / 1000.0);
 
     const std::string host = "127.0.0.1";
     const u16         port = 28555;

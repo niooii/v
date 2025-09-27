@@ -14,7 +14,7 @@ namespace v {
         daxa_resources_ = std::make_unique<DaxaResources>(engine_);
 
         // Init rendering stuff for the window
-        auto window_ctx = engine_.get_context<WindowContext>();
+        auto window_ctx = engine_.get_ctx<WindowContext>();
         if (!window_ctx)
         {
             throw std::runtime_error(

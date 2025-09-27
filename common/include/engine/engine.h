@@ -150,14 +150,14 @@ namespace v {
         /// Adds a context to the engine, retrievable by type.
         /// @note Single-threaded engine - contexts are not thread-safe.
         template <DerivedFromContext T, typename... Args>
-        T* add_context(Args&&... args)
+        T* add_ctx(Args&&... args)
         {
             return _add_context<T>(std::forward<Args>(args)...);
         }
 
         /// Retrieve a context by type
         template <DerivedFromContext T>
-        T* get_context()
+        T* get_ctx()
         {
             if (auto context = ctx_registry_.try_get<std::unique_ptr<T>>(ctx_entity_))
                 return context->get();

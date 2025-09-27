@@ -18,11 +18,11 @@ namespace v {
             ServerConfig& conf, Engine& engine,
             const std::string& name = "Server Domain") : SDomain(engine, name)
         {
-            auto net_ctx = engine.get_context<NetworkContext>();
+            auto net_ctx = engine.get_ctx<NetworkContext>();
             if (!net_ctx)
             {
                 LOG_WARN("Created default network context");
-                net_ctx = engine.add_context<NetworkContext>(engine, 1 / 1000.0);
+                net_ctx = engine.add_ctx<NetworkContext>(engine, 1 / 1000.0);
             }
 
             listener_ = net_ctx->listen_on(conf.host, conf.port);

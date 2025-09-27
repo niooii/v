@@ -32,7 +32,7 @@ namespace v {
             if (has_window_id(event.type))
             {
                 // Route window events to WindowContext if it exists
-                if (auto window_ctx = engine_.get_context<WindowContext>())
+                if (auto window_ctx = engine_.get_ctx<WindowContext>())
                 {
                     window_ctx->handle_events(event);
                 }

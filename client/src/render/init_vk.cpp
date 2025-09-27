@@ -15,7 +15,7 @@ namespace v {
         LOG_INFO("Initializing Daxa context...");
 
         // Verify window context exists (needed for eventual swapchain creation)
-        auto window_ctx = engine.get_context<WindowContext>();
+        auto window_ctx = engine.get_ctx<WindowContext>();
         if (!window_ctx)
         {
             throw std::runtime_error(

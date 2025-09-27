@@ -29,7 +29,7 @@ int main(int argc, char** argv)
     auto world = engine.add_domain<WorldDomain>(engine);
 
     // attempts to update every 1ms
-    auto net_ctx = engine.add_context<NetworkContext>(engine, 1.0 / 1000.0);
+    auto net_ctx = engine.add_ctx<NetworkContext>(engine, 1.0 / 1000.0);
 
     ServerConfig config{ "127.0.0.1", 25566 };
     engine.add_domain<ServerDomain>(config, engine);

@@ -300,8 +300,9 @@ namespace v {
             break;
 
         case SDL_EVENT_MOUSE_WHEEL:
-            sig_mouse_wheel_.publish(glm::ivec2(
-                static_cast<int>(event.wheel.x), static_cast<int>(event.wheel.y)));
+            sig_mouse_wheel_.publish(
+                glm::ivec2(
+                    static_cast<int>(event.wheel.x), static_cast<int>(event.wheel.y)));
             break;
 
         case SDL_EVENT_TEXT_INPUT:
