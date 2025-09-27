@@ -4,7 +4,9 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_keyboard.h>
+#include <engine/contexts/window/sdl.h>
 #include <engine/contexts/window/window.h>
+#include <engine/engine.h>
 #include <ranges>
 
 namespace v {
@@ -17,9 +19,10 @@ namespace v {
 
     // Window object methods (public)
 
-    Window::Window(std::string name, glm::ivec2 size, glm::ivec2 pos) :
-        sdl_window_(nullptr), size_(size), pos_(pos), name_(std::move(name)),
-        curr_keys_{}, prev_keys_{}, curr_mbuttons{}, prev_mbuttons{}, mouse_pos_(0, 0)
+    Window::Window(Engine& engine, std::string name, glm::ivec2 size, glm::ivec2 pos) :
+        Domain<Window>(engine, name), sdl_window_(nullptr), size_(size), pos_(pos),
+        name_(std::move(name)), curr_keys_{}, prev_keys_{}, curr_mbuttons{},
+        prev_mbuttons{}, mouse_pos_(0, 0)
     {
         const SDL_PropertiesID props = SDL_CreateProperties();
         SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, name_.c_str());
@@ -37,6 +40,19 @@ namespace v {
 
         if (!sdl_window_)
             throw std::runtime_error(SDL_GetError());
+
+        // handle events that have the same window id as this one
+        const Uint32 window_id = SDL_GetWindowID(sdl_window_);
+        if (auto sdl_ctx = engine_.get_ctx<SDLContext>())
+        {
+            SDLComponent& sdl_comp = sdl_ctx->create_component(entity());
+            sdl_comp.on_win_event  = [this, window_id](const SDL_Event& event)
+            {
+                // Only handle events for this specific window
+                if (event.window.windowID == window_id)
+                    this->process_event(event);
+            };
+        }
     }
 
     Window::~Window()
@@ -347,14 +363,13 @@ namespace v {
         }
         try
         {
-            auto window = std::unique_ptr<Window>(new Window(name, size, pos));
+            Window* window = engine_.add_domain<Window>(engine_, name, size, pos);
 
             if (const auto id = SDL_GetWindowID(window->sdl_window_))
             {
-                Window* window_ptr = window.get();
-                windows_[id]       = std::move(window);
-                singleton_         = window_ptr;
-                return window_ptr;
+                windows_[id] = window;
+                singleton_   = window;
+                return window;
             }
         }
         catch (std::runtime_error& e)
@@ -373,9 +388,13 @@ namespace v {
             return;
 
         const auto id = SDL_GetWindowID(window->sdl_window_);
-        LOG_DEBUG(
-            "Destroying window with id {} and addr {}", (u64)id, (u64)windows_[id].get());
+        LOG_DEBUG("Destroying window with id {} and addr {}", (u64)id, (u64)window);
+
+        engine_.queue_destroy_domain(window->entity());
         windows_.erase(id);
+
+        if (singleton_ == window)
+            singleton_ = nullptr;
     }
 
     void WindowContext::update()
@@ -401,7 +420,7 @@ namespace v {
         // we have any listeners that should be notified (from
         // process_event)
         if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
-            this->destroy_window(windows_[id].get());
+            this->destroy_window(windows_[id]);
     }
 
     // Utility function impls

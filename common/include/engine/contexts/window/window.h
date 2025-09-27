@@ -6,6 +6,7 @@
 
 #include <defs.h>
 #include <domain/context.h>
+#include <domain/domain.h>
 #include <input/names.h>
 
 #include <SDL3/SDL_events.h>
@@ -23,11 +24,11 @@ namespace v {
     class WindowContext;
     class SDLContext;
 
-    class Window {
+    class Window : public Domain<Window> {
         friend class WindowContext;
 
     public:
-        Window(std::string name, glm::ivec2 size, glm::ivec2 pos);
+        Window(Engine& engine, std::string name, glm::ivec2 size, glm::ivec2 pos);
         ~Window();
         // Window event signals
 
@@ -274,9 +275,11 @@ namespace v {
     private:
         /// Handles events routed from SDLContext for window-specific processing
         /// Called by SDLContext as a friend class
-        void handle_events(const SDL_Event& event);
+        /// @deprecated and unused for now, this used to be called directly by SDL ctx,
+        /// but made a change so each window registers its own SDLComponent
+        [[maybe_unused]] void handle_events(const SDL_Event& event);
 
-        ud_map<Uint32, std::unique_ptr<Window>> windows_;
+        ud_map<Uint32, Window*> windows_;
 
         Window* singleton_{ nullptr };
     };

@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include <prelude.h>
+#include <atomic>
 #include <domain/context.h>
 #include <memory>
-#include <atomic>
+#include <prelude.h>
 
 namespace v {
     class SDLContext;
@@ -26,9 +26,9 @@ namespace v {
         bool is_running() const { return running_; }
 
     private:
-        SDLContext* sdl_ctx_;
-        WindowContext* window_ctx_;
-        RenderContext* render_ctx_;
+        SDLContext*     sdl_ctx_;
+        WindowContext*  window_ctx_;
+        RenderContext*  render_ctx_;
         NetworkContext* net_ctx_;
 
         Window* window_;
@@ -37,4 +37,4 @@ namespace v {
 
         std::atomic<bool> running_;
     };
-}
+} // namespace v

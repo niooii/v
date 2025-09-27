@@ -19,7 +19,7 @@ int main(int argc, char** argv)
     constexpr f64 TEMP_SPF  = 1.0 / TEMP_MAX_FPS;
 
     Engine engine{};
-    auto client = engine.add_ctx<Client>(engine);
+    auto   client = engine.add_ctx<Client>(engine);
 
     while (client->is_running())
     {
