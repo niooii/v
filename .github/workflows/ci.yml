@@ -60,3 +60,70 @@ jobs:
               uv run v.py build --release
               uv run v.py test --release
             '
+
+  windows-tests:
+    runs-on: windows-latest
+    env:
+      V_LOG_LEVEL: info
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools and SDKs
+        shell: pwsh
+        run: |
+          choco install --no-progress -y llvm ninja vulkan-sdk
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv
+          $llvm64 = Join-Path $env:ProgramFiles 'LLVM\bin'
+          if (Test-Path $llvm64) {
+            $llvm64 | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
+          if ($programFilesX86) {
+            $llvm32 = Join-Path $programFilesX86 'LLVM\bin'
+            if (Test-Path $llvm32) {
+              $llvm32 | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
+          if ($env:VULKAN_SDK) {
+            $vulkanBin = Join-Path $env:VULKAN_SDK 'Bin'
+            if (Test-Path $vulkanBin) {
+              $vulkanBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install arguably
+
+      - name: Setup vcpkg
+        shell: pwsh
+        run: |
+          $vcpkgRoot = Join-Path $env:RUNNER_TEMP 'vcpkg'
+          git clone --depth 1 https://github.com/microsoft/vcpkg $vcpkgRoot
+          & (Join-Path $vcpkgRoot 'bootstrap-vcpkg.bat') -disableMetrics
+          "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & (Join-Path $vcpkgRoot 'vcpkg.exe') install vulkan-memory-allocator:x64-windows
+
+      - name: Debug build and tests
+        shell: pwsh
+        run: |
+          python v.py build
+          python v.py test
+
+      - name: Release build and tests
+        shell: pwsh
+        run: |
+          python v.py build --release
+          python v.py test --release
