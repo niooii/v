@@ -90,6 +90,12 @@ jobs:
             }
           }
 
+      - name: Setup Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1
+        with:
+          vulkan-version: latest
+          install-components: "Base,glslc"
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
