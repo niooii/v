@@ -17,10 +17,11 @@ namespace v {
         // all the contexts the client needs to functino
         sdl_ctx_    = engine_.add_ctx<SDLContext>(engine_);
         window_ctx_ = engine_.add_ctx<WindowContext>(engine_);
+        window_ = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
+
         render_ctx_ = engine_.add_ctx<RenderContext>(engine_);
         net_ctx_    = engine_.add_ctx<NetworkContext>(engine_, 1.0 / 500);
 
-        window_ = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
         // Setup network connection
         LOG_INFO("Connecting to server...");
