@@ -81,6 +81,7 @@ jobs:
               uv run python --version
 
               pwd
+              cd /home/runner/work/v/v/
 
               export V_LOG_LEVEL=info
               # Debug build + tests
@@ -129,7 +130,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install arguably, rapidfuzz
+          python -m pip install arguably rapidfuzz
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
