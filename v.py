@@ -175,21 +175,7 @@ def _find_target_fuzzy(partial: str, release: bool = False) -> str:
 
 def _is_executable_target(target: str, target_type: str, release: bool = False) -> bool:
     """Check if a target produces an executable that can be run."""
-    if target_type in ["lib", "utility"]:
-        return False
-
-    # Check if executable exists after building
-    bdir = _build_dir(release)
-    if target_type == "test":
-        # Test targets: vtest-domain → executable vtest_domain
-        exe_name = target.replace("-", "_")
-        exe_path = bdir / "tests" / _exe_name(exe_name)
-    elif target.startswith("vexp"):
-        # Experiment targets are in experiments/ subdirectory
-        exe_path = bdir / "experiments" / _exe_name(target)
-    else:
-        exe_path = bdir / _exe_name(target)
-    return exe_path.exists() and exe_path.is_file()
+    return target_type in ["exe", "test"]
 
 
 def _configure_cmake(release: bool) -> None:
@@ -323,9 +309,8 @@ def run(
 
     # Determine executable path based on target type
     if target_type == "test":
-        # Test targets: vtest-domain → executable vtest_domain
-        exe_name = target.replace("-", "_")
-        exe = _build_dir(release) / "tests" / _exe_name(exe_name)
+        # Test targets: vtest-domain → executable vtest-domain
+        exe = _build_dir(release) / "tests" / _exe_name(target)
     elif target.startswith("vexp"):
         # Experiment targets are in experiments/ subdirectory
         exe = _build_dir(release) / "experiments" / _exe_name(target)
@@ -522,8 +507,7 @@ def test(*, release: bool = False, verbose: bool = False, full: bool = False) ->
         try:
             # Use run logic to execute the test
             target_type = all_targets[target]
-            exe_name = target.replace("-", "_")
-            exe = _build_dir(release) / "tests" / _exe_name(exe_name)
+            exe = _build_dir(release) / "tests" / _exe_name(target)
 
             if not exe.exists():
                 print(f"[test] SKIPPED: {target} (executable not found)")

@@ -5,6 +5,7 @@
 
 #include <prelude.h>
 #include <time/time.h>
+#include <async/async.h>
 #include <rand.h>
 
 #include <absl/container/btree_set.h>
@@ -16,11 +17,12 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <string>
 #include <string_view>
+#include "async/async.h"
 #include "spdlog/common.h"
 
 void init_loggers();
 
-void v::init(const char* argv0)
+void v::init(const char* argv0, u16 num_threads)
 {
     absl::InitializeSymbolizer(argv0);
     absl::FailureSignalHandlerOptions fail_opts = { .symbolize_stacktrace = true };
@@ -29,8 +31,10 @@ void v::init(const char* argv0)
 
     init_loggers();
 
+    // INit engine subsystems
     time::init();
     rand::init();
+    async::init(num_threads);
 }
 
 void init_loggers()

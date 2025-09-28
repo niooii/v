@@ -12,11 +12,11 @@
 #include <entt/entt.hpp>
 
 // engine subsystems
-#include <time/time.h>
 #include <rand.h>
+#include <time/time.h>
 
 namespace spd = spdlog;
 
 namespace v {
-    void init(const char* argv0);
+    void init(const char* argv0, u16 num_threads = 8);
 }
