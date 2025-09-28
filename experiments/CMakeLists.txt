@@ -25,7 +25,7 @@ foreach(EXPERIMENT_DIR ${EXPERIMENT_DIRS})
         set(EXPERIMENT_MAIN_FILE "${EXPERIMENT_DIR}/main.cpp")
 
         if(EXISTS ${EXPERIMENT_MAIN_FILE})
-            v_add_experiment(vexpr_${EXPERIMENT_NAME} ${EXPERIMENT_MAIN_FILE})
+            v_add_experiment(vexpr-${EXPERIMENT_NAME} ${EXPERIMENT_MAIN_FILE})
         endif()
     endif()
 endforeach()

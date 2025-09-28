@@ -16,6 +16,15 @@ except Exception as exc:  # pragma: no cover
     )
     raise
 
+try:
+    from rapidfuzz import fuzz, process
+except ImportError:
+    print(
+        "rapidfuzz is required for fuzzy target matching. Install with 'pip install rapidfuzz'",
+        file=sys.stderr,
+    )
+    raise
+
 
 ROOT = Path(__file__).resolve().parent
 BUILD_DIR_DEBUG = ROOT / "cmake-build-debug"
@@ -56,8 +65,7 @@ def _detect_cmake_targets(release: bool = False) -> dict[str, str]:
     bdir = _build_dir(release)
     targets = {}
 
-    # Always include main project targets (known to exist from CMakeLists.txt)
-    targets.update(_discover_targets_static())
+    targets.update(_targets_static())
 
     # Try ninja targets if build is configured for additional discovered targets
     if (bdir / "build.ninja").exists():
@@ -82,17 +90,6 @@ def _detect_cmake_targets(release: bool = False) -> dict[str, str]:
 
 def _is_project_target(target: str) -> bool:
     """Check if a target belongs to this project (not external deps)."""
-    # Include main project targets
-    if target in ["vclient", "vserver", "vlib"]:
-        return True
-    # Include test targets
-    if target.startswith("vtest_"):
-        return True
-    # Exclude cp_resources - it's just a utility for copying files
-    # Include experiment targets (future)
-    if target.startswith("vexp_"):
-        return True
-
     # Exclude all external dependency and CMake utility targets
     excluded_prefixes = [
         "absl_", "SDL", "EnTT", "spdlog", "Taskflow", "imgui", "daxa",
@@ -108,52 +105,72 @@ def _is_project_target(target: str) -> bool:
     if target in ["clean", "help", "build.ninja", "package", "install", "cp_resources"]:
         return False
 
-    # Only include our specific known targets to be safe
+    # Include anything that starts with 'v' (our project prefix)
+    if target.startswith("v"):
+        return True
+
     return False
 
 
 def _classify_target(target: str) -> str:
     """Classify a target by type."""
-    if target.startswith("vtest_"):
+    if target.startswith("vtest-"):
         return "test"
     elif target in ["vclient", "vserver"]:
         return "exe"
-    elif target in ["vlib"]:
+    elif target in ["vlib"] or target.endswith("lib"):
         return "lib"
+    elif target.startswith("vexp"):
+        return "exe"
     else:
         # Try to infer from name
         if "test" in target.lower():
             return "test"
-        elif target.endswith("lib") or "lib" in target:
+        elif "lib" in target.lower():
             return "lib"
         else:
             return "exe"  # Assume executable by default
 
 
-def _discover_targets_static() -> dict[str, str]:
-    """Fallback target discovery by scanning project structure."""
-    targets = {}
+def _targets_static() -> dict[str, str]: return {
+        "vclient": "exe",
+        "vserver": "exe",
+        "vlib": "lib"
+    }
 
-    # Main executables (from CMakeLists.txt analysis)
-    targets["vclient"] = "exe"
-    targets["vserver"] = "exe"
-    targets["vlib"] = "lib"
 
-    # Discover test targets
-    tests_dir = ROOT / "tests"
-    if tests_dir.exists():
-        for test_dir in tests_dir.iterdir():
-            if test_dir.is_dir() and (test_dir / "main.cpp").exists():
-                targets[f"vtest_{test_dir.name}"] = "test"
+def _find_target_fuzzy(partial: str, release: bool = False) -> str:
+    targets = _detect_cmake_targets(release)
+    target_names = list(targets.keys())
 
-    # Discover future experiment targets
-    experiments_dir = ROOT / "experiments"
-    if experiments_dir.exists():
-        for exp_dir in experiments_dir.iterdir():
-            if exp_dir.is_dir() and (exp_dir / "main.cpp").exists():
-                targets[f"vexp_{exp_dir.name}"] = "exe"
+    # First try exact match
+    if partial in targets:
+        return partial
 
-    return targets
+    # Custom scoring function that prioritizes:
+    # 1. Exact substring matches
+    # 2. Targets that start with the partial
+    # 3. High fuzzy similarity
+    def custom_scorer(target: str, query: str) -> float:
+        # Exact substring gets maximum score
+        if query in target:
+            # Bonus if it starts with the query
+            if target.startswith(query):
+                return 100.0
+            return 95.0
+
+        # Use rapidfuzz ratio for fuzzy matching
+        return fuzz.ratio(query, target)
+
+    # Find best match using custom scorer
+    scores = [(target, custom_scorer(target, partial)) for target in target_names]
+    best_match = max(scores, key=lambda x: x[1])
+
+    if best_match[1] >= 60.0:
+        return best_match[0]
+
+    # No good match found
+    raise ValueError(f"No target found matching '{partial}'. Available targets: {', '.join(sorted(target_names))}")
 
 
 def _is_executable_target(target: str, target_type: str, release: bool = False) -> bool:
@@ -164,7 +181,12 @@ def _is_executable_target(target: str, target_type: str, release: bool = False) 
     # Check if executable exists after building
     bdir = _build_dir(release)
     if target_type == "test":
-        exe_path = bdir / "tests" / _exe_name(target)
+        # Test targets: vtest-domain → executable vtest_domain
+        exe_name = target.replace("-", "_")
+        exe_path = bdir / "tests" / _exe_name(exe_name)
+    elif target.startswith("vexp"):
+        # Experiment targets are in experiments/ subdirectory
+        exe_path = bdir / "experiments" / _exe_name(target)
     else:
         exe_path = bdir / _exe_name(target)
     return exe_path.exists() and exe_path.is_file()
@@ -196,10 +218,13 @@ def build(
 ) -> None:
     """Build targets via CMake presets
 
-    :param target: Optional target name. If omitted, builds all. Use 'targets' command to list available targets
+    :param target: Optional target name (supports fuzzy matching). If omitted, builds all. Use 'targets' command to list available targets
     :param release: Build in Release mode (default Debug)
     :param full: Show full build output (not just fatal)
     """
+    # Resolve fuzzy target matching
+    if target:
+        target = _find_target_fuzzy(target, release)
     _ensure_configured(release)
     preset = _build_preset(target, release)
     cmd = ["cmake", "--build", "--preset", preset]
@@ -280,17 +305,15 @@ def run(
 ) -> None:
     """Run any executable target
 
-    :param target: Target name (vclient, vserver, vtest_domain, etc.)
+    :param target: Target name (supports fuzzy matching, e.g., 'domain' → 'vtest-domain')
     :param release: Use Release build dir
     :param full: Show full build output (not just fatal)
     """
+    # Resolve fuzzy target matching
+    target = _find_target_fuzzy(target, release)
+
     # Detect all targets and find the requested one
     targets = _detect_cmake_targets(release)
-
-    if target not in targets:
-        available = [name for name, type_ in targets.items() if type_ in ["exe", "test"]]
-        raise ValueError(f"Unknown target '{target}'. Available executable targets: {', '.join(available)}")
-
     target_type = targets[target]
     if not _is_executable_target(target, target_type, release):
         raise ValueError(f"Target '{target}' is not executable (type: {target_type})")
@@ -300,7 +323,12 @@ def run(
 
     # Determine executable path based on target type
     if target_type == "test":
-        exe = _build_dir(release) / "tests" / _exe_name(target)
+        # Test targets: vtest-domain → executable vtest_domain
+        exe_name = target.replace("-", "_")
+        exe = _build_dir(release) / "tests" / _exe_name(exe_name)
+    elif target.startswith("vexp"):
+        # Experiment targets are in experiments/ subdirectory
+        exe = _build_dir(release) / "experiments" / _exe_name(target)
     else:
         exe = _build_dir(release) / _exe_name(target)
 
@@ -366,38 +394,35 @@ def targets(*, release: bool = False) -> None:
     print(f"[targets] Found {len(discovered_targets)} targets:")
     print()
 
-    # Group by type for better display
-    by_type = {}
+    # Group executables and tests together, separate libraries
+    executables = []
+    libraries = []
+
     for target, target_type in discovered_targets.items():
-        if target_type not in by_type:
-            by_type[target_type] = []
-        by_type[target_type].append(target)
+        if target_type in ["exe", "test"]:
+            executables.append(target)
+        elif target_type == "lib":
+            libraries.append(target)
 
-    # Display in logical order
-    type_order = ["exe", "lib", "test", "utility"]
-    type_names = {
-        "exe": "Executables",
-        "lib": "Libraries",
-        "test": "Tests",
-        "utility": "Utilities"
-    }
+    if executables:
+        print("  Executables:")
+        for target in sorted(executables):
+            print(f"    {target:<20} (CMake target)")
+        print()
 
-    for target_type in type_order:
-        if target_type in by_type:
-            targets_list = sorted(by_type[target_type])
-            print(f"  {type_names[target_type]}:")
-            for target in targets_list:
-                # Target names already have v prefix, so use them directly
-                print(f"    {target:<20} (CMake target)")
-            print()
+    if libraries:
+        print("  Libraries:")
+        for target in sorted(libraries):
+            print(f"    {target:<20} (CMake target)")
+        print()
 
     print("Usage examples:")
-    print("  ./v.py vclient --run-after    # Build and run vclient")
-    print("  ./v.py vtest_domain           # Build vtest_domain")
-    print("  ./v.py vtest_domain --run-after  # Build and run vtest_domain")
-    print("  ./v.py vlib                   # Build vlib (library)")
+    print("  ./v.py build vclient          # Build vclient")
+    print("  ./v.py run vclient            # Build and run vclient")
+    print("  ./v.py run vtest-domain       # Build and run vtest-domain")
+    print("  ./v.py build vlib             # Build vlib (library)")
     print()
-    print("All targets support --release, --verbose, and --full flags")
+    print("All commands support --release, --verbose, and --full flags")
 
 
 @arguably.command
@@ -470,21 +495,11 @@ def fmt(
     format(target, verbose=verbose)
 
 
-def _find_test_exes(release: bool) -> list[Path]:
-    bdir = _build_dir(release)
-    tests_dir = bdir / "tests"
-    if not tests_dir.exists():
-        return []
-    exes: list[Path] = []
-    for p in tests_dir.iterdir():
-        if p.is_file() and p.name.startswith("vtest_") and p.name == _exe_name(p.stem):
-            exes.append(p)
-    return exes
 
 
 @arguably.command
 def test(*, release: bool = False, verbose: bool = False, full: bool = False) -> None:
-    """Build (if needed) and run all tests under build/tests/ starting with vtest_
+    """Build (if needed) and run all test targets
 
     :param release: Use Release build
     :param verbose: Pass --verbose to tests (enables TRACE output)
@@ -492,193 +507,43 @@ def test(*, release: bool = False, verbose: bool = False, full: bool = False) ->
     """
     # Build everything to ensure tests are up-to-date
     build(target=None, release=release, verbose=verbose, full=full)
-    # Discover tests
-    exes = _find_test_exes(release)
-    if not exes:
-        tests_dir = _build_dir(release) / "tests"
-        raise RuntimeError(f"No test executables found under {tests_dir}")
-    print(f"[test] Running {len(exes)} tests...")
+
+    # Discover test targets using unified discovery
+    all_targets = _detect_cmake_targets(release)
+    test_targets = [name for name, type_ in all_targets.items() if type_ == "test"]
+
+    if not test_targets:
+        raise RuntimeError("No test targets found")
+
+    print(f"[test] Running {len(test_targets)} tests...")
     failures = 0
-    for exe in exes:
-        print(f"[test] {exe.name}")
+    for target in test_targets:
+        print(f"[test] {target}")
         try:
-            cmd = [str(exe)]
+            # Use run logic to execute the test
+            target_type = all_targets[target]
+            exe_name = target.replace("-", "_")
+            exe = _build_dir(release) / "tests" / _exe_name(exe_name)
+
+            if not exe.exists():
+                print(f"[test] SKIPPED: {target} (executable not found)")
+                continue
+
             env = os.environ.copy()
             # Default tests omit debug & trace logs unless verbose
             if "V_LOG_LEVEL" not in env:
                 env["V_LOG_LEVEL"] = "info"
             if verbose:
                 env["V_LOG_LEVEL"] = "trace"
-            _run(cmd, cwd=_build_dir(release), env=env)
+            _run([str(exe)], cwd=_build_dir(release), env=env)
         except subprocess.CalledProcessError as e:
             failures += 1
-            print(f"[test] FAILED: {exe.name} (exit {e.returncode})")
+            print(f"[test] FAILED: {target} (exit {e.returncode})")
     if failures:
         raise SystemExit(failures)
     print("[test] All tests passed")
 
 
-
-
-# Just define the target commands statically - simpler and works
-@arguably.command
-def vclient(
-    *,
-    release: bool = False,
-    verbose: bool = False,
-    full: bool = False,
-    run_after: bool = False,
-) -> None:
-    """Build vclient executable
-
-    :param release: Build in Release mode (default Debug)
-    :param verbose: Enable verbose logging
-    :param full: Show full build output (not just fatal)
-    :param run_after: Run the target after building
-    """
-    build(target="vclient", release=release, verbose=verbose, full=full)
-    if run_after:
-        exe = _build_dir(release) / _exe_name("vclient")
-        if exe.exists():
-            print(f"[run] {exe}")
-            env = os.environ.copy()
-            if verbose:
-                env["V_LOG_LEVEL"] = "trace"
-            _run([str(exe)], cwd=_build_dir(release), env=env)
-        else:
-            print(f"[run] Executable not found: {exe}")
-
-
-@arguably.command
-def vserver(
-    *,
-    release: bool = False,
-    verbose: bool = False,
-    full: bool = False,
-    run_after: bool = False,
-) -> None:
-    """Build vserver executable
-
-    :param release: Build in Release mode (default Debug)
-    :param verbose: Enable verbose logging
-    :param full: Show full build output (not just fatal)
-    :param run_after: Run the target after building
-    """
-    build(target="vserver", release=release, verbose=verbose, full=full)
-    if run_after:
-        exe = _build_dir(release) / _exe_name("vserver")
-        if exe.exists():
-            print(f"[run] {exe}")
-            env = os.environ.copy()
-            if verbose:
-                env["V_LOG_LEVEL"] = "trace"
-            _run([str(exe)], cwd=_build_dir(release), env=env)
-        else:
-            print(f"[run] Executable not found: {exe}")
-
-
-@arguably.command
-def vlib(
-    *,
-    release: bool = False,
-    verbose: bool = False,
-    full: bool = False,
-    run_after: bool = False,
-) -> None:
-    """Build vlib library
-
-    :param release: Build in Release mode (default Debug)
-    :param verbose: Enable verbose logging
-    :param full: Show full build output (not just fatal)
-    :param run_after: Run the target after building (ignored for libraries)
-    """
-    build(target="vlib", release=release, verbose=verbose, full=full)
-    if run_after:
-        print("[run] Target 'vlib' is not executable (type: library)")
-
-
-@arguably.command
-def vtest_domain(
-    *,
-    release: bool = False,
-    verbose: bool = False,
-    full: bool = False,
-    run_after: bool = False,
-) -> None:
-    """Build vtest_domain test
-
-    :param release: Build in Release mode (default Debug)
-    :param verbose: Enable verbose logging
-    :param full: Show full build output (not just fatal)
-    :param run_after: Run the test after building
-    """
-    build(target="vtest_domain", release=release, verbose=verbose, full=full)
-    if run_after:
-        exe = _build_dir(release) / "tests" / _exe_name("vtest_domain")
-        if exe.exists():
-            print(f"[run] {exe}")
-            env = os.environ.copy()
-            if verbose:
-                env["V_LOG_LEVEL"] = "trace"
-            _run([str(exe)], cwd=_build_dir(release), env=env)
-        else:
-            print(f"[run] Test executable not found: {exe}")
-
-
-@arguably.command
-def vtest_net(
-    *,
-    release: bool = False,
-    verbose: bool = False,
-    full: bool = False,
-    run_after: bool = False,
-) -> None:
-    """Build vtest_net test
-
-    :param release: Build in Release mode (default Debug)
-    :param verbose: Enable verbose logging
-    :param full: Show full build output (not just fatal)
-    :param run_after: Run the test after building
-    """
-    build(target="vtest_net", release=release, verbose=verbose, full=full)
-    if run_after:
-        exe = _build_dir(release) / "tests" / _exe_name("vtest_net")
-        if exe.exists():
-            print(f"[run] {exe}")
-            env = os.environ.copy()
-            if verbose:
-                env["V_LOG_LEVEL"] = "trace"
-            _run([str(exe)], cwd=_build_dir(release), env=env)
-        else:
-            print(f"[run] Test executable not found: {exe}")
-
-
-@arguably.command
-def vtest_svo(
-    *,
-    release: bool = False,
-    verbose: bool = False,
-    full: bool = False,
-    run_after: bool = False,
-) -> None:
-    """Build vtest_svo test
-
-    :param release: Build in Release mode (default Debug)
-    :param verbose: Enable verbose logging
-    :param full: Show full build output (not just fatal)
-    :param run_after: Run the test after building
-    """
-    build(target="vtest_svo", release=release, verbose=verbose, full=full)
-    if run_after:
-        exe = _build_dir(release) / "tests" / _exe_name("vtest_svo")
-        if exe.exists():
-            print(f"[run] {exe}")
-            env = os.environ.copy()
-            if verbose:
-                env["V_LOG_LEVEL"] = "trace"
-            _run([str(exe)], cwd=_build_dir(release), env=env)
-        else:
-            print(f"[run] Test executable not found: {exe}")
 
 
 

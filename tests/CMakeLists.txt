@@ -28,7 +28,7 @@ foreach(TEST_DIR ${TEST_DIRS})
         set(TEST_MAIN_FILE "${TEST_DIR}/main.cpp")
 
         if(EXISTS ${TEST_MAIN_FILE})
-            v_add_test(vtest_${TEST_NAME} ${TEST_MAIN_FILE})
+            v_add_test(vtest-${TEST_NAME} ${TEST_MAIN_FILE})
         endif()
     endif()
 endforeach()
