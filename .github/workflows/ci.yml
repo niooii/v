@@ -73,6 +73,9 @@ jobs:
               cp -r /opt/vcpkg/buildtrees /vcpkg-cache/ || true
               cp -r /opt/vcpkg/packages /vcpkg-cache/ || true
 
+              # Return to work directory
+              cd /work
+
               # Install uv (Python packaging/runner)
               curl -LsSf https://astral.sh/uv/install.sh | sh
               export PATH="$HOME/.local/bin:$PATH"
@@ -81,7 +84,6 @@ jobs:
               uv run python --version
 
               pwd
-              cd /home/runner/work/v/v/
 
               export V_LOG_LEVEL=info
               # Debug build + tests
