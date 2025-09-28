@@ -35,7 +35,7 @@ namespace v::rand {
         g_last_seed = seed;
         // seed legacy C RNG for any existing code using std::rand()
         std::srand(static_cast<unsigned>(seed & 0xFFFF'FFFFu));
-        LOG_DEBUG("[rand] Seeded RNG with {}", seed);
+        LOG_DEBUG("Seeded RNG with {}", seed);
     }
 
     void init()

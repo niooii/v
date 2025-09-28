@@ -5,8 +5,8 @@
 #pragma once
 
 #include <defs.h>
-#include <domain/context.h>
-#include <domain/domain.h>
+#include <engine/context.h>
+#include <engine/domain.h>
 #include <entt/entt.hpp>
 #include <functional>
 #include <moodycamel/concurrentqueue.h>

@@ -7,8 +7,8 @@
 #pragma once
 
 #include <defs.h>
-#include <domain/context.h>
-#include <domain/domain.h>
+#include <engine/context.h>
+#include <engine/domain.h>
 
 #include <engine/contexts/net/channel.h>
 #include <engine/contexts/net/ctx.h>
