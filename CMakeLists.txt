@@ -23,6 +23,12 @@ set(TF_BUILD_TESTS OFF)
 set(TF_BUILD_BENCHMARKS OFF)
 add_subdirectory(extern/taskflow)
 
+# reflect-cpp
+set(REFLECTCPP_BUILD_TESTS OFF)
+set(REFLECTCPP_BUILD_BENCHMARKS OFF)
+set(REFLECTCPP_INSTALL OFF)
+add_subdirectory(extern/reflect-cpp)
+
 add_subdirectory(extern/ser20)
 add_subdirectory(extern/entt)
 add_subdirectory(extern/hfsm2)
@@ -38,6 +44,7 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(extern/abseil-cpp)
 
 # Disable warnings for external dependencies
+set_property(DIRECTORY extern/reflect-cpp PROPERTY COMPILE_OPTIONS "-w")
 set_property(DIRECTORY extern/ser20 PROPERTY COMPILE_OPTIONS "-w")
 set_property(DIRECTORY extern/entt PROPERTY COMPILE_OPTIONS "-w")
 set_property(DIRECTORY extern/hfsm2 PROPERTY COMPILE_OPTIONS "-w")

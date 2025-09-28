@@ -22,6 +22,7 @@ target_include_directories(vlib
 # Link common dependencies
 target_link_libraries(vlib
         PUBLIC
+        reflectcpp::reflectcpp
         ser20
         EnTT::EnTT
         spdlog::spdlog

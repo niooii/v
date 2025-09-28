@@ -28,7 +28,8 @@ add_executable(vclient ${CLIENT_SOURCES})
 
 target_compile_definitions(vclient PUBLIC GDF_CLIENT_BUILD)
 
-target_include_directories(vclient PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+# resources for shader shared files
+target_include_directories(vclient PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 
 # Link client-specific libraries
 target_link_libraries(vclient

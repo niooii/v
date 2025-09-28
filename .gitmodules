@@ -25,3 +25,6 @@
 [submodule "extern/daxa"]
 	path = extern/daxa
 	url = https://github.com/niooii/Daxa.git
+[submodule "extern/reflect-cpp"]
+	path = extern/reflect-cpp
+	url = https://github.com/getml/reflect-cpp.git
