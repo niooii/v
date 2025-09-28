@@ -80,13 +80,15 @@ jobs:
               uv --version
               uv run python --version
 
+              pwd
+
               export V_LOG_LEVEL=info
               # Debug build + tests
-              uv run v.py build
-              uv run v.py test
+              ./v build
+              ./v test
               # Release build + tests
-              uv run v.py build --release
-              uv run v.py test --release
+              ./v build --release
+              ./v test --release
             '
 
   windows-tests:
@@ -127,7 +129,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install arguably
+          python -m pip install arguably, rapidfuzz
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
