@@ -10,6 +10,7 @@
 #include <net/channels.h>
 #include <render/ctx.h>
 #include <world/world.h>
+#include "engine/contexts/async/async.h"
 
 namespace v {
     Client::Client(Engine& engine) : Context(engine), running_(true)
@@ -17,7 +18,7 @@ namespace v {
         // all the contexts the client needs to functino
         sdl_ctx_    = engine_.add_ctx<SDLContext>(engine_);
         window_ctx_ = engine_.add_ctx<WindowContext>(engine_);
-        window_ = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
+        window_     = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
         render_ctx_ = engine_.add_ctx<RenderContext>(engine_);
         net_ctx_    = engine_.add_ctx<NetworkContext>(engine_, 1.0 / 500);
@@ -56,11 +57,14 @@ namespace v {
         SDLComponent& sdl_comp = sdl_ctx_->create_component(engine_.entity());
         sdl_comp.on_quit       = [this]() { running_ = false; };
 
+        constexpr u16 threads = 16;
+        engine_.add_ctx<AsyncContext>(threads);
+
         // TODO! temporarily connect to the server with dummy info
         auto name = std::format("Player-{}", rand::irange(0, 1'000'000));
         LOG_INFO("Generated new random name {}", name);
         auto& connect_chnl = connection_->create_channel<ConnectServerChannel>();
-        connect_chnl.send({.uuid = name});
+        connect_chnl.send({ .uuid = name });
     }
 
     void Client::update() { engine_.tick(); }

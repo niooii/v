@@ -8,8 +8,8 @@
 #include <engine/contexts/net/channel.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
-#include <stdexcept>
 #include <memory>
+#include <stdexcept>
 #include "moodycamel/concurrentqueue.h"
 
 namespace v {

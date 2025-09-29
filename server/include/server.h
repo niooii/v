@@ -2,8 +2,8 @@
 #include <net/channels.h>
 #include <prelude.h>
 #include <stdexcept>
-#include "engine/domain.h"
 #include "engine/contexts/net/listener.h"
+#include "engine/domain.h"
 
 namespace v {
     struct ServerConfig {
@@ -37,9 +37,8 @@ namespace v {
 
                 auto& conn_comp = connection_channel.create_component(entity_);
 
-                conn_comp.on_recv = [](const ConnectServerChannel::PayloadT& req) {
-                    LOG_INFO("New player {}", req.uuid);
-                };
+                conn_comp.on_recv = [](const ConnectServerChannel::PayloadT& req)
+                { LOG_INFO("New player {}", req.uuid); };
 
                 // test some quick channel stuff via chat channel
                 auto& cc = con->create_channel<ChatChannel>();

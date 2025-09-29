@@ -19,6 +19,12 @@
 #define LOG_ERROR    SPDLOG_ERROR
 #define LOG_CRITICAL SPDLOG_CRITICAL
 
+
+#define TODO()                           \
+    LOG_CRITICAL("Not yet implemented"); \
+    throw new std::runtime_error("Not yet implemented");
+
+
 typedef uint8_t       u8;
 typedef uint16_t      u16;
 typedef uint32_t      u32;

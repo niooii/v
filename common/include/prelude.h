@@ -18,5 +18,5 @@
 namespace spd = spdlog;
 
 namespace v {
-    void init(const char* argv0, u16 num_threads = 8);
+    void init(const char* argv0);
 }

@@ -18,8 +18,8 @@ namespace v {
     inline uint32_t runtime_type_id();
 }
 #include <containers/ud_map.h>
-#include "moodycamel/concurrentqueue.h"
 #include <memory>
+#include "moodycamel/concurrentqueue.h"
 
 extern "C" {
 #include <enet.h>
@@ -193,7 +193,8 @@ namespace v {
             std::string     name;
             NetChannelBase* channel{ nullptr };
             // we queue the packets recieved before initialization
-            std::unique_ptr<moodycamel::ConcurrentQueue<ENetPacket*>> before_creation_packets{ nullptr };
+            std::unique_ptr<moodycamel::ConcurrentQueue<ENetPacket*>>
+                before_creation_packets{ nullptr };
         };
 
         // maps for tracking channel stuff

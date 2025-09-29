@@ -4,9 +4,8 @@
 //
 
 #include <prelude.h>
-#include <time/time.h>
-#include <async/async.h>
 #include <rand.h>
+#include <time/time.h>
 
 #include <absl/container/btree_set.h>
 #include <absl/debugging/failure_signal_handler.h>
@@ -22,7 +21,7 @@
 
 void init_loggers();
 
-void v::init(const char* argv0, u16 num_threads)
+void v::init(const char* argv0)
 {
     absl::InitializeSymbolizer(argv0);
     absl::FailureSignalHandlerOptions fail_opts = { .symbolize_stacktrace = true };
@@ -34,7 +33,6 @@ void v::init(const char* argv0, u16 num_threads)
     // INit engine subsystems
     time::init();
     rand::init();
-    async::init(num_threads);
 }
 
 void init_loggers()

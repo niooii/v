@@ -2,19 +2,19 @@
 // Created by niooi on 9/27/2025.
 //
 
-#include <random>
-#include <cstdlib>
 #include <absl/synchronization/mutex.h>
+#include <cstdlib>
+#include <random>
 
 #include <defs.h>
-#include <time/time.h>
 #include <rand.h>
+#include <time/time.h>
 
 namespace v::rand {
-    static absl::Mutex           g_mutex;
-    static std::mt19937_64       g_rng;
+    static absl::Mutex                         g_mutex;
+    static std::mt19937_64                     g_rng;
     static std::uniform_real_distribution<f64> g_unit01(0.0, 1.0);
-    static u64                   g_last_seed = 0;
+    static u64                                 g_last_seed = 0;
 
     static u64 mix_seed(u64 a, u64 b)
     {
@@ -60,10 +60,7 @@ namespace v::rand {
         return g_rng();
     }
 
-    u32 next_u32()
-    {
-        return static_cast<u32>(next_u64() & 0xFFFF'FFFFu);
-    }
+    u32 next_u32() { return static_cast<u32>(next_u64() & 0xFFFF'FFFFu); }
 
     f64 uniform()
     {
@@ -75,7 +72,7 @@ namespace v::rand {
     {
         if (min > max)
             std::swap(min, max);
-        absl::WriterMutexLock lock(&g_mutex);
+        absl::WriterMutexLock               lock(&g_mutex);
         std::uniform_real_distribution<f64> dist(min, max);
         return dist(g_rng);
     }
@@ -84,7 +81,7 @@ namespace v::rand {
     {
         if (min > max)
             std::swap(min, max);
-        absl::WriterMutexLock lock(&g_mutex);
+        absl::WriterMutexLock              lock(&g_mutex);
         std::uniform_int_distribution<i64> dist(min, max);
         return dist(g_rng);
     }
@@ -93,7 +90,7 @@ namespace v::rand {
     {
         if (min > max)
             std::swap(min, max);
-        absl::WriterMutexLock lock(&g_mutex);
+        absl::WriterMutexLock              lock(&g_mutex);
         std::uniform_int_distribution<u64> dist(min, max);
         return dist(g_rng);
     }
@@ -107,4 +104,3 @@ namespace v::rand {
         return uniform() < p;
     }
 } // namespace v::rand
-

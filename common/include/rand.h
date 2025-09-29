@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <defs.h>
 #include <cstdint>
+#include <defs.h>
 #include <iterator>
 
 /// The RNG namespace
@@ -60,4 +60,3 @@ namespace v::rand {
         return first;
     }
 } // namespace v::rand
-

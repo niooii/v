@@ -7,8 +7,8 @@
 #include <defs.h>
 #include <engine/contexts/net/channel.h>
 #include <engine/contexts/net/ctx.h>
-#include <stdexcept>
 #include <memory>
+#include <stdexcept>
 #include <time/stopwatch.h>
 #include <utility>
 #include "enet.h"
@@ -333,15 +333,17 @@ namespace v {
                     if (inst != c_insts.end())
                     {
                         // the channel instance already exists locally
-                        LOG_DEBUG("Found existing channel {}:{} locally", event.created_channel.name, event.created_channel.remote_uid);
+                        LOG_DEBUG(
+                            "Found existing channel {}:{} locally",
+                            event.created_channel.name, event.created_channel.remote_uid);
                         info.channel = inst->second;
                         info.drain_queue(info.channel);
                     }
                     else
                     {
                         if (!info.before_creation_packets)
-                            info.before_creation_packets =
-                                std::make_unique<moodycamel::ConcurrentQueue<ENetPacket*>>();
+                            info.before_creation_packets = std::make_unique<
+                                moodycamel::ConcurrentQueue<ENetPacket*>>();
                     }
                 }
                 break;
