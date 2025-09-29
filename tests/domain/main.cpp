@@ -18,7 +18,7 @@ int main()
 
     // Verify all domains were created
     auto initial_count = engine->view<CountTo10Domain>().size();
-    testing::assert_now(tctx, *engine, initial_count == 8, "8 domains created");
+    tctx.assert_now(initial_count == 8, "8 domains created");
 
     bool all_domains_updated = false;
     u64  domain_count_zero   = 0;
@@ -49,18 +49,15 @@ int main()
         engine->tick();
 
         // Progress check - domains should eventually self-destruct
-        testing::expect_before(
-            tctx, *engine, all_domains_updated, 1500, "all domains self-destructed");
+        tctx.expect_before(all_domains_updated, 1500, "all domains self-destructed");
 
         if (all_domains_updated)
             break;
     }
 
     // Final hard assert
-    testing::assert_now(
-        tctx, *engine, all_domains_updated, "domains completed lifecycle");
-    testing::assert_now(
-        tctx, *engine, engine->view<CountTo10Domain>().size() == 0, "no domains remain");
+    tctx.assert_now(all_domains_updated, "domains completed lifecycle");
+    tctx.assert_now(engine->view<CountTo10Domain>().size() == 0, "no domains remain");
 
     return tctx.is_failure();
 }

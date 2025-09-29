@@ -73,21 +73,18 @@ int main()
         }
 
         // progress checks with deadlines
-        testing::expect_before(
-            tctx, *engine, on_connect.load(), 400, "server accepted client");
-        testing::expect_before(
-            tctx, *engine, server_got_chat.load(), 800, "server received chat");
-        testing::expect_before(
-            tctx, *engine, client_got_echo.load(), 1200, "client received echo");
+        tctx.expect_before(on_connect.load(), 400, "server accepted client");
+        tctx.expect_before(server_got_chat.load(), 800, "server received chat");
+        tctx.expect_before(client_got_echo.load(), 1200, "client received echo");
 
         // sleep main thread for 1ms, so at most 1000 ticks per sec
         v::time::sleep_ms(1);
     }
 
     // final hard asserts
-    testing::assert_now(tctx, *engine, on_connect.load(), "on_connect fired");
-    testing::assert_now(tctx, *engine, server_got_chat.load(), "server received chat");
-    testing::assert_now(tctx, *engine, client_got_echo.load(), "client received echo");
+    tctx.assert_now(on_connect.load(), "on_connect fired");
+    tctx.assert_now(server_got_chat.load(), "server received chat");
+    tctx.assert_now(client_got_echo.load(), "client received echo");
 
     return tctx.is_failure();
 }

@@ -29,8 +29,8 @@ int main()
         future.wait();
         int result = future.get();
 
-        testing::assert_now(tctx, *engine, task_executed, "Task function executed");
-        testing::assert_now(tctx, *engine, result == 42, "Task returned correct value");
+        tctx.assert_now(task_executed, "Task function executed");
+        tctx.assert_now(result == 42, "Task returned correct value");
     }
 
     // multiple concurrent tasks
@@ -58,16 +58,15 @@ int main()
         }
 
         // Verify all tasks executed
-        testing::assert_now(
-            tctx, *engine, tasks_executed.load() == num_tasks,
-            "All concurrent tasks executed");
+        tctx.assert_now(
+            tasks_executed.load() == num_tasks, "All concurrent tasks executed");
 
         // Verify results
         for (int i = 0; i < num_tasks; ++i)
         {
             int result = futures[i].get();
-            testing::assert_now(
-                tctx, *engine, result == i * 2,
+            tctx.assert_now(
+                result == i * 2,
                 fmt::format("Task {} returned correct value", i).c_str());
         }
     }
@@ -86,14 +85,13 @@ int main()
         future.wait_for(std::chrono::milliseconds(50));
         auto elapsed = std::chrono::steady_clock::now() - start;
 
-        testing::assert_now(
-            tctx, *engine, elapsed >= std::chrono::milliseconds(40),
-            "wait_for() respected timeout");
+        tctx.assert_now(
+            elapsed >= std::chrono::milliseconds(40), "wait_for() respected timeout");
 
         // Now wait for completion
         future.wait();
         int result = future.get();
-        testing::assert_now(tctx, *engine, result == 123, "Task completed after timeout");
+        tctx.assert_now(result == 123, "Task completed after timeout");
     }
 
     // different return types
@@ -102,16 +100,15 @@ int main()
         auto string_future = async_ctx->task([]() { return std::string("hello world"); });
         string_future.wait();
         auto str_result = string_future.get();
-        testing::assert_now(
-            tctx, *engine, str_result == "hello world",
-            "String task returned correct value");
+        tctx.assert_now(
+            str_result == "hello world", "String task returned correct value");
 
         // Void task
         bool actual_void_executed = false;
         auto void_future =
             async_ctx->task([&actual_void_executed]() { actual_void_executed = true; });
         void_future.wait();
-        testing::assert_now(tctx, *engine, actual_void_executed, "Void task executed");
+        tctx.assert_now(actual_void_executed, "Void task executed");
 
         // Test void task with .then() callback
         bool void_callback_executed = false;
@@ -127,8 +124,7 @@ int main()
             if (void_callback_executed)
                 break;
         }
-        testing::assert_now(
-            tctx, *engine, void_callback_executed, "Void task .then() callback executed");
+        tctx.assert_now(void_callback_executed, "Void task .then() callback executed");
     }
 
     // long-running computation
@@ -146,7 +142,7 @@ int main()
 
         future.wait();
         int result = future.get();
-        testing::assert_now(tctx, *engine, result > 0, "Long computation completed");
+        tctx.assert_now(result > 0, "Long computation completed");
     }
 
     // Exception handling tests
@@ -163,13 +159,12 @@ int main()
         {
             future.wait();
             future.get(); // This should throw
-            testing::assert_now(
-                tctx, *engine, false, "Expected exception but none was thrown");
+            tctx.assert_now(false, "Expected exception but none was thrown");
         }
         catch (const std::runtime_error& e)
         {
-            testing::assert_now(
-                tctx, *engine, std::string(e.what()) == "Test exception",
+            tctx.assert_now(
+                std::string(e.what()) == "Test exception",
                 "Exception propagated correctly");
         }
     }
@@ -201,9 +196,7 @@ int main()
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
-        testing::assert_now(
-            tctx, *engine, !callback_executed,
-            ".then() callback not executed on exception");
+        tctx.assert_now(!callback_executed, ".then() callback not executed on exception");
     }
 
     // .or_else() should not trigger on success
@@ -221,9 +214,8 @@ int main()
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
-        testing::assert_now(
-            tctx, *engine, !error_callback_executed,
-            ".or_else() callback not executed on success");
+        tctx.assert_now(
+            !error_callback_executed, ".or_else() callback not executed on success");
     }
 
     // .then() callback registration
@@ -255,11 +247,9 @@ int main()
                 break;
         }
 
-        testing::assert_now(
-            tctx, *engine, callback_executed, ".then() callback executed");
-        testing::assert_now(
-            tctx, *engine, callback_result == 555,
-            ".then() callback received correct value");
+        tctx.assert_now(callback_executed, ".then() callback executed");
+        tctx.assert_now(
+            callback_result == 555, ".then() callback received correct value");
     }
 
     // .then() called after completion
@@ -282,8 +272,8 @@ int main()
                 break;
         }
 
-        testing::assert_now(
-            tctx, *engine, callback_executed,
+        tctx.assert_now(
+            callback_executed,
             ".then() executed immediately when future already completed");
     }
 
@@ -330,8 +320,7 @@ int main()
                 break;
         }
 
-        testing::assert_now(
-            tctx, *engine, error_callback_executed, ".or_else() callback executed");
+        tctx.assert_now(error_callback_executed, ".or_else() callback executed");
     }
 
     // .or_else() called after completion
@@ -367,8 +356,8 @@ int main()
                 break;
         }
 
-        testing::assert_now(
-            tctx, *engine, error_callback_executed,
+        tctx.assert_now(
+            error_callback_executed,
             ".or_else() executed immediately when future already completed with "
             "exception");
     }
