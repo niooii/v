@@ -58,7 +58,7 @@ namespace v {
         sdl_comp.on_quit       = [this]() { running_ = false; };
 
         constexpr u16 threads = 16;
-        engine_.add_ctx<AsyncContext>(threads);
+        engine_.add_ctx<AsyncContext>(engine_, threads);
 
         // TODO! temporarily connect to the server with dummy info
         auto name = std::format("Player-{}", rand::irange(0, 1'000'000));

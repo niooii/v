@@ -320,7 +320,6 @@ def run(
     if not exe.exists():
         raise FileNotFoundError(f"Executable not found: {exe}")
 
-    print(f"[run] {exe}")
     env = os.environ.copy()
     if verbose:
         env["V_LOG_LEVEL"] = "trace"
@@ -503,7 +502,6 @@ def test(*, release: bool = False, verbose: bool = False, full: bool = False) ->
     print(f"[test] Running {len(test_targets)} tests...")
     failures = 0
     for target in test_targets:
-        print(f"[test] {target}")
         try:
             # Use run logic to execute the test
             target_type = all_targets[target]

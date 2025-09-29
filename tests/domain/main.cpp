@@ -7,8 +7,7 @@ using namespace v;
 
 int main()
 {
-    auto                 engine = testing::init_test("vtest_domain");
-    testing::TestContext tctx{ .name = "domain" };
+    auto [engine, tctx] = testing::init_test("domain");
 
     // Create 8 example CountTo10Domain instances
     for (i32 i = 0; i < 8; ++i)
@@ -63,12 +62,5 @@ int main()
     testing::assert_now(
         tctx, *engine, engine->view<CountTo10Domain>().size() == 0, "no domains remain");
 
-    if (tctx.failures > 0)
-    {
-        LOG_ERROR("[domain] {} failures over {} checks", tctx.failures, tctx.checks);
-        return 1;
-    }
-
-    LOG_INFO("[domain] PASS: {} checks", tctx.checks);
-    return 0;
+    return tctx.is_failure();
 }

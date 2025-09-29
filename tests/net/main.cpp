@@ -11,8 +11,7 @@ using namespace v;
 
 int main()
 {
-    auto                 engine = testing::init_test("vtest_net");
-    testing::TestContext tctx{ .name = "net" };
+    auto [engine, tctx] = testing::init_test("net");
 
     // network context and local loopback server + client
     auto* net = engine->add_ctx<NetworkContext>(*engine, 1.0 / 1000.0);
@@ -90,12 +89,5 @@ int main()
     testing::assert_now(tctx, *engine, server_got_chat.load(), "server received chat");
     testing::assert_now(tctx, *engine, client_got_echo.load(), "client received echo");
 
-    if (tctx.failures > 0)
-    {
-        LOG_ERROR("[net] {} failures over {} checks", tctx.failures, tctx.checks);
-        return 1;
-    }
-
-    LOG_INFO("[net] PASS: {} checks", tctx.checks);
-    return 0;
+    return tctx.is_failure();
 }

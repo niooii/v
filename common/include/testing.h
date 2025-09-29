@@ -13,13 +13,33 @@ namespace v::testing {
         const char* name{ "test" };
         u64         checks{ 0 };
         u64         failures{ 0 };
+
+        TestContext(const char* test_name = "test") : name(test_name)
+        {
+            LOG_INFO("[{}] test start", name);
+        }
+
+        ~TestContext()
+        {
+            if (failures > 0)
+                LOG_ERROR("[{}] {} failures over {} checks", name, failures, checks);
+            else
+                LOG_INFO("[{}] PASS: {} checks", name, checks);
+        }
+
+        int is_failure() const { return failures > 0 ? 1 : 0; }
     };
 
-    // Initialize core subsystems and return a fresh engine
-    inline std::unique_ptr<Engine> init_test(const char* name = "vtest")
+    // Initialize core subsystems and return a fresh engine with test context
+    inline std::pair<std::unique_ptr<Engine>, TestContext>
+    init_test(const char* name = "vtest")
     {
         v::init(name);
-        return std::make_unique<Engine>();
+
+        // construct in place
+        return { std::piecewise_construct,
+                 std::forward_as_tuple(std::make_unique<Engine>()),
+                 std::forward_as_tuple(name) };
     }
 
     // Assert that condition eventually becomes true before deadline_tick.
@@ -37,7 +57,7 @@ namespace v::testing {
             {
                 const std::string msg =
                     fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
-                LOG_DEBUG("[{}][t={}] pending: {}", ctx.name, tick, msg);
+                LOG_TRACE("[{}][t={}] pending: {}", ctx.name, tick, msg);
             }
             else
             {

@@ -8,8 +8,7 @@ using namespace v;
 
 int main()
 {
-    auto                 engine = testing::init_test("vtest_svo");
-    testing::TestContext tctx{ .name = "svo" };
+    auto [engine, tctx] = testing::init_test("svo");
 
     SparseVoxelOctree128 svo;
 
@@ -45,12 +44,5 @@ int main()
     testing::assert_now(tctx, *engine, svo.get(0, 0, 0) == 0, "block cleared");
     testing::assert_now(tctx, *engine, svo.is_empty(), "tree empty after block clear");
 
-    if (tctx.failures > 0)
-    {
-        LOG_ERROR("[svo] {} failures over {} checks", tctx.failures, tctx.checks);
-        return 1;
-    }
-
-    LOG_INFO("[svo] PASS: {} checks", tctx.checks);
-    return 0;
+    return tctx.is_failure();
 }
