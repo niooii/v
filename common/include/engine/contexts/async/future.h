@@ -75,6 +75,7 @@ namespace v {
                     "[](T value){ ... }");
             }
 
+            // TODO! might as well wrap FutureState in a RwLock<>?? what am i doing
             auto guard = state_->lock.write();
             if (state_->is_completed && !state_->stored_exception)
             {

@@ -9,6 +9,14 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <spdlog/spdlog.h>
+
+// TODO! for some reason windows macros conflict with daxa check this out later
+#ifdef _WIN32
+    #ifdef OPAQUE
+        #undef OPAQUE
+    #endif
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 

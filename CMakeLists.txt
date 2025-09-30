@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Fix Windows macro conflicts
+# fix macro conflicts
 add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 
 find_program(GLSLC glslc REQUIRED)
