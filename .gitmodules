@@ -28,3 +28,6 @@
 [submodule "extern/reflect-cpp"]
 	path = extern/reflect-cpp
 	url = https://github.com/getml/reflect-cpp.git
+[submodule "extern/fastnoise"]
+	path = extern/fastnoise
+	url = https://github.com/Auburn/FastNoise2.git
