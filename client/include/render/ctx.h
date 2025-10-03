@@ -4,6 +4,10 @@
 
 #pragma once
 
+#ifdef _WIN32
+#undef OPAQUE
+#endif
+
 #include <daxa/daxa.hpp>
 #include <daxa/utils/task_graph.hpp>
 #include <defs.h>
