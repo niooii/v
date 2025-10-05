@@ -1,4 +1,5 @@
 #include <enet.h>
+#include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <engine/contexts/net/listener.h>
 #include <stdexcept>
@@ -34,6 +35,8 @@ namespace v {
 
     void NetListener::handle_new_connection(std::shared_ptr<NetConnection> con)
     {
+        connected_.insert(const_cast<ENetPeer*>(con->peer()));
+
         auto view = net_ctx_->engine_.view<ServerComponent>();
 
         for (auto [entity, comp] : view.each())
@@ -45,6 +48,8 @@ namespace v {
 
     void NetListener::handle_disconnection(std::shared_ptr<NetConnection> con)
     {
+        connected_.erase(const_cast<ENetPeer*>(con->peer()));
+
         auto view = net_ctx_->engine_.view<ServerComponent>();
 
         for (auto [entity, comp] : view.each())

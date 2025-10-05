@@ -6,6 +6,11 @@ The net context has an implementation that allows each NetConnection (a domain) 
 1. This needs to be tested to see if it actaully works (destroys, everything)
 2. Maybe provide an abstraction for this? i see a use case, maybe each ChunkDomain distributes components as well, or enforce a design where the WorldDomain will distribute components and itll just pass in the chunkdomain accordingly. Think on this
 
+### DependentSink - FAST
+1. horrific name btw
+2. this has to be changed from taskflow to a custom graph building implementation, because
+SDL events need to be polled on the main thread in windows.
+
 ### Async
 Plans:
 ```cpp

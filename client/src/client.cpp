@@ -5,10 +5,10 @@
 #include <client.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
+#include <engine/contexts/render/ctx.h>
 #include <engine/contexts/window/sdl.h>
 #include <engine/contexts/window/window.h>
 #include <net/channels.h>
-#include <render/ctx.h>
 #include <world/world.h>
 #include "engine/contexts/async/async.h"
 
@@ -38,13 +38,7 @@ namespace v {
         channel.send(msg);
 
         // windows update task does not depend on anything
-        engine_.on_tick.connect(
-            {}, {}, "windows",
-            [this]()
-            {
-                sdl_ctx_->update();
-                window_ctx_->update();
-            });
+        engine_.on_tick.connect({}, {}, "windows", [this]() { window_ctx_->update(); });
 
         // render depends on windows task to be finished
         engine_.on_tick.connect(
@@ -67,5 +61,9 @@ namespace v {
         connect_chnl.send({ .uuid = name });
     }
 
-    void Client::update() { engine_.tick(); }
+    void Client::update()
+    {
+        sdl_ctx_->update();
+        engine_.tick();
+    }
 } // namespace v

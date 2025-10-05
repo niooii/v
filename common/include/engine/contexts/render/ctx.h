@@ -5,7 +5,7 @@
 #pragma once
 
 #ifdef _WIN32
-#undef OPAQUE
+    #undef OPAQUE
 #endif
 
 #include <daxa/daxa.hpp>

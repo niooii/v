@@ -57,7 +57,7 @@ int main()
 
     bool sent_ping = false;
 
-    constexpr u64 max_ticks = 2000; // ~ test budget
+    constexpr u64 max_ticks = 2000; // test budget
     for (u64 i = 0; i < max_ticks; ++i)
     {
         // drive network and engine

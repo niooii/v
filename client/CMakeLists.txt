@@ -1,24 +1,9 @@
 # Client-specific dependencies
 
-# Add imgui as a library (header-only, needs manual setup)
-set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/extern/imgui)
-file(GLOB IMGUI_SOURCES
-        ${IMGUI_DIR}/*.cpp
-        ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
-)
-add_library(imgui STATIC ${IMGUI_SOURCES})
-target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
-target_link_libraries(imgui PUBLIC SDL3::SDL3)
-
-set(DAXA_ENABLE_UTILS_TASK_GRAPH ON CACHE BOOL "" FORCE)
-set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_GLSLANG ON CACHE BOOL "" FORCE)
-
-add_compile_definitions(DAXA_REMOVE_DEPRECATED=0)
-
-add_subdirectory(
-        ${CMAKE_SOURCE_DIR}/extern/daxa
-        ${CMAKE_BINARY_DIR}/extern/daxa
-)
+# Interface library for client dependencies (experiments/tests)
+add_library(vclient_deps INTERFACE)
+target_link_libraries(vclient_deps INTERFACE vlib)
+target_include_directories(vclient_deps INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Find all client source files
 file(GLOB_RECURSE CLIENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
@@ -35,9 +20,6 @@ target_include_directories(vclient PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 target_link_libraries(vclient
         PRIVATE
         vlib
-        SDL3::SDL3
-        imgui
-        daxa
 )
 
 # Copy sdl dlls

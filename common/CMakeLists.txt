@@ -19,6 +19,26 @@ target_include_directories(vlib
         "${CMAKE_SOURCE_DIR}/extern/hfsm2/include/"
 )
 
+# Add imgui as a library (header-only, needs manual setup)
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/extern/imgui)
+file(GLOB IMGUI_SOURCES
+        ${IMGUI_DIR}/*.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
+)
+add_library(imgui STATIC ${IMGUI_SOURCES})
+target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
+target_link_libraries(imgui PUBLIC SDL3::SDL3)
+
+set(DAXA_ENABLE_UTILS_TASK_GRAPH ON CACHE BOOL "" FORCE)
+set(DAXA_ENABLE_UTILS_PIPELINE_MANAGER_GLSLANG ON CACHE BOOL "" FORCE)
+
+add_compile_definitions(DAXA_REMOVE_DEPRECATED=0)
+
+add_subdirectory(
+        ${CMAKE_SOURCE_DIR}/extern/daxa
+        ${CMAKE_BINARY_DIR}/extern/daxa
+)
+
 # Link common dependencies
 target_link_libraries(vlib
         PUBLIC
@@ -35,7 +55,14 @@ target_link_libraries(vlib
     	absl::synchronization
     	absl::strings
     	absl::failure_signal_handler
+        daxa
+        imgui
 )
+
+# Link Windows-specific libraries
+if(WIN32)
+    target_link_libraries(vlib PUBLIC ws2_32 winmm)
+endif()
 
 # Set output directories
 set_target_properties(vlib

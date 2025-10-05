@@ -3,6 +3,7 @@
 //
 
 #include <engine/sink.h>
+#include <prelude.h>
 
 void DependentSink::execute()
 {

@@ -4,15 +4,11 @@ cmake_minimum_required(VERSION 3.20)
 
 function(v_add_test NAME SRC)
     add_executable(${NAME} ${SRC})
-    target_include_directories(${NAME}
-        PUBLIC
-            ${CMAKE_SOURCE_DIR}/common/include
-            ${CMAKE_SOURCE_DIR}/extern
-            ${CMAKE_SOURCE_DIR}/extern/hfsm2/include
-    )
     target_link_libraries(${NAME}
         PRIVATE
             vlib
+            vclient_deps
+            vserver_deps
     )
     if(COMMAND set_output_directories)
         set_output_directories(${NAME})

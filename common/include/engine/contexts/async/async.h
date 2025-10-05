@@ -69,9 +69,8 @@ namespace v {
                             state->stored_exception = std::current_exception();
                             if (state->error_callback)
                             {
-                                state->engine.post_tick(
-                                    std::bind(
-                                        state->error_callback, state->stored_exception));
+                                state->engine.post_tick(std::bind(
+                                    state->error_callback, state->stored_exception));
                             }
                         }
                         throw; // throw again to keep std::future exception semantics

@@ -2,10 +2,10 @@
 // Created by niooi on 7/30/2025.
 //
 
-#include <render/ctx.h>
+#include <engine/contexts/render/ctx.h>
 #include <stdexcept>
+#include "engine/contexts/render/init_vk.h"
 #include "engine/engine.h"
-#include "init_vk.h"
 
 namespace v {
     RenderContext::RenderContext(Engine& engine) : Context(engine)
@@ -39,7 +39,6 @@ namespace v {
         // TODO! record command buffer
         pre_render.execute();
         window_resources_->render();
-        LOG_TRACE("rendered");
         daxa_resources_->device.collect_garbage();
     }
 } // namespace v

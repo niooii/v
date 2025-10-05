@@ -35,6 +35,7 @@ namespace v {
         explicit SDLContext(Engine& engine);
         ~SDLContext();
 
+        /// This MUST be called on the main thread BTW!!
         /// Updates SDL events, pumps events, and routes window events to WindowContext
         /// Should be called before WindowContext::update() in application loop
         void update() const;

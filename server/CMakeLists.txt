@@ -1,3 +1,7 @@
+# Interface library for server dependencies (experiments/tests)
+add_library(vserver_deps INTERFACE)
+target_include_directories(vserver_deps INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
 # Find all server source files
 file(GLOB_RECURSE SERVER_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
