@@ -6,13 +6,47 @@
 
 #include <defs.h>
 #include <glm/common.hpp>
+#include <glm/exponential.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/vec1.hpp> // for scalars
 
 namespace v {
-    // ------------------------------
-    // Component-wise helpers
-    // ------------------------------
+    using ::glm::abs;
+    using ::glm::clamp;
+    using ::glm::max;
+    using ::glm::min;
+    using ::glm::sign;
+
+    using ::glm::mix;
+    using ::glm::smoothstep;
+    using ::glm::step;
+
+    using ::glm::fract;
+    using ::glm::mod;
+
+    using ::glm::exp;
+    using ::glm::exp2;
+    using ::glm::inversesqrt;
+    using ::glm::log;
+    using ::glm::log2;
+    using ::glm::pow;
+    using ::glm::sqrt;
+
+    using ::glm::acos;
+    using ::glm::asin;
+    using ::glm::atan;
+    using ::glm::cos;
+    using ::glm::degrees;
+    using ::glm::radians;
+    using ::glm::sin;
+    using ::glm::tan;
+
+    using ::glm::round;
+    using ::glm::roundEven;
+    using ::glm::trunc;
+
+    using ::glm::ceil;
+    using ::glm::floor;
 
     /// Clamps all components of the vector to [lo, hi].
     /// Scalars for lo/hi are broadcasted.
@@ -58,10 +92,6 @@ namespace v {
         return glm::floor(v);
     }
 
-    // ------------------------------
-    // Reductions
-    // ------------------------------
-
     /// Returns the largest component of the vector.
     template <typename T, glm::length_t L, glm::qualifier Q>
     FORCEINLINE T max_component(const glm::vec<L, T, Q>& v)
@@ -81,10 +111,6 @@ namespace v {
             m = std::min(m, v[i]);
         return m;
     }
-
-    // ------------------------------
-    // Powers
-    // ------------------------------
 
     /// Raises each component to the same exponent e.
     /// Valid for floating-point vectors only.
@@ -108,11 +134,9 @@ namespace v {
         return glm::pow(v, e);
     }
 
-    /// Integer power (non-negative exponent) for integer vectors.
-    /// Uses exponentiation by squaring per component.
     template <
         typename Int, glm::length_t L, glm::qualifier Q,
-        typename = std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>>>
+        typename = std::enable_if_t<std::is_integral_v<Int>>>
     FORCEINLINE glm::vec<L, Int, Q> ipow(const glm::vec<L, Int, Q>& v, u32 e)
     {
         glm::vec<L, Int, Q> base = v;
@@ -130,52 +154,6 @@ namespace v {
         }
         return res;
     }
-
-    /// Integer power (non-negative exponent) for unsigned integer vectors.
-    /// Uses exponentiation by squaring per component.
-    template <
-        typename UInt, glm::length_t L, glm::qualifier Q,
-        typename = std::enable_if_t<std::is_unsigned_v<UInt>>>
-    FORCEINLINE glm::vec<L, UInt, Q> ipow(const glm::vec<L, UInt, Q>& v, u32 e)
-    {
-        glm::vec<L, UInt, Q> base = v;
-        glm::vec<L, UInt, Q> res(1);
-        u32                  n = e;
-        while (n)
-        {
-            if (n & 1u)
-                for (glm::length_t i = 0; i < L; ++i)
-                    res[i] *= base[i];
-            n >>= 1u;
-            if (n)
-                for (glm::length_t i = 0; i < L; ++i)
-                    base[i] *= base[i];
-        }
-        return res;
-    }
-
-    /// Integer power (non-negative exponent) for scalar integers.
-    /// Matches semantics of the vector ipow.
-    template <typename Int, typename = std::enable_if_t<std::is_integral_v<Int>>>
-    FORCEINLINE Int ipow(Int base, u32 e)
-    {
-        Int res = 1;
-        u32 n   = e;
-        Int b   = base;
-        while (n)
-        {
-            if (n & 1u)
-                res *= b;
-            n >>= 1u;
-            if (n)
-                b *= b;
-        }
-        return res;
-    }
-
-    // ------------------------------
-    // Log base N (ceil/floor) — floating versions
-    // ------------------------------
 
     /// Returns floor(log_base(x)).
     /// Returns INT_MIN if x <= 0 or base <= 1.
@@ -239,10 +217,7 @@ namespace v {
         return p;
     }
 
-    // ------------------------------
-    // Fast specializations for power-of-two bases
-    // ------------------------------
-
+    // Specialization for fast power of 2 stuff
     namespace detail {
 
         /// Returns floor(log2(x)) using CLZ macros.
