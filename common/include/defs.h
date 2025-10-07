@@ -90,7 +90,9 @@ typedef unsigned char byte;
     #define PACKED_STRUCT     struct __attribute__((packed))
     #define END_PACKED_STRUCT ;
 
-    #define STATIC_ASSERT _Static_assert
+    // #define STATIC_ASSERT _Static_assert
+    // below is for c++, above is for C
+    #define STATIC_ASSERT static_assert
 
     #define CTZ(x)        __builtin_ctz(x) // Count trailing zeros (32-bit)
     #define CTZ64(x)      __builtin_ctzll(x) // Count trailing zeros (64-bit)
