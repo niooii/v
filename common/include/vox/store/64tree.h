@@ -19,15 +19,64 @@
 namespace v {
     struct GS64Node {};
 
+    typedef std::unique_ptr<struct S64Node> S64Node_UP;
+    typedef S64Node*                        S64Node_P;
+
     struct S64Node {
         std::unique_ptr<S64Node> children[64];
         S64Node*                 parent     = nullptr;
-        u64                       child_mask = 0;
-        bool                      is_leaf    = false;
-        std::vector<uint8_t>      voxels;
-    };
+        u64                      child_mask = 0;
+        bool                     is_leaf    = false;
+        std::vector<uint8_t>     voxels;
 
-    typedef std::unique_ptr<S64Node> S64Node_P;
+        struct ChildIterator {
+            S64Node_P owner = nullptr;
+            u64       mask  = 0;
+            i32       idx   = 0;
+
+            using value_type        = std::pair<u32, S64Node_P>;
+            using difference_type   = std::ptrdiff_t;
+            using iterator_category = std::forward_iterator_tag;
+
+            FORCEINLINE value_type operator*() const
+            {
+                return { idx, owner->children[idx].get() };
+            }
+
+            FORCEINLINE ChildIterator& operator++()
+            {
+                mask &= (mask - 1); // clear lowest set bit
+                if (mask)
+                    idx = CTZ64(mask);
+                return *this;
+            }
+
+            FORCEINLINE bool operator==(const ChildIterator& o) const
+            {
+                return mask == o.mask && owner == o.owner;
+            }
+
+            FORCEINLINE bool operator!=(const ChildIterator& o) const
+            {
+                return !(*this == o);
+            }
+        };
+
+        struct ChildRange {
+            S64Node_P                 owner;
+            u64                       mask;
+            FORCEINLINE ChildIterator begin() const
+            {
+                ChildIterator it{ owner, mask, 0 };
+                if (mask)
+                    it.idx = CTZ64(mask);
+                return it;
+            }
+            FORCEINLINE ChildIterator end() const { return ChildIterator{ owner, 0, 0 }; }
+        };
+
+        FORCEINLINE ChildRange child_iter() { return ChildRange{ this, child_mask }; }
+    };
 
     class Sparse64Tree {
     public:
@@ -52,25 +101,32 @@ namespace v {
         /// will always be in the positive octant.
         FORCEINLINE const AABB& bounding_box() const { return bounds_; };
 
+        /// Returns the node at the
+        S64Node_P node_at();
+
         /// Flattens the tree into an array of GPU friendly nodes.
         // TODO! should maybe move into different place? so 64tree only worries about cpu
         // side storage? idk
-        void                          flatten() const;
+        void                         flatten() const;
         const std::vector<GS64Node>& gpu_nodes() { return g_nodes_; };
 
 
         /// Destroys the contents of the entire tree
-        FORCEINLINE void clear() { clear_node(root_); dirty_ = true; }
+        FORCEINLINE void clear()
+        {
+            clear_node(root_);
+            dirty_ = true;
+        }
 
     private:
-        S64Node_P root_{ nullptr };
+        S64Node_UP root_{ nullptr };
         AABB       bounds_;
 
         /// whether the flat gpu node buffer needs rebuilding
-        bool                   dirty_{};
+        bool                  dirty_{};
         std::vector<GS64Node> g_nodes_;
 
         /// recursively destroys nodes
-        void clear_node(S64Node_P& node);
+        void clear_node(S64Node_UP& node);
     };
 } // namespace v

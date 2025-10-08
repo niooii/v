@@ -14,14 +14,20 @@ namespace v {
     public:
         AsyncContext(Engine& engine, u16 num_threads) :
             Context(engine), executor_(num_threads)
-        {}
-
-        ~AsyncContext()
         {
-            LOG_TRACE("Waiting for executor tasks to finish...");
-            executor_.wait_for_all();
-            LOG_TRACE("Executor tasks finish");
+            // makes sure this runs first before any domains are destroyed, since it will
+            // probably be running things for domains
+            engine.on_destroy.connect(
+                {}, {}, "async_finish",
+                [&]
+                {
+                    LOG_TRACE("Waiting for executor tasks to finish...");
+                    this->executor_.wait_for_all();
+                    LOG_TRACE("Executor tasks finish");
+                });
         }
+
+        ~AsyncContext() { executor_.wait_for_all(); }
 
         template <typename Ret>
         Future<Ret> task(std::function<Ret(void)> func)
@@ -42,9 +48,7 @@ namespace v {
                             auto guard          = state->lock.write();
                             state->is_completed = true;
                             if (state->callback)
-                            {
                                 state->engine.post_tick(state->callback);
-                            }
                         }
                         else
                         {
@@ -53,10 +57,8 @@ namespace v {
                             auto guard          = state->lock.write();
                             state->is_completed = true;
                             if (state->callback)
-                            {
                                 state->engine.post_tick(
                                     std::bind(state->callback, result));
-                            }
 
                             return result;
                         }
@@ -69,8 +71,9 @@ namespace v {
                             state->stored_exception = std::current_exception();
                             if (state->error_callback)
                             {
-                                state->engine.post_tick(std::bind(
-                                    state->error_callback, state->stored_exception));
+                                state->engine.post_tick(
+                                    std::bind(
+                                        state->error_callback, state->stored_exception));
                             }
                         }
                         throw; // throw again to keep std::future exception semantics
