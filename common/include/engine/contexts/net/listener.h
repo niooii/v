@@ -11,8 +11,8 @@
 
 namespace v {
     class NetConnection;
-    typedef std::function<void(std::shared_ptr<NetConnection>)> OnConnectCallback;
-    typedef std::function<void(std::shared_ptr<NetConnection>)> OnDisconnectCallback;
+    using OnConnectCallback = std::function<void(std::shared_ptr<NetConnection>)>;
+    using OnDisconnectCallback = std::function<void(std::shared_ptr<NetConnection>)>;
 
     struct ServerComponent {
         /// Set a callback to run when a new incoming connection is created.

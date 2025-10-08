@@ -239,10 +239,10 @@ namespace v {
             return;
         }
 
-        // extract channel ID from first 4 bytes
+        // extract channel ID from first 4 bytes, converting from network byte order
         u32 channel_id;
-        // TODO! perserve endianness
         std::memcpy(&channel_id, packet->data, sizeof(u32));
+        channel_id = ntohl(channel_id);
 
         {
             // we mutate info here, so take write lock

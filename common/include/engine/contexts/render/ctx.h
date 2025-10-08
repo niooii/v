@@ -18,9 +18,9 @@
 #include "engine/sink.h"
 
 namespace v {
-    typedef void(RenderComponentFnRender)(Engine*, class RenderContext*, Window*);
+    using RenderComponentFnRender = void(Engine*, class RenderContext*, Window*);
 
-    typedef void(RenderComponentFnResize)(Engine*, RenderContext*, Window*);
+    using RenderComponentFnResize = void(Engine*, RenderContext*, Window*);
 
     struct RenderComponent {
         std::function<RenderComponentFnRender> pre_render{};

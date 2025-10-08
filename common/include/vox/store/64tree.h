@@ -19,29 +19,63 @@
 namespace v {
     struct GS64Node {};
 
-    typedef std::unique_ptr<struct S64Node> S64Node_UP;
-    typedef S64Node*                        S64Node_P;
+    using S64Node_UP = std::unique_ptr<struct S64Node>;
+    using S64Node_P  = S64Node*;
+    using VoxelType  = u8;
 
     struct S64Node {
-        std::unique_ptr<S64Node> children[64];
-        S64Node*                 parent     = nullptr;
-        u64                      child_mask = 0;
-        bool                     is_leaf    = false;
-        std::vector<uint8_t>     voxels;
+        /// the existing children
+        /// TODO!
+        /// instead of allocating 64 on every use (also with the voxel vector)
+        /// use POPCOUNT to tightly pack into a vector maybe?.
+        std::vector<S64Node_UP> children;
+        S64Node_P               parent = nullptr;
+        /// for leaf node: represents which voxels in the brick exist
+        /// for non leaf: represents which children in the children array exist
+        u64 child_mask = 0;
+        /// 4x4x4 voxel brick - allocated on demand YAY!
+        std::vector<VoxelType> voxels;
+        // TODO! i still want to use a single bit boolean on the GPU to
+        // reduce mem per voxel, this is just more convenient for CPU stuff.
+        // The gpu buffer will be a simple POD type anyways, this can be resolved when
+        // flattening the tree
+        enum class Type : u8 {
+            /// No voxels exist / node is empty
+            Empty,
+            /// Just a regular non-leaf node
+            Regular,
+            /// Leaf node - contains 4x4x4 voxel brick.
+            /// This does not mean that each 'voxel' in the brick is 1x1x1,
+            /// as higher level nodes can be leaves as well, with each 'voxel' in the
+            /// brick
+            /// representing a completely filled region (of the same type) of nxnxn,
+            /// depending on the depth
+            /// of the leaf.
+            Leaf,
+            /// Single type leaf - all voxels within the node's region are the same type,
+            /// and
+            /// are therefore not stored in a 4x4x4 brick, but stored as a single u8 at
+            /// voxels[0].
+            SingleTypeLeaf
+        };
+        /// Node type
+        Type type = Type::Empty;
+
+        /// Returns the index of the child/voxel in the arrays present in the node.
+        FORCEINLINE u32 get_idx(u32 x, u32 y, u32 z) noexcept
+        {
+            return x | (z << 2) | (y << 4);
+        }
 
         struct ChildIterator {
-            S64Node_P owner = nullptr;
-            u64       mask  = 0;
-            i32       idx   = 0;
+            u64 mask = 0;
+            u32 idx  = 0;
 
-            using value_type        = std::pair<u32, S64Node_P>;
+            using value_type        = u32;
             using difference_type   = std::ptrdiff_t;
             using iterator_category = std::forward_iterator_tag;
 
-            FORCEINLINE value_type operator*() const
-            {
-                return { idx, owner->children[idx].get() };
-            }
+            FORCEINLINE value_type operator*() const { return idx; }
 
             FORCEINLINE ChildIterator& operator++()
             {
@@ -53,7 +87,7 @@ namespace v {
 
             FORCEINLINE bool operator==(const ChildIterator& o) const
             {
-                return mask == o.mask && owner == o.owner;
+                return mask == o.mask;
             }
 
             FORCEINLINE bool operator!=(const ChildIterator& o) const
@@ -63,19 +97,18 @@ namespace v {
         };
 
         struct ChildRange {
-            S64Node_P                 owner;
             u64                       mask;
             FORCEINLINE ChildIterator begin() const
             {
-                ChildIterator it{ owner, mask, 0 };
+                ChildIterator it{ mask, 0 };
                 if (mask)
                     it.idx = CTZ64(mask);
                 return it;
             }
-            FORCEINLINE ChildIterator end() const { return ChildIterator{ owner, 0, 0 }; }
+            FORCEINLINE ChildIterator end() const { return ChildIterator{ 0, 0 }; }
         };
 
-        FORCEINLINE ChildRange child_iter() { return ChildRange{ this, child_mask }; }
+        FORCEINLINE ChildRange child_indices() { return ChildRange{ child_mask }; }
     };
 
     class Sparse64Tree {
@@ -126,7 +159,11 @@ namespace v {
         bool                  dirty_{};
         std::vector<GS64Node> g_nodes_;
 
-        /// recursively destroys nodes
+        // TODO! move utilities to struct S64Node? does this make sense even
+        /// Recursively destroys nodes
         void clear_node(S64Node_UP& node);
+
+        /// Fills an entire node with a single type. Very fast.
+        void fill_node(S64Node_UP& node, VoxelType t);
     };
 } // namespace v

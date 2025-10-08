@@ -102,11 +102,11 @@ namespace v {
         {
             Engine& engine = conn_->net_ctx_->engine_;
 
-            // TODO! use find buddy
-            if (components_.contains(id))
+            auto it = components_.find(id);
+            if (it != components_.end())
             {
                 LOG_WARN("Entity already has a NetChannelComponent component");
-                return components_.at(id);
+                return it->second;
             }
 
             components_[id] = NetChannelComponent<Derived, Payload>{};
@@ -162,8 +162,9 @@ namespace v {
                 return;
             }
 
-            // write channel ID as first 4 bytes
-            std::memcpy(packet->data, &channel_id, sizeof(u32));
+            // write channel ID as first 4 bytes, converting to network byte order
+            u32 network_channel_id = htonl(channel_id);
+            std::memcpy(packet->data, &network_channel_id, sizeof(u32));
 
             // write payload data after the channel ID
             std::memcpy(packet->data + sizeof(u32), buf, len);

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <containers/svo.h>
+#include <vox/store/svo.h>
 #include <containers/ud_map.h>
 #include <cstdint>
 #include <defs.h>

@@ -1,6 +1,6 @@
 // Unit-like checks for SparseVoxelOctree128
 
-#include <containers/svo.h>
+#include <vox/store/svo.h>
 #include <testing.h>
 #include <time/time.h>
 

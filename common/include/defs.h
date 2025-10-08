@@ -10,6 +10,12 @@
 
 #include <spdlog/spdlog.h>
 
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <arpa/inet.h>
+#endif
+
 // TODO! for some reason windows macros conflict with daxa check this out later
 #ifdef _WIN32
     #ifdef OPAQUE

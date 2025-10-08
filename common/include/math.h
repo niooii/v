@@ -6,66 +6,61 @@
 
 #include <defs.h>
 #include <glm/common.hpp>
+#include <glm/detail/qualifier.hpp>
 #include <glm/exponential.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/vec1.hpp> // for scalars
 
 namespace v {
-    using ::glm::abs;
-    using ::glm::clamp;
-    using ::glm::max;
-    using ::glm::min;
-    using ::glm::sign;
+    namespace math_detail {
+        /// type traits to promote a scalar to a vector, and back to a scalar so i don't
+        /// have to overload with scalar impls
+        template <typename T>
+        struct vec_traits {
+            static constexpr bool is_vec     = false;
+            static constexpr glm::length_t L = 1; // scalars have 1 copmonent
+            using scalar                     = T; // element is itself
+            using vec  = glm::vec<1, T, glm::defaultp>; // promoted type
+            using qual = glm::defaultp;
+        };
 
-    using ::glm::mix;
-    using ::glm::smoothstep;
-    using ::glm::step;
+        template <glm::length_t L, typename T, glm::qualifier Q>
+        struct vec_traits<glm::vec<L, T, Q>> {
+            static constexpr bool is_vec       = true;
+            static constexpr glm::length_t Len = L; // number of components
+            using scalar                       = T; // underlying elem type
+            using vec                          = glm::vec<L, T, Q>; // leave it alone
+            using qual                         = Q;
+        };
 
-    using ::glm::fract;
-    using ::glm::mod;
+        // promotes a scalar into a vector, or leaves a vector untouched
+        template <typename V>
+        FORCEINLINE auto promote(const V& v) -> typename vec_traits<V>::vec
+        {
+            using traits = vec_traits<V>;
+            if constexpr (traits::is_vec)
+                return v; // already a vector
+            else
+            {
+                using T = typename traits::scalar;
+                return typename traits::vec(static_cast<T>(v)); // scalar -> vec1(T(v))
+            }
+        }
 
-    using ::glm::exp;
-    using ::glm::exp2;
-    using ::glm::inversesqrt;
-    using ::glm::log;
-    using ::glm::log2;
-    using ::glm::pow;
-    using ::glm::sqrt;
-
-    using ::glm::acos;
-    using ::glm::asin;
-    using ::glm::atan;
-    using ::glm::cos;
-    using ::glm::degrees;
-    using ::glm::radians;
-    using ::glm::sin;
-    using ::glm::tan;
-
-    using ::glm::round;
-    using ::glm::roundEven;
-    using ::glm::trunc;
-
-    using ::glm::ceil;
-    using ::glm::floor;
-
-    /// Clamps all components of the vector to [lo, hi].
-    /// Scalars for lo/hi are broadcasted.
-    template <
-        typename T, glm::length_t L, glm::qualifier Q, typename S,
-        typename = std::enable_if_t<std::is_arithmetic_v<S>>>
-    FORCEINLINE glm::vec<L, T, Q> clamp(const glm::vec<L, T, Q>& v, S lo, S hi)
-    {
-        return glm::clamp(v, glm::vec<L, T, Q>(T(lo)), glm::vec<L, T, Q>(T(hi)));
-    }
-
-    /// Clamps all components of the vector to [lo, hi] component-wise.
-    template <typename T, glm::length_t L, glm::qualifier Q>
-    FORCEINLINE glm::vec<L, T, Q> clamp(
-        const glm::vec<L, T, Q>& v, const glm::vec<L, T, Q>& lo,
-        const glm::vec<L, T, Q>& hi)
-    {
-        return glm::clamp(v, lo, hi);
-    }
+        // demotes a vec1 into a scalar, or leaves a vector untouched
+        template <typename Orig, typename VecLike>
+        FORCEINLINE Orig demote(const VecLike& v)
+        {
+            using traits = vec_traits<Orig>;
+            if constexpr (traits::is_vec)
+                return v;
+            else
+            {
+                using T = typename traits::scalar;
+                return static_cast<Orig>(static_cast<T>(v[0])); // vec1 -> scalar
+            }
+        }
+    } // namespace math_detail
 
     /// Clamps all components of the vector to [0, 1].
     template <typename T, glm::length_t L, glm::qualifier Q>
@@ -112,27 +107,6 @@ namespace v {
         return m;
     }
 
-    /// Raises each component to the same exponent e.
-    /// Valid for floating-point vectors only.
-    template <
-        typename T, glm::length_t L, glm::qualifier Q, typename S,
-        typename =
-            std::enable_if_t<std::is_floating_point_v<T> && std::is_arithmetic_v<S>>>
-    FORCEINLINE glm::vec<L, T, Q> pow(const glm::vec<L, T, Q>& v, S e)
-    {
-        return glm::pow(v, T(e));
-    }
-
-    /// Raises each component to its corresponding per-component exponent.
-    /// Valid for floating-point vectors only.
-    template <
-        typename T, glm::length_t L, glm::qualifier Q,
-        typename = std::enable_if_t<std::is_floating_point_v<T>>>
-    FORCEINLINE glm::vec<L, T, Q>
-                pow(const glm::vec<L, T, Q>& v, const glm::vec<L, T, Q>& e)
-    {
-        return glm::pow(v, e);
-    }
 
     template <
         typename Int, glm::length_t L, glm::qualifier Q,
