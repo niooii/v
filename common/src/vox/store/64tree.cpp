@@ -34,6 +34,9 @@ namespace v {
 
     VoxelType Sparse64Tree::voxel_at(const glm::vec3& pos) const
     {
+        if (!root_)
+            return 0;
+
         S64Node_P curr = root_.get();
         // all fields of max are the same, and max.x y or z contains the per-axis extent
         // of our tree along each axis.
@@ -92,5 +95,306 @@ namespace v {
 
         LOG_ERROR("Unreachable path");
         return 0;
+    }
+
+    VoxelType Sparse64Tree::get_voxel(u32 x, u32 y, u32 z) const
+    {
+        return voxel_at(glm::vec3(x, y, z));
+    }
+
+    VoxelType Sparse64Tree::get_voxel(const glm::ivec3& pos) const
+    {
+        return voxel_at(glm::vec3(pos));
+    }
+
+    bool Sparse64Tree::is_node_empty(const S64Node& node) const
+    {
+        return node.child_mask == 0;
+    }
+
+    void Sparse64Tree::try_collapse_to_single_type(S64Node_UP& node)
+    {
+        if (node->type != Type::Leaf)
+            return;
+
+        if (node->child_mask == 0)
+        {
+            node->type = Type::Empty;
+            return;
+        }
+
+        VoxelType first_type = 0;
+        bool      found_first = false;
+
+        for (u32 i = 0; i < 64; ++i)
+        {
+            if (node->child_mask & (1ull << i))
+            {
+                if (!found_first)
+                {
+                    first_type  = node->voxels[i];
+                    found_first = true;
+                }
+                else if (node->voxels[i] != first_type)
+                {
+                    return;
+                }
+            }
+        }
+
+        if (found_first && node->child_mask == ~0ull)
+        {
+            fill_node(node, first_type);
+        }
+    }
+
+    bool Sparse64Tree::should_collapse_regular(S64Node_UP& node)
+    {
+        return node->type == Type::Regular && node->child_mask == 0;
+    }
+
+    void Sparse64Tree::set_voxel(u32 x, u32 y, u32 z, VoxelType type)
+    {
+        glm::uvec3 u_pos(x, y, z);
+        u8         shift_amt = init_shift_amt();
+
+        if (!root_)
+        {
+            if (type == 0)
+                return;
+            root_ = std::make_unique<S64Node>();
+            root_->type = Type::Regular;
+            root_->children.resize(64);
+        }
+
+        S64Node_P                curr       = root_.get();
+        std::vector<S64Node_P>   path;
+        std::vector<u8>          indices;
+
+        while (1)
+        {
+            u8 idx = static_cast<u8>(curr->get_idx(
+                u_pos.x >> shift_amt, u_pos.y >> shift_amt, u_pos.z >> shift_amt));
+
+            if (shift_amt == 0)
+            {
+                switch (curr->type)
+                {
+                case Type::SingleTypeLeaf:
+                {
+                    VoxelType existing = curr->voxels[0];
+                    if (type == existing)
+                        return;
+
+                    if (type == 0)
+                    {
+                        curr->type       = Type::Leaf;
+                        curr->voxels.resize(64, existing);
+                        curr->child_mask = ~0ull;
+                        curr->voxels[idx] = 0;
+                        curr->child_mask &= ~(1ull << idx);
+                    }
+                    else
+                    {
+                        curr->voxels.resize(64, existing);
+                        curr->voxels[idx] = type;
+                        curr->type        = Type::Leaf;
+                        curr->child_mask  = ~0ull;
+                    }
+                    break;
+                }
+                case Type::Leaf:
+                {
+                    VoxelType existing = (curr->child_mask & (1ull << idx)) ? curr->voxels[idx] : 0;
+                    if (existing == type)
+                        return;
+
+                    if (type == 0)
+                    {
+                        curr->child_mask &= ~(1ull << idx);
+                        curr->voxels[idx] = 0;
+                    }
+                    else
+                    {
+                        curr->child_mask |= (1ull << idx);
+                        curr->voxels[idx] = type;
+                    }
+                    break;
+                }
+                default:
+                {
+                    if (type == 0)
+                        return;
+
+                    curr->type = Type::Leaf;
+                    curr->voxels.resize(64, 0);
+                    curr->voxels[idx] = type;
+                    curr->child_mask  = (1ull << idx);
+                    break;
+                }
+                }
+
+                break;
+            }
+
+            path.push_back(curr);
+            indices.push_back(idx);
+
+            if (curr->type == Type::SingleTypeLeaf)
+            {
+                VoxelType fill_type = curr->voxels[0];
+                curr->type          = Type::Regular;
+                curr->children.resize(64);
+                curr->child_mask = 0;
+
+                S64Node_UP new_child = std::make_unique<S64Node>();
+                new_child->parent    = curr;
+                new_child->type      = Type::SingleTypeLeaf;
+                new_child->voxels    = { fill_type };
+                new_child->child_mask = 0b1;
+
+                curr->children[idx]  = std::move(new_child);
+                curr->child_mask |= (1ull << idx);
+            }
+            else if (!(curr->child_mask & (1ull << idx)))
+            {
+                if (type == 0)
+                    return;
+
+                S64Node_UP new_child = std::make_unique<S64Node>();
+                new_child->parent    = curr;
+                new_child->type      = Type::Regular;
+                new_child->children.resize(64);
+
+                curr->children[idx]  = std::move(new_child);
+                curr->child_mask |= (1ull << idx);
+            }
+
+            curr = curr->children[idx].get();
+            to_local_coords(u_pos, shift_amt);
+            shift_amt -= 2;
+        }
+
+        for (i32 i = static_cast<i32>(path.size()) - 1; i >= 0; --i)
+        {
+            S64Node_P parent     = path[i];
+            u8        child_idx  = indices[i];
+            S64Node_UP& child    = parent->children[child_idx];
+
+            if (child->type == Type::Leaf)
+            {
+                try_collapse_to_single_type(child);
+            }
+
+            if (is_node_empty(*child) || child->type == Type::Empty)
+            {
+                child.reset();
+                parent->child_mask &= ~(1ull << child_idx);
+            }
+        }
+
+        if (root_->type == Type::Regular && root_->child_mask == 0)
+        {
+            root_.reset();
+        }
+        else if (root_->type == Type::Leaf)
+        {
+            try_collapse_to_single_type(root_);
+        }
+
+        dirty_ = true;
+    }
+
+    void Sparse64Tree::set_voxel(const glm::ivec3& pos, VoxelType type)
+    {
+        set_voxel(pos.x, pos.y, pos.z, type);
+    }
+
+    void Sparse64Tree::fill_aabb(const AABB& region, VoxelType type)
+    {
+        AABB clipped(
+            glm::max(region.min, bounds_.min),
+            glm::min(region.max, bounds_.max));
+
+        if (clipped.min.x >= clipped.max.x || clipped.min.y >= clipped.max.y || clipped.min.z >= clipped.max.z)
+            return;
+
+        glm::ivec3 start = glm::ivec3(glm::floor(clipped.min));
+        glm::ivec3 end   = glm::ivec3(glm::ceil(clipped.max));
+
+        for (i32 x = start.x; x < end.x; ++x)
+            for (i32 y = start.y; y < end.y; ++y)
+                for (i32 z = start.z; z < end.z; ++z)
+                    set_voxel(x, y, z, type);
+    }
+
+    void Sparse64Tree::fill_sphere(const glm::vec3& center, f32 radius, VoxelType type)
+    {
+        AABB sphere_bounds(
+            center - glm::vec3(radius),
+            center + glm::vec3(radius));
+
+        AABB clipped(
+            glm::max(sphere_bounds.min, bounds_.min),
+            glm::min(sphere_bounds.max, bounds_.max));
+
+        if (clipped.min.x >= clipped.max.x || clipped.min.y >= clipped.max.y || clipped.min.z >= clipped.max.z)
+            return;
+
+        glm::ivec3 start    = glm::ivec3(glm::floor(clipped.min));
+        glm::ivec3 end      = glm::ivec3(glm::ceil(clipped.max));
+        f32        r_sq     = radius * radius;
+
+        for (i32 x = start.x; x < end.x; ++x)
+            for (i32 y = start.y; y < end.y; ++y)
+                for (i32 z = start.z; z < end.z; ++z)
+                {
+                    glm::vec3 voxel_center = glm::vec3(x, y, z) + glm::vec3(0.5f);
+                    glm::vec3 diff         = voxel_center - center;
+                    if (glm::dot(diff, diff) <= r_sq)
+                        set_voxel(x, y, z, type);
+                }
+    }
+
+    void Sparse64Tree::fill_cylinder(const glm::vec3& p0, const glm::vec3& p1, f32 radius, VoxelType type)
+    {
+        glm::vec3 axis   = p1 - p0;
+        f32       length = glm::length(axis);
+        if (length < 1e-6f)
+            return;
+
+        axis /= length;
+
+        AABB cyl_bounds(
+            glm::min(p0, p1) - glm::vec3(radius),
+            glm::max(p0, p1) + glm::vec3(radius));
+
+        AABB clipped(
+            glm::max(cyl_bounds.min, bounds_.min),
+            glm::min(cyl_bounds.max, bounds_.max));
+
+        if (clipped.min.x >= clipped.max.x || clipped.min.y >= clipped.max.y || clipped.min.z >= clipped.max.z)
+            return;
+
+        glm::ivec3 start = glm::ivec3(glm::floor(clipped.min));
+        glm::ivec3 end   = glm::ivec3(glm::ceil(clipped.max));
+        f32        r_sq  = radius * radius;
+
+        for (i32 x = start.x; x < end.x; ++x)
+            for (i32 y = start.y; y < end.y; ++y)
+                for (i32 z = start.z; z < end.z; ++z)
+                {
+                    glm::vec3 voxel_center = glm::vec3(x, y, z) + glm::vec3(0.5f);
+                    glm::vec3 to_voxel     = voxel_center - p0;
+                    f32       t            = glm::dot(to_voxel, axis);
+
+                    if (t >= 0.0f && t <= length)
+                    {
+                        glm::vec3 closest = p0 + axis * t;
+                        glm::vec3 diff    = voxel_center - closest;
+                        if (glm::dot(diff, diff) <= r_sq)
+                            set_voxel(x, y, z, type);
+                    }
+                }
     }
 } // namespace v

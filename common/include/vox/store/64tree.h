@@ -59,7 +59,7 @@ namespace v {
             /// Single type leaf - all voxels within the node's region are the same type,
             /// and
             /// are therefore not stored in a 4x4x4 brick, but stored as a single u8 at
-            /// voxels[0].
+            /// voxels[0]. This means that the node is completely FILLED btw.
             SingleTypeLeaf
         };
         /// Node type
@@ -119,7 +119,7 @@ namespace v {
     public:
         explicit Sparse64Tree(u8 depth) :
             bounds_(glm::vec3(0), glm::vec3(v::pow(4.f, static_cast<f32>(depth)))),
-            // allocates 1/512th of the maximum space upfront
+            depth_(depth),
             g_nodes_(static_cast<u32>(v::pow(8.f, depth)))
         {}
 
@@ -140,6 +140,16 @@ namespace v {
 
         VoxelType voxel_at(const glm::vec3& pos) const;
 
+        VoxelType get_voxel(u32 x, u32 y, u32 z) const;
+        VoxelType get_voxel(const glm::ivec3& pos) const;
+
+        void set_voxel(u32 x, u32 y, u32 z, VoxelType type);
+        void set_voxel(const glm::ivec3& pos, VoxelType type);
+
+        void fill_aabb(const AABB& region, VoxelType type);
+        void fill_sphere(const glm::vec3& center, f32 radius, VoxelType type);
+        void fill_cylinder(const glm::vec3& p0, const glm::vec3& p1, f32 radius, VoxelType type);
+
         /// Flattens the tree into an array of GPU friendly nodes.
         // TODO! should maybe move into different place? so 64tree only worries about cpu
         // side storage? idk
@@ -157,6 +167,7 @@ namespace v {
     private:
         S64Node_UP root_{ nullptr };
         AABB       bounds_;
+        u8         depth_;
 
         /// whether the flat gpu node buffer needs rebuilding
         bool                  dirty_{};
@@ -168,5 +179,26 @@ namespace v {
 
         /// Fills an entire node with a single type. Very fast.
         void fill_node(S64Node_UP& node, VoxelType t);
+
+        /// Returns the starting shift amount for tree traversal
+        FORCEINLINE u8 init_shift_amt() const { return CTZ(static_cast<u32>(bounds_.max.x) >> 2); }
+
+        /// Transforms position to local coordinates within a node
+        FORCEINLINE void to_local_coords(glm::uvec3& pos, u8 shift_amt) const
+        {
+            u32 mask = (1u << shift_amt) - 1;
+            pos.x &= mask;
+            pos.y &= mask;
+            pos.z &= mask;
+        }
+
+        /// Checks if a node contains any voxels
+        bool is_node_empty(const S64Node& node) const;
+
+        /// Attempts to convert a Leaf node to SingleTypeLeaf if all voxels are the same
+        void try_collapse_to_single_type(S64Node_UP& node);
+
+        /// Checks if a Regular node should be collapsed (all children empty)
+        bool should_collapse_regular(S64Node_UP& node);
     };
 } // namespace v
