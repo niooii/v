@@ -13,7 +13,7 @@ int main()
     for (i32 i = 0; i < 8; ++i)
     {
         engine->add_domain<CountTo10Domain>(
-            *engine, "CountTo10Domain_" + std::to_string(i));
+            "CountTo10Domain_" + std::to_string(i));
     }
 
     // Verify all domains were created

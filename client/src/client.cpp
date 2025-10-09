@@ -16,12 +16,12 @@ namespace v {
     Client::Client(Engine& engine) : Context(engine), running_(true)
     {
         // all the contexts the client needs to functino
-        sdl_ctx_    = engine_.add_ctx<SDLContext>(engine_);
-        window_ctx_ = engine_.add_ctx<WindowContext>(engine_);
+        sdl_ctx_    = engine_.add_ctx<SDLContext>();
+        window_ctx_ = engine_.add_ctx<WindowContext>();
         window_     = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
-        render_ctx_ = engine_.add_ctx<RenderContext>(engine_);
-        net_ctx_    = engine_.add_ctx<NetworkContext>(engine_, 1.0 / 500);
+        render_ctx_ = engine_.add_ctx<RenderContext>();
+        net_ctx_    = engine_.add_ctx<NetworkContext>(1.0 / 500);
 
 
         // Setup network connection
@@ -52,7 +52,7 @@ namespace v {
         sdl_comp.on_quit       = [this]() { running_ = false; };
 
         constexpr u16 threads = 16;
-        engine_.add_ctx<AsyncContext>(engine_, threads);
+        engine_.add_ctx<AsyncContext>(threads);
 
         // TODO! temporarily connect to the server with dummy info
         auto name = std::format("Player-{}", rand::irange(0, 1'000'000));

@@ -362,7 +362,7 @@ namespace v {
         }
         try
         {
-            Window* window = engine_.add_domain<Window>(engine_, name, size, pos);
+            Window* window = engine_.add_domain<Window>(name, size, pos);
 
             if (const auto id = SDL_GetWindowID(window->sdl_window_))
             {

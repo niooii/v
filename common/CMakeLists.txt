@@ -43,7 +43,6 @@ add_subdirectory(
 target_link_libraries(vlib
         PUBLIC
         reflectcpp::reflectcpp
-        ser20
         EnTT::EnTT
         spdlog::spdlog
         Taskflow::Taskflow

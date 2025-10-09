@@ -171,7 +171,7 @@ int main()
     // Test on_tick callbacks
     {
         int tick_count = 0;
-        auto connection = engine->on_tick.connect({}, {}, "test_tick", [&tick_count]() { tick_count++; });
+        engine->on_tick.connect({}, {}, "test_tick", [&tick_count]() { tick_count++; });
 
         engine->tick();
         tctx.assert_now(tick_count == 1, "Tick callback executed once");

@@ -61,7 +61,7 @@ namespace v {
 
         std::string name = "Chunk(" + std::to_string(cp.x) + "," + std::to_string(cp.y) +
             "," + std::to_string(cp.z) + ")";
-        auto* chunk = engine_.add_domain<ChunkDomain>(engine_, cp, name);
+        auto* chunk = engine_.add_domain<ChunkDomain>(cp, name);
         chunks_.emplace(cp, chunk);
         return *chunk;
     }

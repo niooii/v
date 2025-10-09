@@ -187,7 +187,7 @@ namespace v {
                 }
             }
 
-            std::unique_ptr<T> domain = std::make_unique<T>(std::forward<Args>(args)...);
+            std::unique_ptr<T> domain = std::make_unique<T>(*this, std::forward<Args>(args)...);
             T*                 ptr    = domain.get();
 
             ptr->init_standard_components();
@@ -259,7 +259,7 @@ namespace v {
                 ctx_registry_.remove<std::unique_ptr<T>>(ctx_entity_);
             }
 
-            auto context = std::make_unique<T>(std::forward<Args>(args)...);
+            auto context = std::make_unique<T>(*this, std::forward<Args>(args)...);
 
             T* ptr = context.get();
 

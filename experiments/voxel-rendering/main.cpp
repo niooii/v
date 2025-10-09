@@ -17,13 +17,13 @@ int main(int argc, char** argv)
     Engine engine{};
 
     // Setup SDL and window contexts
-    auto sdl_ctx    = engine.add_ctx<SDLContext>(engine);
-    auto window_ctx = engine.add_ctx<WindowContext>(engine);
+    auto sdl_ctx    = engine.add_ctx<SDLContext>();
+    auto window_ctx = engine.add_ctx<WindowContext>();
     auto window =
         window_ctx->create_window("Voxel Rendering", { 800, 600 }, { 100, 100 });
 
     // Setup render context (includes daxa)
-    auto render_ctx = engine.add_ctx<RenderContext>(engine);
+    auto render_ctx = engine.add_ctx<RenderContext>();
 
     auto             sdl_comp = sdl_ctx->create_component(engine.entity());
     std::atomic_bool running  = true;

@@ -31,3 +31,6 @@
 [submodule "extern/fastnoise"]
 	path = extern/fastnoise
 	url = https://github.com/Auburn/FastNoise2.git
+[submodule "extern/jsoncons"]
+	path = extern/jsoncons
+	url = https://github.com/danielaparker/jsoncons.git

@@ -15,14 +15,14 @@ namespace v {
     class ServerDomain : public SDomain<ServerDomain> {
     public:
         ServerDomain(
-            ServerConfig& conf, Engine& engine,
+            Engine& engine, ServerConfig& conf,
             const std::string& name = "Server Domain") : SDomain(engine, name)
         {
             auto net_ctx = engine.get_ctx<NetworkContext>();
             if (!net_ctx)
             {
                 LOG_WARN("Created default network context");
-                net_ctx = engine.add_ctx<NetworkContext>(engine, 1 / 500.0);
+                net_ctx = engine.add_ctx<NetworkContext>(1 / 500.0);
             }
 
             listener_ = net_ctx->listen_on(conf.host, conf.port);

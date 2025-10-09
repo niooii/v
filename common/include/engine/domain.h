@@ -16,6 +16,23 @@
 namespace v {
     class Engine;
 
+    /// Base class for all domains.
+    ///
+    /// IMPORTANT: When creating derived Domain classes, the constructor MUST
+    /// accept Engine& as its first parameter. The engine reference is automatically
+    /// passed by Engine::add_domain() - do not pass it manually when calling add_domain().
+    ///
+    /// Example:
+    ///   class MyDomain : public Domain<MyDomain> {
+    ///   public:
+    ///       MyDomain(Engine& engine, int my_param) : Domain(engine) { ... }
+    ///   };
+    ///
+    ///   // Correct usage:
+    ///   engine.add_domain<MyDomain>(42);  // Engine& is passed automatically
+    ///
+    ///   // WRONG - will cause compile error:
+    ///   engine.add_domain<MyDomain>(engine, 42);  // Don't pass engine manually!
     class DomainBase {
     public:
         DomainBase(Engine& engine, std::string name);

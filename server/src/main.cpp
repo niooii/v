@@ -26,13 +26,13 @@ int main(int argc, char** argv)
     Engine engine{};
 
     // Shared world domain (authoritative on server)
-    auto world = engine.add_domain<WorldDomain>(engine);
+    auto world = engine.add_domain<WorldDomain>();
 
     // attempts to update every 1ms
-    auto net_ctx = engine.add_ctx<NetworkContext>(engine, 1.0 / 1000.0);
+    auto net_ctx = engine.add_ctx<NetworkContext>(1.0 / 1000.0);
 
     ServerConfig config{ "127.0.0.1", 25566 };
-    engine.add_domain<ServerDomain>(config, engine);
+    engine.add_domain<ServerDomain>(config);
 
     Stopwatch        stopwatch{};
     std::atomic_bool running{ true };

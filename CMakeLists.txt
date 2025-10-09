@@ -23,13 +23,22 @@ set(TF_BUILD_TESTS OFF)
 set(TF_BUILD_BENCHMARKS OFF)
 add_subdirectory(extern/taskflow)
 
+# jsoncons (header-only JSON/CBOR library for reflect-cpp)
+add_library(jsoncons INTERFACE)
+target_include_directories(jsoncons INTERFACE
+    ${CMAKE_SOURCE_DIR}/extern/jsoncons/include)
+
+# reflect-cpp needs jsoncons includes available globally for CBOR
+include_directories(${CMAKE_SOURCE_DIR}/extern/jsoncons/include)
+
 # reflect-cpp
 set(REFLECTCPP_BUILD_TESTS OFF)
 set(REFLECTCPP_BUILD_BENCHMARKS OFF)
 set(REFLECTCPP_INSTALL OFF)
+set(REFLECTCPP_CBOR ON)
+set(REFLECTCPP_USE_BUNDLED_DEPENDENCIES ON)  # Use bundled ctre
 add_subdirectory(extern/reflect-cpp)
 
-add_subdirectory(extern/ser20)
 add_subdirectory(extern/entt)
 add_subdirectory(extern/hfsm2)
 add_subdirectory(extern/spdlog)
@@ -45,7 +54,6 @@ add_subdirectory(extern/abseil-cpp)
 
 # Disable warnings for external dependencies
 set_property(DIRECTORY extern/reflect-cpp PROPERTY COMPILE_OPTIONS "-w")
-set_property(DIRECTORY extern/ser20 PROPERTY COMPILE_OPTIONS "-w")
 set_property(DIRECTORY extern/entt PROPERTY COMPILE_OPTIONS "-w")
 set_property(DIRECTORY extern/hfsm2 PROPERTY COMPILE_OPTIONS "-w")
 set_property(DIRECTORY extern/spdlog PROPERTY COMPILE_OPTIONS "-w")

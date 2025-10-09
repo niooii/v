@@ -12,7 +12,7 @@ int main()
 {
     auto [engine, tctx] = testing::init_test("async");
 
-    engine->add_ctx<AsyncContext>(*engine, 4);
+    engine->add_ctx<AsyncContext>(4);
     auto* async_ctx = engine->get_ctx<AsyncContext>();
 
     // task creation and execution
