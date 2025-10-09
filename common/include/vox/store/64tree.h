@@ -12,6 +12,9 @@
 // this personally to be a nicer mental model. Too bad the rest of the engine will have to
 // think so too.
 
+// ALSO, air is implicitly stored. If a node doesn't exist, then it is air. 
+// A node that actaully exists will always encode at least one non-air voxel.
+
 #include <defs.h>
 #include <math.h>
 #include <vox/aabb.h>
@@ -40,7 +43,8 @@ namespace v {
         // The gpu buffer will be a simple POD type anyways, this can be resolved when
         // flattening the tree
         enum class Type : u8 {
-            /// No voxels exist / node is empty
+            /// No voxels exist / node is empty. In theory, this should never be used.
+            /// Here for good measure.
             Empty,
             /// Just a regular non-leaf node
             Regular,
@@ -108,7 +112,7 @@ namespace v {
             FORCEINLINE ChildIterator end() const { return ChildIterator{ 0, 0 }; }
         };
 
-        FORCEINLINE ChildRange child_indices() { return ChildRange{ child_mask }; }
+        FORCEINLINE ChildRange child_indices() { return ChildRange{ child_mask }; };
     };
 
     class Sparse64Tree {
@@ -134,8 +138,7 @@ namespace v {
         /// will always be in the positive octant.
         FORCEINLINE const AABB& bounding_box() const { return bounds_; };
 
-        /// Returns the node at the
-        S64Node_P node_at();
+        VoxelType voxel_at(const glm::vec3& pos) const;
 
         /// Flattens the tree into an array of GPU friendly nodes.
         // TODO! should maybe move into different place? so 64tree only worries about cpu
