@@ -24,7 +24,7 @@ namespace v {
                 .defines = { { "FRAGMENT_SHADER", "1" } },
             },
             .color_attachments = {
-                { .format = daxa::Format::B8G8R8A8_SRGB },
+                { .format = render_ctx_->get_swapchain_format() },
             },
             .raster = {
                 .face_culling = daxa::FaceCullFlagBits::NONE,

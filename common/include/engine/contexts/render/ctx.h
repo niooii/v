@@ -84,6 +84,13 @@ namespace v {
             return window_resources_->task_swapchain_image;
         }
 
+        /// Get the swapchain format
+        /// @note Useful for creating pipelines with matching color attachment formats
+        daxa::Format get_swapchain_format() const
+        {
+            return window_resources_->swapchain.get_format();
+        }
+
         /// Mark the task graph as dirty, forcing a rebuild on the next frame.
         /// Automatically called when render domains are added/removed, or when
         /// swapchain is resized. Call manually if resources are reallocated in ways

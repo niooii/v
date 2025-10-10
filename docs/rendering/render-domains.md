@@ -168,7 +168,7 @@ namespace game {
                 .defines = {{"FRAGMENT_SHADER", "1"}},
             },
             .color_attachments = {{
-                .format = daxa::Format::R8G8B8A8_UNORM,
+                .format = render_ctx_->get_swapchain_format(),
                 .blend = {
                     .enable = true,
                     .src_factor = daxa::BlendFactor::SRC_ALPHA,

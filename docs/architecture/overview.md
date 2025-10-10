@@ -277,46 +277,6 @@ public:
 };
 ```
 
-## Threading Model
-
-### Main Thread
-- Engine tick loop and task execution
-- Rendering and GPU operations
-- Window management and input processing
-
-### IO Thread
-- Network operations (NetworkContext)
-- File IO operations
-- Async task processing
-
-### Task Thread Pool (Planned)
-- Parallel CPU task execution
-- Physics calculations
-- AI processing
-
-```cpp
-// Thread-safe communication between threads
-moodycamel::ConcurrentQueue<NetworkEvent> event_queue_;
-
-// IO thread enqueues events
-void io_thread_loop() {
-    while (running_) {
-        auto events = process_network_sockets();
-        for (auto& event : events) {
-            event_queue_.enqueue(event);
-        }
-    }
-}
-
-// Main thread processes events
-void process_network_events() {
-    NetworkEvent event;
-    while (event_queue_.try_dequeue(event)) {
-        handle_event(event);
-    }
-}
-```
-
 ## Memory Management
 
 ### Stack Allocation

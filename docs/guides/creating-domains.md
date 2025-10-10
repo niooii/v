@@ -88,14 +88,12 @@ namespace game {
     }
 
     void MyDomain::handle_input() {
-        // Access input context
-        auto* input_ctx = engine().get_ctx<v::WindowContext>();
-        if (!input_ctx) return;
+        // Input handling would go here
+        // Access WindowContext for window/input state
+        auto* window_ctx = engine().get_ctx<v::WindowContext>();
+        if (!window_ctx) return;
 
-        // Handle input logic
-        if (input_ctx->is_key_just_pressed(v::Key::SPACE)) {
-            std::cout << "Space key pressed!" << std::endl;
-        }
+        // Example: check window size, handle events, etc.
     }
 }
 ```
@@ -297,52 +295,51 @@ void setup_tasks(v::Engine& engine) {
 ### Managing Domain Resources
 
 ```cpp
-class AudioDomain : public v::Domain<AudioDomain> {
+class GameDataDomain : public v::Domain<GameDataDomain> {
 public:
-    AudioDomain(v::Engine& engine) : v::Domain(engine, "Audio") {
-        // Load audio resources
-        load_audio_files();
+    GameDataDomain(v::Engine& engine) : v::Domain(engine, "GameData") {
+        // Load resources
+        load_game_data();
     }
 
-    ~AudioDomain() {
-        // Resources automatically cleaned up
+    ~GameDataDomain() {
+        // RAII cleanup - smart pointers handle this automatically
     }
 
-    void play_sound(const std::string& sound_name) {
-        auto it = sounds_.find(sound_name);
-        if (it != sounds_.end()) {
-            it->second.play();
-        }
+    const PlayerConfig& get_player_config() const {
+        return player_config_;
     }
 
 private:
-    void load_audio_files() {
-        // Load sounds into memory
-        sounds_["jump"] = Sound("assets/jump.wav");
-        sounds_["shoot"] = Sound("assets/shoot.wav");
-        sounds_["explosion"] = Sound("assets/explosion.wav");
+    void load_game_data() {
+        // Load from disk/assets
+        player_config_.max_health = 100;
+        player_config_.speed = 5.0f;
     }
 
-    std::unordered_map<std::string, Sound> sounds_;
+    struct PlayerConfig {
+        int max_health;
+        float speed;
+    };
+
+    PlayerConfig player_config_;
 };
 ```
 
 ### Lazy Resource Loading
 
 ```cpp
-class TextureDomain : public v::Domain<TextureDomain> {
+class AssetDomain : public v::Domain<AssetDomain> {
 public:
-    TextureDomain(v::Engine& engine) : v::Domain(engine, "Texture") {
-        // Don't load all textures immediately
-    }
+    AssetDomain(v::Engine& engine) : v::Domain(engine, "Assets") {}
 
-    Texture* get_texture(const std::string& texture_name) {
-        auto it = textures_.find(texture_name);
+    std::string* get_asset(const std::string& asset_name) {
+        auto it = assets_.find(asset_name);
 
-        if (it == textures_.end()) {
-            // Load texture on demand
-            Texture texture = load_texture_from_file("assets/textures/" + texture_name + ".png");
-            auto result = textures_.emplace(texture_name, std::move(texture));
+        if (it == assets_.end()) {
+            // Load on demand
+            std::string data = load_from_file("assets/" + asset_name);
+            auto result = assets_.emplace(asset_name, std::move(data));
             it = result.first;
         }
 
@@ -350,14 +347,12 @@ public:
     }
 
 private:
-    Texture load_texture_from_file(const std::string& path) {
-        // Load texture from disk
-        Texture texture;
-        texture.load_from_file(path);
-        return texture;
+    std::string load_from_file(const std::string& path) {
+        // Actual file loading logic
+        return "";
     }
 
-    std::unordered_map<std::string, Texture> textures_;
+    std::unordered_map<std::string, std::string> assets_;
 };
 ```
 
@@ -439,18 +434,7 @@ public:
     template<typename DomainType, typename... Args>
     static DomainType* create_domain(v::Engine& engine, Args&&... args) {
         auto* domain = engine.add_domain<DomainType>(std::forward<Args>(args)...);
-
-        // Setup common domain features
-        setup_common_features(domain, engine);
-
         return domain;
-    }
-
-private:
-    template<typename DomainType>
-    static void setup_common_features(DomainType* domain, v::Engine& engine) {
-        // Add common components or setup common tasks
-        domain->set_update_rate(60.0f);  // 60 FPS update rate
     }
 };
 
@@ -512,9 +496,7 @@ public:
         } catch (const std::exception& e) {
             // Handle initialization failure
             std::cerr << "Failed to initialize MyDomain: " << e.what() << std::endl;
-
-            // Set domain to inactive state
-            set_active(false);
+            // Could throw or set flag for error handling
         }
     }
 
