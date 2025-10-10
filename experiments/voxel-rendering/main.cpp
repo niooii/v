@@ -6,7 +6,9 @@
 #include <engine/contexts/window/sdl.h>
 #include <engine/contexts/window/window.h>
 #include <prelude.h>
+#include "engine/contexts/render/default_render_domain.h"
 #include "mesh.h"
+#include "render/triangle_domain.h"
 
 using namespace v;
 
@@ -24,6 +26,10 @@ int main(int argc, char** argv)
 
     // Setup render context (includes daxa)
     auto render_ctx = engine.add_ctx<RenderContext>();
+
+    // Test DefaultRenderDomain via framework
+    // needs at least a default domain to show window on some systems
+    engine.add_domain<DefaultRenderDomain>();
 
     auto             sdl_comp = sdl_ctx->create_component(engine.entity());
     std::atomic_bool running  = true;

@@ -2,7 +2,9 @@
 // Created by niooi on 7/30/2025.
 //
 
+#include <algorithm>
 #include <engine/contexts/render/ctx.h>
+#include <engine/contexts/render/render_domain.h>
 #include <stdexcept>
 #include "engine/contexts/render/init_vk.h"
 #include "engine/engine.h"
@@ -24,7 +26,9 @@ namespace v {
 
         Window* win = window_ctx->get_window();
         window_resources_ =
-            std::make_unique<WindowRenderResources>(win, daxa_resources_.get());
+            std::make_unique<WindowRenderResources>(win, daxa_resources_.get(), this);
+
+        engine_.on_tick.connect({}, {}, "test", [] { LOG_INFO("tet"); });
     }
 
     RenderContext::~RenderContext() = default;
@@ -35,11 +39,63 @@ namespace v {
         return engine_.add_component<RenderComponent>(id);
     }
 
+    void RenderContext::register_render_domain(RenderDomainBase* domain)
+    {
+        render_domains_.push_back(domain);
+        domain_version_++;
+        graph_dirty_ = true;
+    }
+
+    void RenderContext::unregister_render_domain(RenderDomainBase* domain)
+    {
+        std::erase(render_domains_, domain);
+        domain_version_++;
+        graph_dirty_ = true;
+    }
+
+    void RenderContext::rebuild_graph()
+    {
+        LOG_TRACE("Rebuilding render graph (version {})", domain_version_);
+
+        // Create new task graph
+        window_resources_->render_graph = daxa::TaskGraph(
+            {
+                .device    = daxa_resources_->device,
+                .swapchain = window_resources_->swapchain,
+                .name      = "main loop graph",
+            });
+
+        // Re-register persistent resources
+        window_resources_->render_graph.use_persistent_image(
+            window_resources_->task_swapchain_image);
+
+        // Add tasks from all render domains
+        for (auto* domain : render_domains_)
+        {
+            domain->add_render_tasks(window_resources_->render_graph);
+        }
+
+        // Finalize graph
+        window_resources_->render_graph.submit({});
+        window_resources_->render_graph.present({});
+        window_resources_->render_graph.complete({});
+    }
+
     void RenderContext::update()
     {
-        // TODO! record command buffer
+        // Rebuild graph if domains changed or manually marked dirty
+        if (graph_dirty_ || domain_version_ != last_domain_version_)
+        {
+            rebuild_graph();
+            graph_dirty_         = false;
+            last_domain_version_ = domain_version_;
+        }
+
         pre_render.execute();
+
+        // execute the taskgraphs
         window_resources_->render();
+
         daxa_resources_->device.collect_garbage();
     }
 } // namespace v

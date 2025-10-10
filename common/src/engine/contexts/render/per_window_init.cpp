@@ -9,6 +9,7 @@
 // this isnt needed but im tryna fix some weird intellisense bug
 #define DAXA_ENABLE_UTILS_TASK_GRAPH 1
 #include <engine/contexts/render/ctx.h>
+#include <engine/contexts/render/default_render_domain.h>
 #include <engine/engine.h>
 #include <stdexcept>
 #include "engine/contexts/render/init_vk.h"
@@ -16,7 +17,8 @@
 
 namespace v {
     WindowRenderResources::WindowRenderResources(
-        Window* window, DaxaResources* daxa_resources) : daxa_resources_(daxa_resources)
+        Window* window, DaxaResources* daxa_resources, RenderContext* render_ctx) :
+        daxa_resources_(daxa_resources), render_ctx_(render_ctx)
     {
         LOG_INFO("Initializing per-window Daxa stuff...");
         // Get native window handle from SDL3 window properties
@@ -141,6 +143,8 @@ namespace v {
 
         LOG_TRACE("created swapchain, creating task graph now");
 
+        // Create and complete the task graph with a default clear task
+        // This will be rebuilt when render domains are added/removed
         render_graph = daxa::TaskGraph(
             {
                 .device    = daxa_resources_->device,
@@ -150,30 +154,34 @@ namespace v {
 
         render_graph.use_persistent_image(task_swapchain_image);
 
-        // test clear task
+        // add a clear screen task to grey as default for now
         render_graph.add_task({
             .attachments = {
-                daxa::inl_attachment(daxa::TaskAccessConsts::COLOR_ATTACHMENT, daxa::ImageViewType::REGULAR_2D, task_swapchain_image),
+                daxa::inl_attachment(daxa::TaskAccessConsts::COLOR_ATTACHMENT,
+                daxa::ImageViewType::REGULAR_2D, task_swapchain_image),
             },
             .task = [=](daxa::TaskInterface ti)
             {
                 auto& render_target = task_swapchain_image;
-                auto const size = ti.device.info(ti.get(render_target).ids[0]).value().size;
-
-                daxa::RenderCommandRecorder render_recorder = std::move(ti.recorder).begin_renderpass({
+                auto const size =
+                ti.device.info(ti.get(render_target).ids[0]).value().size;
+        
+                daxa::RenderCommandRecorder render_recorder =
+                std::move(ti.recorder).begin_renderpass({
                     .color_attachments = std::array{
                         daxa::RenderAttachmentInfo{
                             .image_view = ti.get(render_target).view_ids[0],
                             .load_op = daxa::AttachmentLoadOp::CLEAR,
-                            .clear_value = std::array<daxa::f32, 4>{0.1f, 0.0f, 0.5f, 1.0f},
+                            .clear_value = std::array<daxa::f32, 4>{0.1f, 0.1f,
+                            0.1f, 1.0f},
                         },
                     },
                     .render_area = {.width = size.x, .height = size.y},
                 });
-
+        
                 ti.recorder = std::move(render_recorder).end_renderpass();
             },
-            .name = "draw vertices",
+            .name = "default_clear",
         });
 
         render_graph.submit({});
@@ -195,10 +203,26 @@ namespace v {
 
     void WindowRenderResources::render()
     {
+        if (resize_queued) {
+            if (swapchain.get_surface_extent().x == 0 || swapchain.get_surface_extent().y == 0)
+            {
+                LOG_TRACE("Surface extent is 0.");
+                return;
+            }
+            swapchain.resize();
+
+            // Swapchain resize changes image resources, must rebuild graph
+            if (render_ctx_)
+                render_ctx_->mark_graph_dirty();
+
+            // skip a frame its whatever
+            resize_queued = false;
+            return;
+        }
+
         auto swapchain_img = swapchain.acquire_next_image();
         if (swapchain_img.is_empty())
         {
-            LOG_WARN("No image acquired from swapchain..??");
             return;
         }
 
@@ -209,7 +233,6 @@ namespace v {
 
     void WindowRenderResources::resize()
     {
-        LOG_TRACE("resized swapchain");
-        swapchain.resize();
+        resize_queued = true;
     }
 } // namespace v

@@ -41,6 +41,9 @@ namespace v {
         if (!sdl_window_)
             throw std::runtime_error(SDL_GetError());
 
+        // Explicitly show the window (SDL3 might create windows hidden)
+        SDL_ShowWindow(sdl_window_);
+
         // handle events that have the same window id as this one
         const Uint32 window_id = SDL_GetWindowID(sdl_window_);
         if (auto sdl_ctx = engine_.get_ctx<SDLContext>())

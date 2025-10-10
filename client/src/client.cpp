@@ -9,8 +9,10 @@
 #include <engine/contexts/window/sdl.h>
 #include <engine/contexts/window/window.h>
 #include <net/channels.h>
+#include <render/triangle_domain.h>
 #include <world/world.h>
 #include "engine/contexts/async/async.h"
+#include "engine/contexts/render/default_render_domain.h"
 
 namespace v {
     Client::Client(Engine& engine) : Context(engine), running_(true)
@@ -20,8 +22,12 @@ namespace v {
         window_ctx_ = engine_.add_ctx<WindowContext>();
         window_     = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
-        render_ctx_ = engine_.add_ctx<RenderContext>("./client/resources/shaders");
+        render_ctx_ = engine_.add_ctx<RenderContext>("./resources/shaders");
         net_ctx_    = engine_.add_ctx<NetworkContext>(1.0 / 500);
+
+        // Add triangle render domain
+        engine.add_domain<DefaultRenderDomain>();
+        engine_.add_domain<TriangleRenderDomain>();
 
 
         // Setup network connection

@@ -19,6 +19,7 @@
 #include "engine/sink.h"
 
 namespace v {
+    class RenderDomainBase;
     using RenderComponentFnRender = void(Engine*, class RenderContext*, Window*);
 
     using RenderComponentFnResize = void(Engine*, RenderContext*, Window*);
@@ -37,7 +38,9 @@ namespace v {
 
         WindowRenderResources& operator=(const WindowRenderResources& other) = delete;
 
-        WindowRenderResources(Window* window, DaxaResources* daxa_resources);
+        WindowRenderResources(
+            Window* window, DaxaResources* daxa_resources,
+            class RenderContext* render_ctx);
         ~WindowRenderResources();
 
         void render();
@@ -50,10 +53,14 @@ namespace v {
         static constexpr u32 FRAMES_IN_FLIGHT = 2;
 
         DaxaResources* daxa_resources_;
+        RenderContext* render_ctx_;
+
+        bool resize_queued{};
     };
 
     class RenderContext : public Context {
         friend struct WindowRenderResources;
+        friend class RenderDomainBase;
 
     public:
         explicit RenderContext(
@@ -66,13 +73,52 @@ namespace v {
         /// Creates and attaches a RenderComponent to an entity, usually a Domain
         RenderComponent& create_component(entt::entity id);
 
+        /// Get raw Daxa resources (device, pipeline manager, etc.)
+        /// @note Returned reference is valid for the lifetime of RenderContext
+        DaxaResources& daxa_resources() { return *daxa_resources_; }
+
+        /// Get the swapchain task image for rendering to screen
+        /// @note Used by RenderDomains to render to the swapchain
+        daxa::TaskImage& swapchain_image()
+        {
+            return window_resources_->task_swapchain_image;
+        }
+
+        /// Mark the task graph as dirty, forcing a rebuild on the next frame.
+        /// Automatically called when render domains are added/removed, or when
+        /// swapchain is resized. Call manually if resources are reallocated in ways
+        /// that affect graph structure (buffer resize, format change, etc.)
+        void mark_graph_dirty() { graph_dirty_ = true; }
+
         void update();
 
     private:
+        /// Register a render domain (called automatically from RenderDomainBase
+        /// constructor)
+        void register_render_domain(RenderDomainBase* domain);
+
+        /// Unregister a render domain (called automatically from RenderDomainBase
+        /// destructor)
+        void unregister_render_domain(RenderDomainBase* domain);
+
+        /// Rebuild the task graph from all registered render domains
+        void rebuild_graph();
+
         std::string                    shader_root_path_;
         std::unique_ptr<DaxaResources> daxa_resources_;
 
         /// Daxa resources for the for now singleton window
         std::unique_ptr<WindowRenderResources> window_resources_;
+
+        /// All registered render domains in registration order
+        std::vector<RenderDomainBase*> render_domains_;
+
+        /// Incremented when domains are added/removed to detect changes
+        u64 domain_version_      = 0;
+        u64 last_domain_version_ = 0;
+
+        /// Set to true when graph structure must be rebuilt (domain changes, resize,
+        /// etc.)
+        bool graph_dirty_ = false;
     };
 } // namespace v
