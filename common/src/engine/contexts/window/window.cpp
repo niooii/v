@@ -22,7 +22,7 @@ namespace v {
     Window::Window(Engine& engine, std::string name, glm::ivec2 size, glm::ivec2 pos) :
         Domain<Window>(engine, name), sdl_window_(nullptr), size_(size), pos_(pos),
         name_(std::move(name)), curr_keys_{}, prev_keys_{}, curr_mbuttons{},
-        prev_mbuttons{}, mouse_pos_(0, 0)
+        prev_mbuttons{}, mouse_pos_(0, 0), mouse_delta_(0, 0)
     {
         const SDL_PropertiesID props = SDL_CreateProperties();
         SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, name_.c_str());
@@ -59,8 +59,8 @@ namespace v {
     {
         if (sdl_window_)
         {
-            if (this->capturing_raw_input())
-                this->capture_raw_input(false);
+            if (this->capturing_mouse())
+                this->capture_mouse(false);
             SDL_DestroyWindow(sdl_window_);
             sdl_window_ = nullptr;
         }
@@ -109,6 +109,8 @@ namespace v {
     }
 
     glm::ivec2 Window::get_mouse_position() const { return mouse_pos_; }
+
+    glm::ivec2 Window::get_mouse_delta() const { return mouse_delta_; }
 
     // Window property getters
 
@@ -162,7 +164,7 @@ namespace v {
         return SDL_GetWindowFlags(sdl_window_) & SDL_WINDOW_INPUT_FOCUS;
     }
 
-    bool Window::capturing_raw_input() const
+    bool Window::capturing_mouse() const
     {
         return SDL_GetWindowRelativeMouseMode(sdl_window_);
     }
@@ -223,7 +225,7 @@ namespace v {
 
     void Window::flash() { SDL_FlashWindow(sdl_window_, SDL_FLASH_BRIEFLY); }
 
-    void Window::capture_raw_input(bool capture)
+    void Window::capture_mouse(bool capture)
     {
         SDL_SetWindowRelativeMouseMode(sdl_window_, capture);
     }
@@ -308,16 +310,15 @@ namespace v {
         case SDL_EVENT_MOUSE_MOTION:
             mouse_pos_ = glm::ivec2(
                 static_cast<int>(event.motion.x), static_cast<int>(event.motion.y));
-            sig_mouse_moved_.publish(
-                mouse_pos_,
-                glm::ivec2(
-                    static_cast<int>(event.motion.xrel),
-                    static_cast<int>(event.motion.yrel)));
+            mouse_delta_ = glm::ivec2(
+                static_cast<int>(event.motion.xrel), static_cast<int>(event.motion.yrel));
+            sig_mouse_moved_.publish(mouse_pos_, mouse_delta_);
             break;
 
         case SDL_EVENT_MOUSE_WHEEL:
-            sig_mouse_wheel_.publish(glm::ivec2(
-                static_cast<int>(event.wheel.x), static_cast<int>(event.wheel.y)));
+            sig_mouse_wheel_.publish(
+                glm::ivec2(
+                    static_cast<int>(event.wheel.x), static_cast<int>(event.wheel.y)));
             break;
 
         case SDL_EVENT_TEXT_INPUT:
@@ -404,6 +405,8 @@ namespace v {
             // Copy current state to prev state
             w->prev_keys_    = w->curr_keys_;
             w->prev_mbuttons = w->curr_mbuttons;
+            // Clear mouse delta (will be updated by events this frame)
+            w->mouse_delta_ = glm::ivec2(0, 0);
         }
     }
 

@@ -187,8 +187,9 @@ namespace v {
                 }
             }
 
-            std::unique_ptr<T> domain = std::make_unique<T>(*this, std::forward<Args>(args)...);
-            T*                 ptr    = domain.get();
+            std::unique_ptr<T> domain =
+                std::make_unique<T>(*this, std::forward<Args>(args)...);
+            T* ptr = domain.get();
 
             ptr->init_standard_components();
             // TODO!

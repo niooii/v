@@ -14,6 +14,7 @@
 // engine subsystems
 #include <rand.h>
 #include <time/time.h>
+#include <tracy/Tracy.hpp>
 
 namespace spd = spdlog;
 

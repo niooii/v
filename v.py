@@ -482,6 +482,60 @@ def fmt(
 
 
 @arguably.command
+def profile(
+    target: str,
+    *,
+    release: bool = False,
+    verbose: bool = False,
+    full: bool = False,
+) -> None:
+    """Profile any executable target with Tracy
+
+    :param target: Target name (supports fuzzy matching)
+    :param release: Use Release build (default False)
+    :param full: Show full build output (not just fatal)
+    """
+    # Resolve fuzzy target matching
+    target = _find_target_fuzzy(target, release)
+
+    # Detect all targets and find the requested one
+    targets = _detect_cmake_targets(release)
+    target_type = targets[target]
+    if not _is_executable_target(target, target_type, release):
+        raise ValueError(f"Target '{target}' is not executable (type: {target_type})")
+
+    # Build the target
+    print(f"[profile] Building target '{target}'...")
+    build(target=target, release=release, full=full, verbose=verbose)
+
+    # Determine executable path
+    if target_type == "test":
+        exe = _build_dir(release) / "tests" / _exe_name(target)
+    elif target.startswith("vexp"):
+        exe = _build_dir(release) / "experiments" / _exe_name(target)
+    else:
+        exe = _build_dir(release) / _exe_name(target)
+
+    if not exe.exists():
+        raise FileNotFoundError(f"Executable not found: {exe}")
+
+    # Instruct user to launch Tracy
+    print("[profile] Launch Tracy profiler GUI (tracy-profiler) to capture the session")
+    print(f"[profile] Running target with Tracy enabled: {exe}")
+    print("[profile] Tracy will capture call stacks automatically via sampling")
+    print("[profile] Press Ctrl+C to stop profiling...")
+
+    env = os.environ.copy()
+    if verbose:
+        env["V_LOG_LEVEL"] = "trace"
+
+    try:
+        _run([str(exe)], cwd=_build_dir(release), env=env)
+    except KeyboardInterrupt:
+        print("\n[profile] Profiling stopped by user")
+
+
+@arguably.command
 def test(*, release: bool = False, verbose: bool = False, full: bool = False) -> None:
     """Build (if needed) and run all test targets
 

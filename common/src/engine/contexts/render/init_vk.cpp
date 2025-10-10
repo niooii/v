@@ -10,7 +10,7 @@
 
 
 namespace v {
-    DaxaResources::DaxaResources(Engine& engine)
+    DaxaResources::DaxaResources(Engine& engine, const std::string& shader_root_path)
     {
         LOG_INFO("Initializing Daxa context...");
 
@@ -31,10 +31,11 @@ namespace v {
         }
 
         // Create daxa instance
-        instance = daxa::create_instance({
-            .engine_name = "vengine",
-            .app_name    = "vengine",
-        });
+        instance = daxa::create_instance(
+            {
+                .engine_name = "vengine",
+                .app_name    = "vengine",
+            });
 
         LOG_DEBUG("Daxa instance created successfully");
 
@@ -61,7 +62,7 @@ namespace v {
                 .shader_compile_options = {
                     .root_paths = {
                         DAXA_SHADER_INCLUDE_DIR,
-                        "./resources/shaders"
+                        shader_root_path
                     },
                     .language = daxa::ShaderLanguage::GLSL,
                     .enable_debug_info = true,

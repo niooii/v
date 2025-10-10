@@ -14,6 +14,7 @@
 #include <engine/context.h>
 #include <engine/contexts/window/window.h>
 #include <engine/domain.h>
+#include <string>
 #include <vector>
 #include "engine/sink.h"
 
@@ -55,7 +56,8 @@ namespace v {
         friend struct WindowRenderResources;
 
     public:
-        explicit RenderContext(Engine& engine);
+        explicit RenderContext(
+            Engine& engine, const std::string& shader_root_path = "./resources/shaders");
         ~RenderContext();
 
         /// Tasks that should run before the rendering of a frame
@@ -67,6 +69,7 @@ namespace v {
         void update();
 
     private:
+        std::string                    shader_root_path_;
         std::unique_ptr<DaxaResources> daxa_resources_;
 
         /// Daxa resources for the for now singleton window

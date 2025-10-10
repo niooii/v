@@ -124,6 +124,10 @@ namespace v {
         /// Get current mouse position relative to window
         glm::ivec2 get_mouse_position() const;
 
+        /// Get mouse delta (relative movement) from last frame
+        /// When capture_raw_input(true) is enabled, this returns relative mouse motion
+        glm::ivec2 get_mouse_delta() const;
+
         // Window property getters
 
         /// Get window size
@@ -151,8 +155,8 @@ namespace v {
         bool is_always_on_top() const;
         /// Check if window has focus
         bool is_focused() const;
-        /// Check if window has raw input captured (relative mouse mode)
-        bool capturing_raw_input() const;
+        /// Check if window has mouse captured (relative mouse mode)
+        bool capturing_mouse() const;
 
         // Window property setters
 
@@ -187,8 +191,9 @@ namespace v {
         void raise();
         /// Flash window to get user attention
         void flash();
-        /// Enable/disable raw input capture (relative mouse mode)
-        void capture_raw_input(bool capture);
+        /// Enable/disable mouse capture (relative mouse mode - hides cursor, locks to
+        /// window)
+        void capture_mouse(bool capture);
 
         /// Creates a vulkan surface - directly mirrors vulkan API
         FORCEINLINE bool create_vk_surface(
@@ -240,6 +245,7 @@ namespace v {
         std::array<bool, 8> curr_mbuttons;
         std::array<bool, 8> prev_mbuttons;
         glm::ivec2          mouse_pos_;
+        glm::ivec2          mouse_delta_;
     };
 
     /// A context for managing windows and input related to windows.

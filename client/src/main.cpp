@@ -6,6 +6,7 @@
 #include <prelude.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
+#include <tracy/Tracy.hpp>
 
 constexpr i32 TEMP_MAX_FPS = 60;
 

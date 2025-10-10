@@ -28,6 +28,32 @@ add_library(jsoncons INTERFACE)
 target_include_directories(jsoncons INTERFACE
     ${CMAKE_SOURCE_DIR}/extern/jsoncons/include)
 
+# Tracy profiler
+option(TRACY_ENABLE "Enable Tracy profiler" ON)
+option(TRACY_ON_DEMAND "Enable Tracy on-demand profiling" OFF)
+option(TRACY_CALLSTACK "Enable Tracy call stack sampling" ON)
+set(TRACY_CALLSTACK_DEPTH "32" CACHE STRING "Tracy call stack depth")
+
+if(TRACY_ENABLE)
+    add_library(TracyClient STATIC extern/tracy/public/TracyClient.cpp)
+    target_include_directories(TracyClient PUBLIC extern/tracy/public)
+    target_compile_definitions(TracyClient PUBLIC TRACY_ENABLE)
+
+    if(TRACY_ON_DEMAND)
+        target_compile_definitions(TracyClient PUBLIC TRACY_ON_DEMAND)
+    endif()
+
+    if(TRACY_CALLSTACK)
+        target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK=${TRACY_CALLSTACK_DEPTH})
+    endif()
+
+    # Disable warnings for Tracy
+    target_compile_options(TracyClient PRIVATE -w)
+
+    # Link against libdl for dladdr (needed for call stack resolution)
+    target_link_libraries(TracyClient PRIVATE ${CMAKE_DL_LIBS})
+endif()
+
 # reflect-cpp needs jsoncons includes available globally for CBOR
 include_directories(${CMAKE_SOURCE_DIR}/extern/jsoncons/include)
 

@@ -1,10 +1,10 @@
 // Math utilities integration tests
 
-#include <testing.h>
-#include <math.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <math.h>
+#include <test.h>
 
 using namespace v;
 
@@ -112,14 +112,18 @@ int main()
 
     // Test error cases
     {
-        tctx.assert_now(v::floor_log(0.0, 2.0) == std::numeric_limits<i32>::min(),
-                        "floor_log error case");
-        tctx.assert_now(v::ceil_log(0.0, 2.0) == std::numeric_limits<i32>::min(),
-                        "ceil_log error case");
-        tctx.assert_now(v::ifloor_log(0u, 2u) == std::numeric_limits<i32>::min(),
-                        "ifloor_log error case");
-        tctx.assert_now(v::floor_log_pow2(0u, 1) == std::numeric_limits<i32>::min(),
-                        "floor_log_pow2 error case");
+        tctx.assert_now(
+            v::floor_log(0.0, 2.0) == std::numeric_limits<i32>::min(),
+            "floor_log error case");
+        tctx.assert_now(
+            v::ceil_log(0.0, 2.0) == std::numeric_limits<i32>::min(),
+            "ceil_log error case");
+        tctx.assert_now(
+            v::ifloor_log(0u, 2u) == std::numeric_limits<i32>::min(),
+            "ifloor_log error case");
+        tctx.assert_now(
+            v::floor_log_pow2(0u, 1) == std::numeric_limits<i32>::min(),
+            "floor_log_pow2 error case");
     }
 
     return tctx.is_failure();

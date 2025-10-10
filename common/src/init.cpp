@@ -4,6 +4,7 @@
 //
 
 #include <prelude.h>
+#include <profile.h>
 #include <rand.h>
 #include <time/time.h>
 
@@ -23,6 +24,9 @@ void init_loggers();
 
 void v::init(const char* argv0)
 {
+    // enables tracy on static lib linkage
+    TracyNoop;
+
     absl::InitializeSymbolizer(argv0);
     absl::FailureSignalHandlerOptions fail_opts = { .symbolize_stacktrace = true };
 

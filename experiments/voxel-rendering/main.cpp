@@ -29,12 +29,36 @@ int main(int argc, char** argv)
     std::atomic_bool running  = true;
     sdl_comp.on_quit          = [&running]() { running = false; };
 
+    window->capture_mouse(true);
+
     // Main loop
     while (running)
     {
-        sdl_ctx->update();
         window_ctx->update();
+        sdl_ctx->update();
         render_ctx->update();
+
+        if (window->is_key_down(Key::W))
+            spdlog::info("W down");
+        if (window->is_key_down(Key::A))
+            spdlog::info("A down");
+        if (window->is_key_down(Key::S))
+            spdlog::info("S down");
+        if (window->is_key_down(Key::D))
+            spdlog::info("D down");
+        if (window->is_key_down(Key::Q))
+            spdlog::info("Q down");
+        if (window->is_key_down(Key::E))
+            spdlog::info("E down");
+
+        if (window->is_key_down(Key::Escape))
+            running = false;
+
+        glm::ivec2 mouse_delta = window->get_mouse_delta();
+        if (mouse_delta.x != 0 || mouse_delta.y != 0)
+            spdlog::info("Mouse delta: ({}, {})", mouse_delta.x, mouse_delta.y);
+
+        engine.tick();
     }
 
     return 0;

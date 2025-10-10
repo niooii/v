@@ -34,3 +34,6 @@
 [submodule "extern/jsoncons"]
 	path = extern/jsoncons
 	url = https://github.com/danielaparker/jsoncons.git
+[submodule "extern/tracy"]
+	path = extern/tracy
+	url = https://github.com/wolfpld/tracy.git

@@ -8,10 +8,11 @@
 #include "engine/engine.h"
 
 namespace v {
-    RenderContext::RenderContext(Engine& engine) : Context(engine)
+    RenderContext::RenderContext(Engine& engine, const std::string& shader_root_path) :
+        Context(engine), shader_root_path_(shader_root_path)
     {
         // Create Daxa resources
-        daxa_resources_ = std::make_unique<DaxaResources>(engine_);
+        daxa_resources_ = std::make_unique<DaxaResources>(engine_, shader_root_path_);
 
         // Init rendering stuff for the window
         auto window_ctx = engine_.get_ctx<WindowContext>();

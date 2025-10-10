@@ -1,7 +1,7 @@
 // Domain system integration test using CountTo10Domain
 
 #include <engine/test.h>
-#include <testing.h>
+#include <test.h>
 
 using namespace v;
 
@@ -12,8 +12,7 @@ int main()
     // Create 8 example CountTo10Domain instances
     for (i32 i = 0; i < 8; ++i)
     {
-        engine->add_domain<CountTo10Domain>(
-            "CountTo10Domain_" + std::to_string(i));
+        engine->add_domain<CountTo10Domain>("CountTo10Domain_" + std::to_string(i));
     }
 
     // Verify all domains were created

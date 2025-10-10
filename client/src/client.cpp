@@ -20,7 +20,7 @@ namespace v {
         window_ctx_ = engine_.add_ctx<WindowContext>();
         window_     = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
-        render_ctx_ = engine_.add_ctx<RenderContext>();
+        render_ctx_ = engine_.add_ctx<RenderContext>("./client/resources/shaders");
         net_ctx_    = engine_.add_ctx<NetworkContext>(1.0 / 500);
 
 

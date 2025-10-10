@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include <vox/store/svo.h>
 #include <containers/ud_map.h>
 #include <cstdint>
 #include <defs.h>
 #include <engine/domain.h>
+#include <vox/store/svo.h>
 
 namespace v {
 

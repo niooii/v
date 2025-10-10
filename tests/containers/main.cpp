@@ -1,9 +1,9 @@
 // Container (ud_set, ud_map) integration tests
 
-#include <testing.h>
-#include <containers/ud_set.h>
 #include <containers/ud_map.h>
+#include <containers/ud_set.h>
 #include <string>
+#include <test.h>
 
 using namespace v;
 
@@ -32,15 +32,18 @@ int main()
 
         // Test find
         auto found_it = set.find(42);
-        tctx.assert_now(found_it != set.end(), "Find returns valid iterator for existing element");
+        tctx.assert_now(
+            found_it != set.end(), "Find returns valid iterator for existing element");
         tctx.assert_now(*found_it == 42, "Found iterator points to correct value");
 
         auto not_found_it = set.find(100);
-        tctx.assert_now(not_found_it == set.end(), "Find returns end for non-existing element");
+        tctx.assert_now(
+            not_found_it == set.end(), "Find returns end for non-existing element");
 
         // Test contains
         tctx.assert_now(set.contains(42), "Contains returns true for existing element");
-        tctx.assert_now(!set.contains(100), "Contains returns false for non-existing element");
+        tctx.assert_now(
+            !set.contains(100), "Contains returns false for non-existing element");
     }
 
     // Test ud_set with strings
@@ -58,7 +61,7 @@ int main()
     // Test ud_set erase
     {
         ud_set<int> set;
-        set.insert({1, 2, 3, 4, 5});
+        set.insert({ 1, 2, 3, 4, 5 });
 
         size_t erased = set.erase(3);
         tctx.assert_now(erased == 1, "Erase returns 1 for existing element");
@@ -67,7 +70,8 @@ int main()
 
         erased = set.erase(100);
         tctx.assert_now(erased == 0, "Erase returns 0 for non-existing element");
-        tctx.assert_now(set.size() == 4, "Size unchanged when erasing non-existing element");
+        tctx.assert_now(
+            set.size() == 4, "Size unchanged when erasing non-existing element");
     }
 
     // Test ud_map basic operations
@@ -98,16 +102,19 @@ int main()
 
         // Test find
         auto found_it = map.find(42);
-        tctx.assert_now(found_it != map.end(), "Find returns valid iterator for existing key");
+        tctx.assert_now(
+            found_it != map.end(), "Find returns valid iterator for existing key");
         tctx.assert_now(found_it->first == 42, "Found iterator key correct");
         tctx.assert_now(found_it->second == "answer", "Found iterator value correct");
 
         auto not_found_it = map.find(200);
-        tctx.assert_now(not_found_it == map.end(), "Find returns end for non-existing key");
+        tctx.assert_now(
+            not_found_it == map.end(), "Find returns end for non-existing key");
 
         // Test contains
         tctx.assert_now(map.contains(42), "Contains returns true for existing key");
-        tctx.assert_now(!map.contains(200), "Contains returns false for non-existing key");
+        tctx.assert_now(
+            !map.contains(200), "Contains returns false for non-existing key");
     }
 
     // Test ud_map with string keys
@@ -123,7 +130,8 @@ int main()
         // Test that operator[] creates default value for non-existing key
         int new_val = map["three"];
         tctx.assert_now(new_val == 0, "Operator[] creates default value for new key");
-        tctx.assert_now(map.size() == 3, "Map size increased when accessing new key via operator[]");
+        tctx.assert_now(
+            map.size() == 3, "Map size increased when accessing new key via operator[]");
     }
 
     // Test ud_map erase
@@ -146,11 +154,12 @@ int main()
     // Test iteration over ud_set
     {
         ud_set<int> set;
-        set.insert({10, 20, 30, 40, 50});
+        set.insert({ 10, 20, 30, 40, 50 });
 
-        int sum = 0;
+        int sum   = 0;
         int count = 0;
-        for (const auto& value : set) {
+        for (const auto& value : set)
+        {
             sum += value;
             count++;
         }
@@ -166,23 +175,27 @@ int main()
         map[2] = "two";
         map[3] = "three";
 
-        int key_sum = 0;
+        int         key_sum = 0;
         std::string concat;
-        for (const auto& [key, value] : map) {
+        for (const auto& [key, value] : map)
+        {
             key_sum += key;
             concat += value;
         }
 
         tctx.assert_now(key_sum == 6, "Sum of keys correct");
-        tctx.assert_now(concat.find("one") != std::string::npos, "Values concatenated correctly");
-        tctx.assert_now(concat.find("two") != std::string::npos, "Values concatenated correctly");
-        tctx.assert_now(concat.find("three") != std::string::npos, "Values concatenated correctly");
+        tctx.assert_now(
+            concat.find("one") != std::string::npos, "Values concatenated correctly");
+        tctx.assert_now(
+            concat.find("two") != std::string::npos, "Values concatenated correctly");
+        tctx.assert_now(
+            concat.find("three") != std::string::npos, "Values concatenated correctly");
     }
 
     // Test clear operation
     {
         ud_set<int> set;
-        set.insert({1, 2, 3, 4, 5});
+        set.insert({ 1, 2, 3, 4, 5 });
         tctx.assert_now(set.size() == 5, "Set has elements before clear");
 
         set.clear();

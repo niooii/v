@@ -20,7 +20,8 @@ namespace v {
     ///
     /// IMPORTANT: When creating derived Domain classes, the constructor MUST
     /// accept Engine& as its first parameter. The engine reference is automatically
-    /// passed by Engine::add_domain() - do not pass it manually when calling add_domain().
+    /// passed by Engine::add_domain() - do not pass it manually when calling
+    /// add_domain().
     ///
     /// Example:
     ///   class MyDomain : public Domain<MyDomain> {

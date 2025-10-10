@@ -22,9 +22,9 @@ namespace v {
     enum ConnectionType { Incoming, Outgoing };
 
     using HostPortTypeTuple = std::tuple<std::string, u16, ConnectionType>;
-    using HostPortTuple = std::tuple<std::string, u16>;
-    using NetPeer = ENetPeer*;
-    using NetHost = ENetHost*;
+    using HostPortTuple     = std::tuple<std::string, u16>;
+    using NetPeer           = ENetPeer*;
+    using NetHost           = ENetHost*;
 
     class NetConnection;
 

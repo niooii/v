@@ -58,6 +58,11 @@ target_link_libraries(vlib
         imgui
 )
 
+# Link Tracy if enabled
+if(TRACY_ENABLE)
+    target_link_libraries(vlib PUBLIC TracyClient)
+endif()
+
 # Link Windows-specific libraries
 if(WIN32)
     target_link_libraries(vlib PUBLIC ws2_32 winmm)

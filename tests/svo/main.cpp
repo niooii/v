@@ -1,8 +1,8 @@
 // Unit-like checks for SparseVoxelOctree128
 
-#include <vox/store/svo.h>
-#include <testing.h>
+#include <test.h>
 #include <time/time.h>
+#include <vox/store/svo.h>
 
 using namespace v;
 

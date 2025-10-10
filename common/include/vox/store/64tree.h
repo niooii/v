@@ -12,7 +12,7 @@
 // this personally to be a nicer mental model. Too bad the rest of the engine will have to
 // think so too.
 
-// ALSO, air is implicitly stored. If a node doesn't exist, then it is air. 
+// ALSO, air is implicitly stored. If a node doesn't exist, then it is air.
 // A node that actaully exists will always encode at least one non-air voxel.
 
 #include <defs.h>
@@ -119,8 +119,7 @@ namespace v {
     public:
         explicit Sparse64Tree(u8 depth) :
             bounds_(glm::vec3(0), glm::vec3(v::pow(4.f, static_cast<f32>(depth)))),
-            depth_(depth),
-            g_nodes_(static_cast<u32>(v::pow(8.f, depth)))
+            depth_(depth), g_nodes_(static_cast<u32>(v::pow(8.f, depth)))
         {}
 
         /// Constructs the smallest 64Tree that can contain the bounding box.
@@ -148,7 +147,8 @@ namespace v {
 
         void fill_aabb(const AABB& region, VoxelType type);
         void fill_sphere(const glm::vec3& center, f32 radius, VoxelType type);
-        void fill_cylinder(const glm::vec3& p0, const glm::vec3& p1, f32 radius, VoxelType type);
+        void fill_cylinder(
+            const glm::vec3& p0, const glm::vec3& p1, f32 radius, VoxelType type);
 
         /// Flattens the tree into an array of GPU friendly nodes.
         // TODO! should maybe move into different place? so 64tree only worries about cpu
@@ -181,7 +181,10 @@ namespace v {
         void fill_node(S64Node_UP& node, VoxelType t);
 
         /// Returns the starting shift amount for tree traversal
-        FORCEINLINE u8 init_shift_amt() const { return CTZ(static_cast<u32>(bounds_.max.x) >> 2); }
+        FORCEINLINE u8 init_shift_amt() const
+        {
+            return CTZ(static_cast<u32>(bounds_.max.x) >> 2);
+        }
 
         /// Transforms position to local coordinates within a node
         FORCEINLINE void to_local_coords(glm::uvec3& pos, u8 shift_amt) const
@@ -200,5 +203,31 @@ namespace v {
 
         /// Checks if a Regular node should be collapsed (all children empty)
         bool should_collapse_regular(S64Node_UP& node);
+
+        /// Geometric tests
+        static bool aabb_contains_aabb(const AABB& outer, const AABB& inner);
+        static bool aabb_intersects_aabb(const AABB& a, const AABB& b);
+        static bool
+        aabb_inside_sphere(const AABB& box, const glm::vec3& center, f32 radius);
+        static bool
+        aabb_intersects_sphere(const AABB& box, const glm::vec3& center, f32 radius);
+        static bool aabb_inside_cylinder(
+            const AABB& box, const glm::vec3& p0, const glm::vec3& p1, f32 radius,
+            const glm::vec3& axis, f32 length);
+        static bool aabb_intersects_cylinder(
+            const AABB& box, const glm::vec3& p0, const glm::vec3& p1, f32 radius,
+            const glm::vec3& axis, f32 length);
+
+        /// Hierarchical fill helpers
+        void fill_aabb_recursive(
+            S64Node_UP& node, const glm::uvec3& node_pos, u8 shift_amt,
+            const AABB& region, VoxelType type);
+        void fill_sphere_recursive(
+            S64Node_UP& node, const glm::uvec3& node_pos, u8 shift_amt,
+            const glm::vec3& center, f32 radius, VoxelType type);
+        void fill_cylinder_recursive(
+            S64Node_UP& node, const glm::uvec3& node_pos, u8 shift_amt,
+            const glm::vec3& p0, const glm::vec3& p1, f32 radius, const glm::vec3& axis,
+            f32 length, VoxelType type);
     };
 } // namespace v

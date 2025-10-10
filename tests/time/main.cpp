@@ -1,10 +1,10 @@
 // Time system integration tests
 
 #include <chrono>
+#include <test.h>
 #include <thread>
-#include <testing.h>
-#include <time/time.h>
 #include <time/stopwatch.h>
+#include <time/time.h>
 
 using namespace v;
 
@@ -16,7 +16,7 @@ int main()
     {
         auto start = std::chrono::steady_clock::now();
         v::time::sleep_ms(100);
-        auto end = std::chrono::steady_clock::now();
+        auto end     = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
         tctx.assert_now(elapsed.count() >= 90, "sleep_ms slept for at least 90ms");
@@ -44,7 +44,8 @@ int main()
         double second = sw.elapsed();
 
         tctx.assert_now(second > first, "Stopwatch time increases monotonically");
-        tctx.assert_now((second - first) >= 0.04, "Second measurement shows at least 40ms elapsed");
+        tctx.assert_now(
+            (second - first) >= 0.04, "Second measurement shows at least 40ms elapsed");
     }
 
     // Test multiple concurrent Stopwatches
@@ -56,7 +57,8 @@ int main()
         double t2 = sw2.elapsed();
 
         // Should be approximately equal
-        tctx.assert_now(std::abs(t1 - t2) < 0.01, "Concurrent stopwatches measure similar time");
+        tctx.assert_now(
+            std::abs(t1 - t2) < 0.01, "Concurrent stopwatches measure similar time");
     }
 
     return tctx.is_failure();

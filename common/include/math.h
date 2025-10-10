@@ -17,20 +17,20 @@ namespace v {
         /// have to overload with scalar impls
         template <typename T>
         struct vec_traits {
-            static constexpr bool is_vec     = false;
-            static constexpr glm::length_t L = 1; // scalars have 1 copmonent
-            using scalar                     = T; // element is itself
-            using vec  = glm::vec<1, T, glm::defaultp>; // promoted type
+            static constexpr bool          is_vec = false;
+            static constexpr glm::length_t L      = 1; // scalars have 1 copmonent
+            using scalar                          = T; // element is itself
+            using vec = glm::vec<1, T, glm::defaultp>; // promoted type
             static constexpr glm::qualifier qual = glm::defaultp;
         };
 
         template <glm::length_t L, typename T, glm::qualifier Q>
         struct vec_traits<glm::vec<L, T, Q>> {
-            static constexpr bool is_vec       = true;
-            static constexpr glm::length_t Len = L; // number of components
-            using scalar                       = T; // underlying elem type
-            using vec                          = glm::vec<L, T, Q>; // leave it alone
-            static constexpr glm::qualifier qual = Q;
+            static constexpr bool          is_vec = true;
+            static constexpr glm::length_t Len    = L; // number of components
+            using scalar                          = T; // underlying elem type
+            using vec                             = glm::vec<L, T, Q>; // leave it alone
+            static constexpr glm::qualifier qual  = Q;
         };
 
         // promotes a scalar into a vector, or leaves a vector untouched
@@ -67,21 +67,23 @@ namespace v {
     FORCEINLINE V saturate(const V& v)
     {
         using namespace math_detail;
-        using traits = vec_traits<V>;
+        using traits   = vec_traits<V>;
         using scalar_t = typename traits::scalar;
 
         auto promoted = promote(v);
-        auto result = glm::clamp(promoted, scalar_t(0), scalar_t(1));
+        auto result   = glm::clamp(promoted, scalar_t(0), scalar_t(1));
         return demote<V>(result);
     }
 
     /// Clamps value/vector between min and max (scalar bounds).
     template <typename V>
-    FORCEINLINE V clamp(const V& v, typename math_detail::vec_traits<V>::scalar lo, typename math_detail::vec_traits<V>::scalar hi)
+    FORCEINLINE V clamp(
+        const V& v, typename math_detail::vec_traits<V>::scalar lo,
+        typename math_detail::vec_traits<V>::scalar hi)
     {
         using namespace math_detail;
         auto promoted = promote(v);
-        auto result = glm::clamp(promoted, lo, hi);
+        auto result   = glm::clamp(promoted, lo, hi);
         return demote<V>(result);
     }
 
@@ -90,10 +92,10 @@ namespace v {
     FORCEINLINE V clamp(const V& v, const V& lo, const V& hi)
     {
         using namespace math_detail;
-        auto promoted_v = promote(v);
+        auto promoted_v  = promote(v);
         auto promoted_lo = promote(lo);
         auto promoted_hi = promote(hi);
-        auto result = glm::clamp(promoted_v, promoted_lo, promoted_hi);
+        auto result      = glm::clamp(promoted_v, promoted_lo, promoted_hi);
         return demote<V>(result);
     }
 
@@ -102,12 +104,12 @@ namespace v {
     FORCEINLINE V pow(const V& base, typename math_detail::vec_traits<V>::scalar exponent)
     {
         using namespace math_detail;
-        using traits = vec_traits<V>;
+        using traits     = vec_traits<V>;
         using promoted_t = typename traits::vec;
 
         auto promoted_base = promote(base);
-        auto promoted_exp = promoted_t(exponent); // broadcast scalar to all components
-        auto result = glm::pow(promoted_base, promoted_exp);
+        auto promoted_exp  = promoted_t(exponent); // broadcast scalar to all components
+        auto result        = glm::pow(promoted_base, promoted_exp);
         return demote<V>(result);
     }
 
@@ -117,32 +119,34 @@ namespace v {
     {
         using namespace math_detail;
         auto promoted_base = promote(base);
-        auto promoted_exp = promote(exponent);
-        auto result = glm::pow(promoted_base, promoted_exp);
+        auto promoted_exp  = promote(exponent);
+        auto result        = glm::pow(promoted_base, promoted_exp);
         return demote<V>(result);
     }
 
     /// Applies ceil() to each component.
     template <
         typename V,
-        typename = std::enable_if_t<std::is_floating_point_v<typename math_detail::vec_traits<V>::scalar>>>
+        typename = std::enable_if_t<
+            std::is_floating_point_v<typename math_detail::vec_traits<V>::scalar>>>
     FORCEINLINE V ceil(const V& v)
     {
         using namespace math_detail;
         auto promoted = promote(v);
-        auto result = glm::ceil(promoted);
+        auto result   = glm::ceil(promoted);
         return demote<V>(result);
     }
 
     /// Applies floor() to each component.
     template <
         typename V,
-        typename = std::enable_if_t<std::is_floating_point_v<typename math_detail::vec_traits<V>::scalar>>>
+        typename = std::enable_if_t<
+            std::is_floating_point_v<typename math_detail::vec_traits<V>::scalar>>>
     FORCEINLINE V floor(const V& v)
     {
         using namespace math_detail;
         auto promoted = promote(v);
-        auto result = glm::floor(promoted);
+        auto result   = glm::floor(promoted);
         return demote<V>(result);
     }
 
@@ -151,13 +155,13 @@ namespace v {
     FORCEINLINE typename math_detail::vec_traits<V>::scalar max_component(const V& v)
     {
         using namespace math_detail;
-        using traits = vec_traits<V>;
+        using traits     = vec_traits<V>;
         using promoted_t = typename traits::vec;
-        using scalar_t = typename traits::scalar;
+        using scalar_t   = typename traits::scalar;
 
         auto promoted = promote(v);
 
-        scalar_t m = promoted[0];
+        scalar_t                m   = promoted[0];
         constexpr glm::length_t len = promoted_t::length();
         for (glm::length_t i = 1; i < len; ++i)
             m = std::max(m, promoted[i]);
@@ -169,13 +173,13 @@ namespace v {
     FORCEINLINE typename math_detail::vec_traits<V>::scalar min_component(const V& v)
     {
         using namespace math_detail;
-        using traits = vec_traits<V>;
+        using traits     = vec_traits<V>;
         using promoted_t = typename traits::vec;
-        using scalar_t = typename traits::scalar;
+        using scalar_t   = typename traits::scalar;
 
         auto promoted = promote(v);
 
-        scalar_t m = promoted[0];
+        scalar_t                m   = promoted[0];
         constexpr glm::length_t len = promoted_t::length();
         for (glm::length_t i = 1; i < len; ++i)
             m = std::min(m, promoted[i]);
@@ -185,16 +189,17 @@ namespace v {
 
     template <
         typename V,
-        typename = std::enable_if_t<std::is_integral_v<typename math_detail::vec_traits<V>::scalar>>>
+        typename = std::enable_if_t<
+            std::is_integral_v<typename math_detail::vec_traits<V>::scalar>>>
     FORCEINLINE V ipow(const V& v, u32 e)
     {
         using namespace math_detail;
-        using traits = vec_traits<V>;
+        using traits     = vec_traits<V>;
         using promoted_t = typename traits::vec;
 
-        promoted_t base = promote(v);
-        promoted_t res(1);
-        u32        n = e;
+        promoted_t              base = promote(v);
+        promoted_t              res(1);
+        u32                     n   = e;
         constexpr glm::length_t len = promoted_t::length();
         while (n)
         {

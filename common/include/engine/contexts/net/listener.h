@@ -11,7 +11,7 @@
 
 namespace v {
     class NetConnection;
-    using OnConnectCallback = std::function<void(std::shared_ptr<NetConnection>)>;
+    using OnConnectCallback    = std::function<void(std::shared_ptr<NetConnection>)>;
     using OnDisconnectCallback = std::function<void(std::shared_ptr<NetConnection>)>;
 
     struct ServerComponent {

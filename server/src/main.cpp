@@ -10,6 +10,7 @@
 #include <server.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
+#include <tracy/Tracy.hpp>
 #include <world/world.h>
 #include "engine/contexts/net/listener.h"
 

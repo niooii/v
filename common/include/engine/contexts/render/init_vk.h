@@ -19,7 +19,8 @@ namespace v {
         daxa::Device          device;
         daxa::PipelineManager pipeline_manager;
 
-        explicit DaxaResources(Engine& engine);
+        explicit DaxaResources(
+            Engine& engine, const std::string& shader_root_path = "./resources/shaders");
         ~DaxaResources();
 
         DaxaResources(const DaxaResources&)            = delete;
