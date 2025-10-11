@@ -21,7 +21,8 @@ namespace v {
 
         void await_suspend(std::coroutine_handle<> handle);
 
-        void await_resume() const noexcept {}
+        // Returns true to allow usage in while loops: while (co_await ci.sleep(100)) { ... }
+        bool await_resume() const noexcept { return true; }
     };
 
     /// Interface passed to coroutines for scheduler interaction
@@ -32,7 +33,8 @@ namespace v {
         {}
 
         /// Suspend coroutine for the given duration in milliseconds.
-        /// Returns true to allow use in while loops: while (ci.sleep(100)) { ... }
+        /// Returns true to allow use in while loops:
+        ///   while (co_await ci.sleep(100)) { /* runs every 100ms */ }
         SleepAwaitable sleep(u64 duration_ms)
         {
             return SleepAwaitable{ duration_ms, &scheduler_ };

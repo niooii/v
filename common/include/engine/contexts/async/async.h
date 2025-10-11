@@ -13,6 +13,19 @@
 #include "taskflow/taskflow.hpp"
 
 namespace v {
+    /// Contains state that a coroutine needs throughout its lifetime
+    /// If i don't heap allocate this a bunch of issues come up due to how C++ handles coroutines internally
+    struct CoroutineState {
+        std::shared_ptr<void>               lambda;     // The coroutine lambda
+        std::shared_ptr<CoroutineInterface> iface;      // The interface (scheduler/engine access)
+
+        template<typename F>
+        CoroutineState(F&& func, CoroutineScheduler& scheduler, Engine& engine)
+            : lambda(std::make_shared<std::decay_t<F>>(std::forward<F>(func)))
+            , iface(std::make_shared<CoroutineInterface>(scheduler, engine))
+        {}
+    };
+
     class AsyncContext : public Context {
     public:
         AsyncContext(Engine& engine, u16 num_threads) :
@@ -32,6 +45,7 @@ namespace v {
             // TODO! don't do this but this actually segfaults for some reason..
             // migiht be an issue?
             // wait nope its a async coro tick issue
+            // whatever it runs on update() anyways
             // engine.on_tick.connect(
             //{}, {}, "async_coro_tick", [this] { scheduler_.tick(v::time::ns()); });
         }
@@ -108,15 +122,15 @@ namespace v {
         template <typename Ret, typename F>
         Coroutine<Ret> spawn(F&& coro_fn)
         {
-            // Heap-allocate the lambda so it has a stable address
-            auto lambda_ptr = std::make_shared<std::decay_t<F>>(std::forward<F>(coro_fn));
+            // Create centralized state (heap-allocates lambda and interface)
+            auto state = std::make_shared<CoroutineState>(
+                std::forward<F>(coro_fn), scheduler_, engine_);
 
-            CoroutineInterface iface{ scheduler_, engine_ };
-            // Call from the stable heap location
-            auto coro = (*lambda_ptr)(iface);
+            // Call from the stable heap locations
+            auto coro = (*std::static_pointer_cast<std::decay_t<F>>(state->lambda))(*state->iface);
 
-            // Store the lambda in the scheduler to keep it alive
-            scheduler_.store_lambda(coro.handle(), lambda_ptr);
+            // Store the state to keep everything alive
+            scheduler_.store_lambda(coro.handle(), state);
 
             return coro;
         }
@@ -125,15 +139,15 @@ namespace v {
         template <typename F>
         auto spawn(F&& coro_fn)
         {
-            // Heap-allocate the lambda so it has a stable address
-            auto lambda_ptr = std::make_shared<std::decay_t<F>>(std::forward<F>(coro_fn));
+            // Create centralized state (heap-allocates lambda and interface)
+            auto state = std::make_shared<CoroutineState>(
+                std::forward<F>(coro_fn), scheduler_, engine_);
 
-            CoroutineInterface iface{ scheduler_, engine_ };
-            // Call from the stable heap location
-            auto coro = (*lambda_ptr)(iface);
+            // Call from the stable heap locations
+            auto coro = (*std::static_pointer_cast<std::decay_t<F>>(state->lambda))(*state->iface);
 
-            // Store the lambda in the scheduler to keep it alive
-            scheduler_.store_lambda(coro.handle(), lambda_ptr);
+            // Store the state to keep everything alive
+            scheduler_.store_lambda(coro.handle(), state);
 
             return coro;
         }

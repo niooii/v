@@ -10,13 +10,14 @@
 #include <server.h>
 #include <time/stopwatch.h>
 #include <time/time.h>
-#include <tracy/Tracy.hpp>
 #include <world/world.h>
+#include "engine/contexts/async/async.h"
+#include "engine/contexts/async/coro_interface.h"
 #include "engine/contexts/net/listener.h"
 
 using namespace v;
 
-constexpr f64 SERVER_UPDATE_RATE = 1.0 / 60.0; // 60 FPS
+constexpr f64 SERVER_UPDATE_RATE = 1.0 / 144.0; // 60 FPS
 
 int main(int argc, char** argv)
 {
@@ -31,6 +32,16 @@ int main(int argc, char** argv)
 
     // attempts to update every 1ms
     auto net_ctx = engine.add_ctx<NetworkContext>(1.0 / 1000.0);
+    
+    auto async = engine.add_ctx<AsyncContext>(8);
+
+    // Test 2: While loop with co_await
+    async->spawn([](CoroutineInterface& ci) -> Coroutine<void> {
+        int count = 0;
+        while (co_await ci.sleep(100)) {
+            LOG_INFO("Hi {}", ++count);
+        }
+    });
 
     ServerConfig config{ "127.0.0.1", 25566 };
     engine.add_domain<ServerDomain>(config);
@@ -46,6 +57,8 @@ int main(int argc, char** argv)
 
         // Update network context to process events
         net_ctx->update();
+
+        async->update();
 
         // Update engine
         engine.tick();

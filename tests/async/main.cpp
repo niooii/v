@@ -474,6 +474,57 @@ int main()
             error_callback_executed, "Coroutine .or_else() callback executed");
     }
 
+    // Multiple co_awaits in single coroutine
+    {
+        int step = 0;
+        auto coro = async_ctx->spawn(
+            [&step](CoroutineInterface& ci) -> Coroutine<void>
+            {
+                step = 1;
+                co_await ci.sleep(50);
+                step = 2;
+                co_await ci.sleep(50);
+                step = 3;
+                co_await ci.sleep(50);
+                step = 4;
+                co_return;
+            });
+
+        // Tick until coroutine completes
+        while (!coro.done())
+        {
+            engine->tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        tctx.assert_now(step == 4, "Multiple co_awaits completed successfully");
+    }
+
+    // While loop with co_await
+    {
+        int tick_count = 0;
+        auto coro = async_ctx->spawn(
+            [&tick_count](CoroutineInterface& ci) -> Coroutine<void>
+            {
+                while (co_await ci.sleep(50))
+                {
+                    tick_count++;
+                    if (tick_count >= 3)
+                        break;
+                }
+                co_return;
+            });
+
+        // Tick until coroutine completes
+        while (!coro.done())
+        {
+            engine->tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        tctx.assert_now(tick_count == 3, "While loop with co_await executed 3 times");
+    }
+
     // Multiple concurrent coroutines
     // {
     //     std::atomic<int> counter{ 0 };

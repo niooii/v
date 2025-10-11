@@ -25,7 +25,6 @@ namespace v {
     void CoroutineScheduler::schedule_finish(std::coroutine_handle<> handle) {
         handle.destroy();
         // TODO! set some more state here?
-        LOG_INFO("coroutine finish, destroying");
         active_handles_.erase(handle);
         lambda_storage_.erase(handle);
     }
