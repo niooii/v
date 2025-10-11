@@ -41,14 +41,15 @@ namespace v {
 
         graph.add_task(
             daxa::Task::Raster("rainbow_triangle")
-                // Specify view type so TaskGraph generates a valid image_view for runtime swapchain images
+                // Specify view type so TaskGraph generates a valid image_view for runtime
+                // swapchain images
                 .color_attachment.writes(daxa::ImageViewType::REGULAR_2D, swapchain_image)
                 .executes(
                     [this](daxa::TaskInterface ti)
                     {
-                        auto& swapchain_image = render_ctx_->swapchain_image();
-                        auto const image_id   = ti.get(swapchain_image).ids[0];
-                        auto const image_view = ti.get(swapchain_image).view_ids[0];
+                        auto&      swapchain_image = render_ctx_->swapchain_image();
+                        auto const image_id        = ti.get(swapchain_image).ids[0];
+                        auto const image_view      = ti.get(swapchain_image).view_ids[0];
                         auto const image_info = ti.device.image_info(image_id).value();
 
                         auto render_recorder = std::move(ti.recorder).begin_renderpass({

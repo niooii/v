@@ -8,7 +8,6 @@
 #include <defs.h>
 #include <functional>
 #include <string>
-#include <taskflow/taskflow.hpp>
 #include <vector>
 
 struct TaskDefinition {
@@ -18,7 +17,7 @@ struct TaskDefinition {
     std::vector<std::string> before; // Tasks this one should run BEFORE
 };
 
-/// Task dependency manager w/ TaskFlow
+/// Task dependency manager
 /// HORRIBLE NAME BTW
 class DependentSink {
 public:
@@ -54,49 +53,9 @@ public:
     void execute();
 
 private:
-    /// Rebuild the TaskFlow graph when tasks are added or removed
-    void rebuild_graph()
-    {
-        taskflow_.clear();
-
-        if (registered_tasks_.empty())
-        {
-            return;
-        }
-
-        v::ud_map<std::string, tf::Task> handles;
-
-        // Create all task nodes
-        for (const auto& [name, def] : registered_tasks_)
-        {
-            handles[name] = taskflow_.emplace(def.func).name(name);
-        }
-
-        // Set up all relations/contraints
-        for (const auto& [name, def] : registered_tasks_)
-        {
-            tf::Task& current_task = handles.at(name);
-
-            // deps
-            for (const std::string& dep_name : def.after)
-            {
-                if (handles.contains(dep_name))
-                {
-                    handles.at(dep_name).precede(current_task);
-                }
-            }
-
-            // run after these
-            for (const std::string& succ_name : def.before)
-            {
-                if (handles.contains(succ_name))
-                {
-                    current_task.precede(handles.at(succ_name));
-                }
-            }
-        }
-    }
+    /// Rebuild the topological order when tasks are added or removed
+    void rebuild_graph();
 
     v::ud_map<std::string, TaskDefinition> registered_tasks_;
-    tf::Taskflow                           taskflow_;
+    std::vector<std::string>               sorted_tasks_;
 };

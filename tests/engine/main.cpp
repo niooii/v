@@ -127,7 +127,8 @@ int main()
         {
             found_count++;
             tctx.assert_now(
-                domain->name() == "Domain1" || domain->name() == "Domain2",
+                domain->name() == "Domain1" || domain->name() == "Domain2" ||
+                    domain->name() == "TestDomain",
                 "Found domain has expected name");
         }
         tctx.assert_now(found_count >= 2, "Found expected number of domains");

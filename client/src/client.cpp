@@ -24,6 +24,7 @@ namespace v {
 
         render_ctx_ = engine_.add_ctx<RenderContext>("./resources/shaders");
         net_ctx_    = engine_.add_ctx<NetworkContext>(1.0 / 500);
+        // auto async_ctx = engine_.add_ctx<AsyncContext>();
 
         // Add triangle render domain
         engine.add_domain<DefaultRenderDomain>();
@@ -53,12 +54,16 @@ namespace v {
         // network update task does not depend on anything
         engine_.on_tick.connect({}, {}, "network", [this]() { net_ctx_->update(); });
 
+        constexpr u16 threads   = 16;
+        auto*         async_ctx = engine_.add_ctx<AsyncContext>(threads);
+
+        // async coroutine scheduler update
+        engine_.on_tick.connect(
+            {}, {}, "async_coro", [async_ctx]() { async_ctx->update(); });
+
         // handle the sdl quit event (includes keyboard interrupt)
         SDLComponent& sdl_comp = sdl_ctx_->create_component(engine_.entity());
         sdl_comp.on_quit       = [this]() { running_ = false; };
-
-        constexpr u16 threads = 16;
-        engine_.add_ctx<AsyncContext>(threads);
 
         // TODO! temporarily connect to the server with dummy info
         auto name = std::format("Player-{}", rand::irange(0, 1'000'000));

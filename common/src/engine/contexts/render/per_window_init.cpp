@@ -203,8 +203,10 @@ namespace v {
 
     void WindowRenderResources::render()
     {
-        if (resize_queued) {
-            if (swapchain.get_surface_extent().x == 0 || swapchain.get_surface_extent().y == 0)
+        if (resize_queued)
+        {
+            if (swapchain.get_surface_extent().x == 0 ||
+                swapchain.get_surface_extent().y == 0)
             {
                 LOG_TRACE("Surface extent is 0.");
                 return;
@@ -231,8 +233,5 @@ namespace v {
         render_graph.execute({});
     }
 
-    void WindowRenderResources::resize()
-    {
-        resize_queued = true;
-    }
+    void WindowRenderResources::resize() { resize_queued = true; }
 } // namespace v

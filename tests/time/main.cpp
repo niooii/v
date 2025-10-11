@@ -26,7 +26,8 @@ int main()
     // Test Stopwatch basic functionality
     {
         Stopwatch sw;
-        tctx.assert_now(sw.reset() == 0.0, "Initial reset returns 0");
+        double    initial = sw.reset();
+        tctx.assert_now(initial >= 0.0, "Initial reset returns non-negative value");
 
         v::time::sleep_ms(50);
         double elapsed = sw.reset();

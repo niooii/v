@@ -5,6 +5,7 @@
 #include <engine/test.h>
 #include <test.h>
 #include <thread>
+#include <time/stopwatch.h>
 
 using namespace v;
 
@@ -12,8 +13,16 @@ int main()
 {
     auto [engine, tctx] = testing::init_test("async");
 
-    engine->add_ctx<AsyncContext>(4);
-    auto* async_ctx = engine->get_ctx<AsyncContext>();
+    auto* async_ctx = engine->add_ctx<AsyncContext>(4);
+
+    // Register coroutine scheduler update
+    engine->on_tick.connect(
+        {}, {}, "async_coro",
+        [async_ctx]()
+        {
+            async_ctx->update();
+            LOG_INFO("updated async");
+        });
 
     // task creation and execution
     {
@@ -81,12 +90,11 @@ int main()
             });
 
         // Should timeout (50ms < 100ms sleep)
-        auto start = std::chrono::steady_clock::now();
+        Stopwatch sw;
         future.wait_for(std::chrono::milliseconds(50));
-        auto elapsed = std::chrono::steady_clock::now() - start;
+        f64 elapsed = sw.elapsed();
 
-        tctx.assert_now(
-            elapsed >= std::chrono::milliseconds(40), "wait_for() respected timeout");
+        tctx.assert_now(elapsed >= 0.04, "wait_for() respected timeout");
 
         // Now wait for completion
         future.wait();
@@ -360,6 +368,141 @@ int main()
             error_callback_executed,
             ".or_else() executed immediately when future already completed with "
             "exception");
+    }
+
+    // Coroutine basic spawn and sleep
+    {
+        bool coroutine_executed = false;
+        auto coro               = async_ctx->spawn(
+            [&coroutine_executed](CoroutineInterface& ci) -> Coroutine<void>
+            {
+                coroutine_executed = true;
+                co_return;
+            });
+
+        // Tick until coroutine completes
+        while (!coro.done())
+        {
+            engine->tick();
+        }
+
+        tctx.assert_now(coroutine_executed, "Basic coroutine executed");
+    }
+
+    bool completed{};
+    // Coroutine sleep test
+    {
+        Stopwatch sw;
+        auto      coro = async_ctx->spawn(
+            [&](CoroutineInterface& ci) -> Coroutine<void>
+            {
+                co_await ci.sleep(100); // 100ms
+                tctx.assert_now(
+                    sw.elapsed() > 0.1 && sw.elapsed() < 0.2,
+                    "Coroutine slept for ~100ms");
+                // TODO! setting this is a segfault, thats kinda bad
+                // completed = true;
+                // LOG_INFO("we done");
+                co_return;
+            });
+        coro.then(
+            [&]
+            {
+                // LOG_INFO("now setting");
+                // completed = true;
+            });
+
+        // Tick until coroutine completes
+        while (!coro.done())
+        {
+            engine->tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        tctx.assert_now(completed, "Coroutine that slept for 100ms completed");
+    }
+
+    // Coroutine with return value
+    {
+        auto coro = async_ctx->spawn(
+            [](CoroutineInterface& ci) -> Coroutine<int>
+            {
+                co_await ci.sleep(50);
+                co_return 42;
+            });
+
+        bool callback_executed = false;
+        int  callback_result   = 0;
+        coro.then(
+            [&callback_executed, &callback_result](int result)
+            {
+                callback_executed = true;
+                callback_result   = result;
+            });
+
+        // Tick until coroutine completes
+        while (!coro.done())
+        {
+            engine->tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        tctx.assert_now(callback_executed, "Coroutine .then() callback executed");
+        tctx.assert_now(callback_result == 42, "Coroutine returned correct value");
+    }
+
+    // Coroutine exception handling
+    {
+        auto coro = async_ctx->spawn(
+            [](CoroutineInterface& ci) -> Coroutine<int>
+            {
+                co_await ci.sleep(10);
+                throw std::runtime_error("Coroutine exception");
+                co_return 0;
+            });
+
+        bool error_callback_executed = false;
+        coro.or_else([&error_callback_executed](std::exception_ptr e)
+                     { error_callback_executed = true; });
+
+        // Tick until coroutine completes
+        while (!coro.done())
+        {
+            engine->tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        tctx.assert_now(
+            error_callback_executed, "Coroutine .or_else() callback executed");
+    }
+
+    // Multiple concurrent coroutines
+    {
+        std::atomic<int> counter{ 0 };
+        constexpr int    num_coros = 5;
+
+        for (int i = 0; i < num_coros; ++i)
+        {
+            async_ctx->spawn(
+                [&counter, i](CoroutineInterface& ci) -> Coroutine<void>
+                {
+                    co_await ci.sleep(i * 20); // Stagger wake times
+                    counter.fetch_add(1);
+                    co_return;
+                });
+        }
+
+        // Tick until all complete (max wait 500ms)
+        for (int i = 0; i < 50; ++i)
+        {
+            engine->tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            if (counter.load() == num_coros)
+                break;
+        }
+
+        tctx.assert_now(
+            counter.load() == num_coros, "All concurrent coroutines completed");
     }
 
     return tctx.is_failure();

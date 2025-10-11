@@ -14,6 +14,9 @@
 
 namespace v {
     template <typename T>
+    class Coroutine;
+
+    template <typename T>
     struct FutureState {
         Engine&                                 engine;
         std::atomic_bool                        is_completed{ false };
@@ -40,6 +43,7 @@ namespace v {
     template <typename T>
     class Future {
         friend class AsyncContext;
+        friend class Coroutine<T>;
 
     public:
         Future(Engine& engine) : state_(std::make_shared<FutureState<T>>(engine)) {}

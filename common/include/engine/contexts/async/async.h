@@ -6,8 +6,11 @@
 
 #include <defs.h>
 #include <engine/context.h>
+#include <engine/contexts/async/coro_interface.h>
+#include <engine/contexts/async/coroutine.h>
 #include <engine/contexts/async/future.h>
-#include "taskflow/core/executor.hpp"
+#include <engine/contexts/async/scheduler.h>
+#include "taskflow/taskflow.hpp"
 
 namespace v {
     class AsyncContext : public Context {
@@ -25,9 +28,18 @@ namespace v {
                     this->executor_.wait_for_all();
                     LOG_TRACE("Executor tasks finish");
                 });
+
+            // TODO! don't do this but this actually segfaults for some reason..
+            // migiht be an issue?
+            // wait nope its a async coro tick issue
+            // engine.on_tick.connect(
+            //{}, {}, "async_coro_tick", [this] { scheduler_.tick(v::time::ns()); });
         }
 
         ~AsyncContext() { executor_.wait_for_all(); }
+
+        // Ticks the coroutine scheduler
+        void update() { scheduler_.tick(v::time::ns()); }
 
         template <typename Ret>
         Future<Ret> task(std::function<Ret(void)> func)
@@ -35,8 +47,8 @@ namespace v {
             Future<Ret> ret{ engine_ };
             auto        state = ret.state_;
 
-            std::future<Ret> f = executor_.async(
-                [func, state]() -> Ret
+            auto f = executor_.async(
+                [func, state]()
                 {
                     try
                     {
@@ -92,7 +104,27 @@ namespace v {
             return task<Ret>(std::function<Ret(void)>(std::forward<F>(func)));
         }
 
+        /// Spawn a coroutine that runs on the main thread.
+        template <typename Ret, typename F>
+        Coroutine<Ret> spawn(F&& coro_fn)
+        {
+            CoroutineInterface iface{ scheduler_, engine_ };
+            return coro_fn(iface);
+        }
+
+        /// Spawn a coroutine that runs on the main thread.
+        template <typename F>
+        auto spawn(F&& coro_fn)
+        {
+            CoroutineInterface iface{ scheduler_, engine_ };
+            return coro_fn(iface);
+        }
+
+        /// Get the coroutine scheduler
+        CoroutineScheduler& scheduler() { return scheduler_; }
+
     private:
-        tf::Executor executor_;
+        tf::Executor       executor_;
+        CoroutineScheduler scheduler_;
     };
 } // namespace v
