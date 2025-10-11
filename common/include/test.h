@@ -72,6 +72,7 @@ namespace v::testing {
                 failures++;
                 const std::string msg =
                     fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
+                LOG_DEBUG(msg);
                 LOG_ERROR("[{}] ASSERT FAILED: {}", name, msg);
             }
             else

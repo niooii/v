@@ -112,6 +112,27 @@ namespace v {
     {
         is_alive_ = false;
         io_thread_.join();
+
+        // Destroy all server hosts
+        {
+            auto servers = servers_.write();
+            for (auto& [host, listener] : *servers)
+            {
+                enet_host_destroy(host);
+            }
+            servers->clear();
+        }
+
+        // Destroy outgoing host
+        {
+            auto host = outgoing_host_.write();
+            if (*host)
+            {
+                enet_host_destroy(*host);
+                *host = nullptr;
+            }
+        }
+
         enet_deinitialize();
     }
 

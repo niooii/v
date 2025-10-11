@@ -10,10 +10,24 @@ namespace v {
         active_handles_.insert(handle);
     }
 
+    void CoroutineScheduler::store_lambda(std::coroutine_handle<> handle, std::shared_ptr<void> lambda)
+    {
+        lambda_storage_[handle] = std::move(lambda);
+    }
+
     void
     CoroutineScheduler::schedule_sleep(std::coroutine_handle<> handle, u64 wake_time_ns)
     {
+        LOG_DEBUG("scheduled sleep");
         sleeping_.push(SleepEntry{ wake_time_ns, handle });
+    }
+
+    void CoroutineScheduler::schedule_finish(std::coroutine_handle<> handle) {
+        handle.destroy();
+        // TODO! set some more state here?
+        LOG_INFO("coroutine finish, destroying");
+        active_handles_.erase(handle);
+        lambda_storage_.erase(handle);
     }
 
     void CoroutineScheduler::tick(u64 current_time_ns)
@@ -24,20 +38,6 @@ namespace v {
             auto entry = sleeping_.top();
             sleeping_.pop();
             entry.handle.resume();
-        }
-
-        // Clean up completed coroutines
-        for (auto it = active_handles_.begin(); it != active_handles_.end();)
-        {
-            if (it->done())
-            {
-                it->destroy();
-                it = active_handles_.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
         }
     }
 } // namespace v

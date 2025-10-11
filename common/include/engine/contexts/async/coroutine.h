@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <any>
 #include <coroutine>
 #include <defs.h>
 #include <engine/contexts/async/coro_interface.h>
@@ -43,9 +44,22 @@ namespace v {
         }
     };
 
+    /// The final returned awaitable for the scheduler to destroy resources and stuff
+    struct FinalAwaitable {
+        CoroutineScheduler& scheduler;
+
+        bool await_ready() const noexcept { return false; }
+
+        void await_suspend(std::coroutine_handle<> handle) noexcept;
+
+        void await_resume() const noexcept {}
+    };
+
     template <typename T>
     class Coroutine : public Future<T> {
     public:
+        using value_type = T;
+
         struct promise_type : PromiseReturnBase<T, promise_type> {
             promise_type(CoroutineInterface& ci) :
                 engine_(ci.engine()), scheduler_(ci.scheduler())
@@ -62,7 +76,7 @@ namespace v {
 
             std::suspend_never initial_suspend() noexcept { return {}; }
 
-            std::suspend_always final_suspend() noexcept { return {}; }
+            FinalAwaitable final_suspend() noexcept { return { .scheduler = scheduler_ }; }
 
             void unhandled_exception()
             {
@@ -82,7 +96,7 @@ namespace v {
         using handle_type = std::coroutine_handle<promise_type>;
 
         explicit Coroutine(handle_type h, Engine& engine, CoroutineScheduler& scheduler) :
-            Future<T>(engine)
+            Future<T>(engine), handle_(h)
         {
             h.promise().state_ = this->state_;
             scheduler.register_handle(h);
@@ -92,10 +106,16 @@ namespace v {
 
         bool done() const { return this->state_->is_completed; }
 
+        // Get the underlying coroutine handle
+        std::coroutine_handle<> handle() const { return handle_; }
+
         // Delete copy, default move
         Coroutine(const Coroutine&)            = delete;
         Coroutine& operator=(const Coroutine&) = delete;
         Coroutine(Coroutine&&)                 = default;
         Coroutine& operator=(Coroutine&&)      = default;
+
+    private:
+        handle_type handle_;
     };
 } // namespace v

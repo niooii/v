@@ -228,6 +228,9 @@ namespace v {
                     std::string(
                         reinterpret_cast<const char*>(packet->data), packet->dataLength));
             }
+
+            // Channel creation packets are not forwarded to channels, so destroy them here
+            enet_packet_destroy(packet);
             return;
         }
 

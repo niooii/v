@@ -198,6 +198,9 @@ int main()
 
         engine->tick();
         tctx.assert_now(tick_count == 2, "Tick callback executed twice");
+
+        // Clean up the callback before tick_count goes out of scope
+        engine->on_tick.disconnect("test_tick");
     }
 
     // Test domain lifecycle management

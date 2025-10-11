@@ -108,16 +108,34 @@ namespace v {
         template <typename Ret, typename F>
         Coroutine<Ret> spawn(F&& coro_fn)
         {
+            // Heap-allocate the lambda so it has a stable address
+            auto lambda_ptr = std::make_shared<std::decay_t<F>>(std::forward<F>(coro_fn));
+
             CoroutineInterface iface{ scheduler_, engine_ };
-            return coro_fn(iface);
+            // Call from the stable heap location
+            auto coro = (*lambda_ptr)(iface);
+
+            // Store the lambda in the scheduler to keep it alive
+            scheduler_.store_lambda(coro.handle(), lambda_ptr);
+
+            return coro;
         }
 
         /// Spawn a coroutine that runs on the main thread.
         template <typename F>
         auto spawn(F&& coro_fn)
         {
+            // Heap-allocate the lambda so it has a stable address
+            auto lambda_ptr = std::make_shared<std::decay_t<F>>(std::forward<F>(coro_fn));
+
             CoroutineInterface iface{ scheduler_, engine_ };
-            return coro_fn(iface);
+            // Call from the stable heap location
+            auto coro = (*lambda_ptr)(iface);
+
+            // Store the lambda in the scheduler to keep it alive
+            scheduler_.store_lambda(coro.handle(), lambda_ptr);
+
+            return coro;
         }
 
         /// Get the coroutine scheduler

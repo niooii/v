@@ -9,9 +9,11 @@
     <mapping directory="$PROJECT_DIR$/extern/glm" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/hfsm2" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/extern/jsoncons" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/reflect-cpp" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/sdl3" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/ser20" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/extern/spdlog" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/extern/tracy" vcs="Git" />
   </component>
 </project>
