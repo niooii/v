@@ -18,7 +18,6 @@ namespace v {
     void
     CoroutineScheduler::schedule_sleep(std::coroutine_handle<> handle, u64 wake_time_ns)
     {
-        LOG_DEBUG("scheduled sleep");
         sleeping_.push(SleepEntry{ wake_time_ns, handle });
     }
 
