@@ -7,6 +7,8 @@
 #include <atomic>
 #include <defs.h>
 #include <engine/contexts/net/ctx.h>
+#include <engine/contexts/net/connection_fsm.h>
+#include <engine/contexts/net/channel_fsm.h>
 #include <entt/entt.hpp>
 #include <format>
 #include <string>
@@ -42,6 +44,8 @@ namespace v {
     class NetConnection : public Domain<NetConnection> {
         friend class NetworkContext;
         friend struct NetworkEvent;
+        friend struct Active;
+        friend struct Disconnecting;
 
         template <typename T, typename P>
         friend class NetChannel;
@@ -86,15 +90,29 @@ namespace v {
 
                 c_insts_[T::unique_name()] = channel;
 
+                // Check if remote already created this channel
                 auto id_it = recv_c_ids_.find(std::string(T::unique_name()));
                 if (id_it != recv_c_ids_.end())
                 {
-                    LOG_DEBUG("Found channel {} locally", std::string(T::unique_name()));
-                    u32   id     = id_it->second;
-                    auto& info   = (recv_c_info_)[id];
-                    info.channel = channel;
-                    // drain the precreation queue into the incoming queue
-                    info.drain_queue(channel);
+                    // Remote channel exists, transition from RemoteOnly -> Linked
+                    u32 remote_uid = id_it->second;
+                    auto fsm_it = channel_fsms_.find(remote_uid);
+                    if (fsm_it != channel_fsms_.end() && fsm_it->second)
+                    {
+                        LOG_DEBUG("Channel {} found remotely, linking", std::string(T::unique_name()));
+                        fsm_it->second->context.local_channel = channel;
+                        fsm_it->second->fsm.immediateChangeTo<Linked>();
+                    }
+                }
+                else
+                {
+                    // Create LocalOnly FSM - waiting for remote
+                    auto wrapper = std::make_unique<ChannelFSMWrapper>(
+                        std::string(T::unique_name()), 0, static_cast<NetChannelBase*>(channel));
+                    // FSM starts in LocalOnly state by default (first state)
+
+                    // Store in local map keyed by name until remote connects
+                    local_channel_fsms_[std::string(T::unique_name())] = std::move(wrapper);
                 }
             }
 
@@ -109,18 +127,20 @@ namespace v {
                 message.length() + 1, // including null terminator
                 ENET_PACKET_FLAG_RELIABLE);
 
-            if (pending_activation_)
+            if (!fsm_.isActive<Active>())
             {
+                LOG_ERROR("[conn={}] CHANNEL| packet queued (connection not Active yet)", (void*)this);
                 // allocate outgoing queue on demand
-                if (!outgoing_packets_)
+                if (!fsm_context_.outgoing_packets)
                 {
-                    outgoing_packets_ = new moodycamel::ConcurrentQueue<ENetPacket*>();
+                    fsm_context_.outgoing_packets = new moodycamel::ConcurrentQueue<ENetPacket*>();
                 }
 
-                outgoing_packets_->enqueue(packet);
+                fsm_context_.outgoing_packets->enqueue(packet);
             }
             else
             {
+                LOG_ERROR("[conn={}] CHANNEL| packet sent immediately", (void*)this);
                 enet_peer_send(peer_, 0, packet); // use channel 0 for control messages
             }
 
@@ -176,30 +196,32 @@ namespace v {
 
         ConnectionType conn_type_;
 
-        // whether the connection was disconnected on our side or not.
-        // if its not, we have to handle removing it from maps and internal tracking,
-        // if it WAS disconnected by us, its already gone.
-        std::atomic_bool remote_disconnected_{};
+        // Connection state machine
+        ConnectionContext fsm_context_;
+        ConnectionFSMRoot::Instance fsm_;
 
-        // whether the connection is pending activation from main thread
-        std::atomic_bool pending_activation_{ true };
+        // Channel FSM wrapper - stores context and FSM together
+        struct ChannelFSMWrapper {
+            ChannelContext context;
+            ChannelFSMRoot::Instance fsm;
 
-        // packets received while pending activation
-        moodycamel::ConcurrentQueue<ENetPacket*> pending_packets_{};
-
-        struct NetChannelInfo {
-            void drain_queue(class NetChannelBase* channel);
-
-            std::string     name;
-            NetChannelBase* channel{ nullptr };
-            // we queue the packets recieved before initialization
-            std::unique_ptr<moodycamel::ConcurrentQueue<ENetPacket*>>
-                before_creation_packets{ nullptr };
+            ChannelFSMWrapper() : fsm(context) {}
+            ChannelFSMWrapper(std::string name, u32 remote_uid, NetChannelBase* local_channel)
+                : context{std::move(name), remote_uid, local_channel, nullptr}, fsm(context) {}
         };
 
-        // maps for tracking channel stuff
-        ud_map<u32, NetChannelInfo> recv_c_info_{};
-        ud_map<std::string, u32>    recv_c_ids_{};
+        // Channel state machines keyed by remote UID (for RemoteOnly and Linked states)
+        ud_map<u32, std::unique_ptr<ChannelFSMWrapper>> channel_fsms_{};
+
+        // LocalOnly channel FSMs keyed by channel name (before remote connection)
+        ud_map<std::string, std::unique_ptr<ChannelFSMWrapper>> local_channel_fsms_{};
+
+        // Map channel name to remote UID for lookup
+        ud_map<std::string, u32> recv_c_ids_{};
+
+        // Queue for packets arriving before CHANNEL| handshake completes
+        // Keyed by remote channel ID
+        ud_map<u32, std::unique_ptr<moodycamel::ConcurrentQueue<ENetPacket*>>> pending_channel_packets_{};
 
         // a mutex for all the maps above
         // TODO! wrap the maps in this for raii stuff
@@ -210,17 +232,6 @@ namespace v {
         ud_map<std::string_view, NetChannelBase*> c_insts_{};
 
         moodycamel::ConcurrentQueue<ENetPacket*> packet_destroy_queue_{};
-
-        // outgoing packet queue for packets sent before connection is ready
-        moodycamel::ConcurrentQueue<ENetPacket*>* outgoing_packets_{ nullptr };
-
-        /// The amount of elapsed time since we requested the connection (since
-        /// construction)
-        Stopwatch since_open_{};
-
-        /// Amount of time to wait for the connection to succeed until we nuke the
-        /// connection
-        f64 connection_timeout_;
 
         // Pointer guarenteed to be alive here
         NetworkContext* net_ctx_;

@@ -17,7 +17,8 @@ namespace v {
     NetConnection::NetConnection(
         NetworkContext* ctx, const std::string& host, u16 port, f64 connection_timeout) :
         net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_),
-        connection_timeout_(connection_timeout)
+        fsm_context_{this, ctx, nullptr, connection_timeout},
+        fsm_{fsm_context_}
     {
         ENetAddress address;
         if (enet_address_set_host(&address, host.c_str()) != 0)
@@ -37,6 +38,10 @@ namespace v {
         }
 
         peer_->data = (void*)this;
+        fsm_context_.peer = peer_;
+
+        // Outgoing connections start in Connecting state by default
+        // (first state in FSM definition)
 
         LOG_TRACE("Outgoing connection initialized");
     }
@@ -44,9 +49,14 @@ namespace v {
     // just an incoming connection, its whatever
     NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) :
         net_ctx_(ctx), peer_(peer), conn_type_(ConnectionType::Incoming),
-        Domain(ctx->engine_)
+        Domain(ctx->engine_),
+        fsm_context_{this, ctx, peer, 0.0},
+        fsm_{fsm_context_}
     {
         peer_->data = (void*)this;
+
+        // Incoming connections are already connected via ENet, immediately transition to Active
+        fsm_.immediateChangeTo<Active>();
 
         LOG_TRACE("Incoming connection initialized");
     }
@@ -56,7 +66,7 @@ namespace v {
     {
         // internally queues disconnect
         // if remote_disconnected_, then the peer may no longer be a valid pointer
-        if (!remote_disconnected_)
+        if (!fsm_context_.remote_disconnected)
         {
             // enqueue onto the IO thread no race condition
             net_ctx_->enqueue_io([this] { enet_peer_disconnect(peer_, 0); });
@@ -68,15 +78,15 @@ namespace v {
             peer_->data = NULL;
 
         ENetPacket* packet;
-        while (pending_packets_.try_dequeue(packet))
+        while (fsm_context_.pending_packets.try_dequeue(packet))
             enet_packet_destroy(packet);
 
         // cleanup outgoing packets if they weren't sent
-        if (outgoing_packets_)
+        if (fsm_context_.outgoing_packets)
         {
-            while (outgoing_packets_->try_dequeue(packet))
+            while (fsm_context_.outgoing_packets->try_dequeue(packet))
                 enet_packet_destroy(packet);
-            delete outgoing_packets_;
+            delete fsm_context_.outgoing_packets;
         }
 
         LOG_TRACE("Connection destroyed");
@@ -85,70 +95,27 @@ namespace v {
 
     void NetConnection::request_close()
     {
-        NetworkEvent event{ NetworkEventType::DestroyConnection,
-                            net_ctx_->get_connection(peer_), nullptr };
-
-        // delete the internal shared ptr no leak yes
-        net_ctx_->event_queue_.enqueue(std::move(event));
+        fsm_.changeTo<Disconnecting>();
     }
 
     void NetConnection::activate_connection()
     {
-        pending_activation_ = false;
-
-        // Process any packets that arrived while pending
-        ENetPacket* packet;
-        while (pending_packets_.try_dequeue(packet))
-        {
-            handle_raw_packet(packet);
-        }
-
-        // send any packets that were queued to go out
-        if (outgoing_packets_)
-        {
-            ENetPacket* packet;
-            while (outgoing_packets_->try_dequeue(packet))
-            {
-                enet_peer_send(peer_, 0, packet);
-            }
-
-            delete outgoing_packets_;
-            outgoing_packets_ = nullptr;
-        }
-
-        LOG_TRACE("Connection activated");
+        fsm_.changeTo<Active>();
     }
 
     NetConnectionResult NetConnection::update()
     {
-        if (pending_activation_)
+        // Update the FSM, which will call the appropriate state's update()
+        fsm_.update();
+
+        // Check what state we're in to return appropriate result
+        if (fsm_.isActive<Connecting>())
         {
-            if (since_open_.elapsed() > connection_timeout_)
-            {
-                LOG_ERROR("Connection timed out in {} seconds.", connection_timeout_);
-                remote_disconnected_ = true;
-                // just nuke the connection TODO! i think this is safe??
-                net_ctx_->enqueue_io([this] { enet_peer_disconnect_now(peer_, 0); });
-
-                return NetConnectionResult::TimedOut;
-            }
-
             return NetConnectionResult::ConnWaiting;
         }
-
+        else if (fsm_.isActive<Disconnecting>())
         {
-            // update all channels (runs the callbacks for recieved/parsed data)
-            for (auto& [name, chnl] : c_insts_)
-            {
-                chnl->update();
-            }
-        }
-
-        // destroys the consumed packets
-        ENetPacket* packet;
-        while (packet_destroy_queue_.try_dequeue(packet))
-        {
-            enet_packet_destroy(packet);
+            return NetConnectionResult::TimedOut;
         }
 
         return NetConnectionResult::Success;
@@ -157,10 +124,10 @@ namespace v {
 
     void NetConnection::handle_raw_packet(ENetPacket* packet)
     {
-        // If connection is pending activation, queue the packet
-        if (pending_activation_)
+        // If connection is not yet active, queue the packet
+        if (!fsm_.isActive<Active>())
         {
-            pending_packets_.enqueue(packet);
+            fsm_context_.pending_packets.enqueue(packet);
             return;
         }
 
@@ -201,25 +168,86 @@ namespace v {
                     return;
                 }
 
-                // populate info maps
+                // Handle channel creation using FSM
                 {
                     auto lock = map_lock_.write();
 
+                    LOG_ERROR("[conn={}] CHANNEL| handler: channel_name={}, c_id={}", (void*)this, channel_name, c_id);
+
                     recv_c_ids_[channel_name] = c_id;
-                    auto [it, inserted]       = recv_c_info_.try_emplace(c_id);
-                    auto& info                = it->second;
-                    info.name                 = channel_name;
+
+                    // Check if local channel already exists
+                    auto local_it = c_insts_.find(channel_name);
+                    LOG_ERROR("Local channel lookup: {}", local_it != c_insts_.end() ? "FOUND" : "NOT FOUND");
+                    if (local_it != c_insts_.end())
+                    {
+                        // Local exists, transition from LocalOnly -> Linked
+                        // Move FSM from local_channel_fsms_ to channel_fsms_
+                        auto local_fsm_it = local_channel_fsms_.find(channel_name);
+                        LOG_ERROR("LocalOnly FSM lookup: {}", local_fsm_it != local_channel_fsms_.end() ? "FOUND" : "NOT FOUND");
+                        if (local_fsm_it != local_channel_fsms_.end())
+                        {
+                            // Transition existing LocalOnly FSM to Linked
+                            local_fsm_it->second->context.remote_uid = c_id;
+                            local_fsm_it->second->fsm.immediateChangeTo<Linked>();
+
+                            // Move to channel_fsms_ with remote UID as key
+                            channel_fsms_[c_id] = std::move(local_fsm_it->second);
+                            local_channel_fsms_.erase(local_fsm_it);
+
+                            // Drain any queued packets for this channel
+                            auto pending_it = pending_channel_packets_.find(c_id);
+                            LOG_ERROR("Checking pending_channel_packets_[{}]: {}", c_id,
+                                (pending_it != pending_channel_packets_.end() && pending_it->second) ? "EXISTS" : "DOES NOT EXIST");
+                            if (pending_it != pending_channel_packets_.end() && pending_it->second)
+                            {
+                                int count = 0;
+                                ENetPacket* queued_packet;
+                                while (pending_it->second->try_dequeue(queued_packet))
+                                {
+                                    channel_fsms_[c_id]->context.local_channel->take_packet(queued_packet);
+                                    count++;
+                                }
+                                pending_channel_packets_.erase(pending_it);
+                                LOG_ERROR("Drained {} pending packets for channel {}", count, channel_name);
+                            }
+
+                            LOG_DEBUG("Channel {} linked (local found first)", channel_name);
+                        }
+                        else
+                        {
+                            LOG_WARN("Channel {} local instance exists but FSM not found", channel_name);
+                        }
+                    }
+                    else
+                    {
+                        // Remote created first, start in RemoteOnly state
+                        auto wrapper = std::make_unique<ChannelFSMWrapper>(channel_name, c_id, nullptr);
+                        wrapper->fsm.immediateChangeTo<RemoteOnly>();
+                        channel_fsms_[c_id] = std::move(wrapper);
+
+                        // Move any queued packets to the FSM's queue
+                        auto pending_it = pending_channel_packets_.find(c_id);
+                        if (pending_it != pending_channel_packets_.end() && pending_it->second)
+                        {
+                            ENetPacket* queued_packet;
+                            while (pending_it->second->try_dequeue(queued_packet))
+                            {
+                                if (!channel_fsms_[c_id]->context.packet_queue)
+                                {
+                                    channel_fsms_[c_id]->context.packet_queue =
+                                        std::make_unique<moodycamel::ConcurrentQueue<ENetPacket*>>();
+                                }
+                                channel_fsms_[c_id]->context.packet_queue->enqueue(queued_packet);
+                            }
+                            pending_channel_packets_.erase(pending_it);
+                        }
+
+                        LOG_DEBUG("Channel {} in RemoteOnly (waiting for local)", channel_name);
+                    }
                 }
 
-                NetworkEvent event{
-                    .type                       = NetworkEventType::ChannelLink,
-                    .connection                 = shared_con_,
-                    .created_channel.name       = channel_name,
-                    .created_channel.remote_uid = c_id,
-                };
-                net_ctx_->event_queue_.enqueue(std::move(event));
-
-                LOG_TRACE("Channel {} linked to remote uid {}", channel_name, channel_id);
+                LOG_TRACE("Channel {} linked to remote uid {}", channel_name, c_id);
             }
             else
             {
@@ -247,46 +275,47 @@ namespace v {
         std::memcpy(&channel_id, packet->data, sizeof(u32));
         channel_id = ntohl(channel_id);
 
+        LOG_ERROR("[conn={}] Received data packet with channel_id={}", (void*)this, channel_id);
+
         {
-            // we mutate info here, so take write lock
             auto lock = map_lock_.write();
-            auto it   = recv_c_info_.find(channel_id);
-            if (it == recv_c_info_.end())
+            auto fsm_it = channel_fsms_.find(channel_id);
+            LOG_ERROR("FSM lookup result: {}", fsm_it != channel_fsms_.end() ? "FOUND" : "NOT FOUND");
+            if (fsm_it == channel_fsms_.end())
             {
-                LOG_WARN("Invalid packet, no such channel id exists: {}", channel_id);
-                enet_packet_destroy(packet);
+                // Queue packet until CHANNEL handshake completes
+                if (!pending_channel_packets_[channel_id])
+                {
+                    pending_channel_packets_[channel_id] =
+                        std::make_unique<moodycamel::ConcurrentQueue<ENetPacket*>>();
+                }
+                pending_channel_packets_[channel_id]->enqueue(packet);
+                LOG_TRACE("Queued packet for unknown channel_id {}", channel_id);
                 return;
             }
 
-            auto& info = it->second;
-            if (!info.channel)
+            auto& wrapper = fsm_it->second;
+            if (wrapper->fsm.isActive<Linked>())
             {
-                if (!info.before_creation_packets)
+                // Route directly to local channel
+                wrapper->context.local_channel->take_packet(packet);
+            }
+            else if (wrapper->fsm.isActive<RemoteOnly>() || wrapper->fsm.isActive<LocalOnly>())
+            {
+                // Queue packet until channel is fully linked
+                if (!wrapper->context.packet_queue)
                 {
-                    info.before_creation_packets =
+                    wrapper->context.packet_queue =
                         std::make_unique<moodycamel::ConcurrentQueue<ENetPacket*>>();
                 }
-                info.before_creation_packets->enqueue(packet);
+                wrapper->context.packet_queue->enqueue(packet);
+                LOG_TRACE("Queued packet for channel {}", wrapper->context.name);
             }
             else
             {
-                info.channel->take_packet(packet);
+                LOG_WARN("Packet received for channel {} in unexpected state", wrapper->context.name);
+                enet_packet_destroy(packet);
             }
         }
-    }
-
-    void NetConnection::NetChannelInfo::drain_queue(NetChannelBase* channel)
-    {
-        if (!before_creation_packets)
-            return;
-        ENetPacket* packet;
-        while (before_creation_packets->try_dequeue(packet))
-        {
-            LOG_TRACE("Processed a message sent before local channel creation.");
-            channel->take_packet(packet);
-        }
-
-        // queue is no longer needed after draining
-        before_creation_packets.reset();
     }
 } // namespace v

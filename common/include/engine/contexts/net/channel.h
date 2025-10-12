@@ -16,6 +16,9 @@
 #include "moodycamel/concurrentqueue.h"
 
 namespace v {
+    // Forward declarations for ChannelFSM states
+    struct Linked;
+    struct RemoteOnly;
     inline std::atomic<u32>& _global_type_counter()
     {
         static std::atomic<u32> c{ 1 };
@@ -59,6 +62,9 @@ namespace v {
 
     class NetChannelBase {
         friend NetConnection;
+        friend struct Active;
+        friend struct Linked;
+        friend struct RemoteOnly;
 
     public:
         virtual ~NetChannelBase()                 = default;
@@ -170,18 +176,18 @@ namespace v {
             std::memcpy(packet->data + sizeof(u32), buf, len);
 
             // send the packet
-            if (conn_->pending_activation_)
+            if (!conn_->fsm_.isActive<Active>())
             {
                 LOG_WARN("Connection is not yet open, queueing packet send");
 
                 // allocate outgoing queue on demand
-                if (!conn_->outgoing_packets_)
+                if (!conn_->fsm_context_.outgoing_packets)
                 {
-                    conn_->outgoing_packets_ =
+                    conn_->fsm_context_.outgoing_packets =
                         new moodycamel::ConcurrentQueue<ENetPacket*>();
                 }
 
-                conn_->outgoing_packets_->enqueue(packet);
+                conn_->fsm_context_.outgoing_packets->enqueue(packet);
                 return; // don't destroy packet, it will be sent later
             }
 

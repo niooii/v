@@ -39,7 +39,7 @@ int main(int argc, char** argv)
     async->spawn([](CoroutineInterface& ci) -> Coroutine<void> {
         int count = 0;
         while (co_await ci.sleep(100)) {
-            LOG_INFO("Hi {}", ++count);
+            // LOG_INFO("Hi {}", ++count);
         }
     });
 

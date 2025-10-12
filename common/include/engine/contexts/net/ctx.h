@@ -30,7 +30,6 @@ namespace v {
 
     enum class NetworkEventType {
         NewConnection,
-        ChannelLink,
         ConnectionClosed,
         ActivateConnection,
         DestroyConnection
@@ -43,17 +42,13 @@ namespace v {
         /// only used for NewConnection events
         /// TODO! union these big waste
         NetListener* server{};
-        /// only used for ChannelLink events
-        struct {
-            std::string name;
-            u32         remote_uid;
-        } created_channel;
     };
 
     /// A context that creates and manages network connections.
     class NetworkContext : public Context {
         friend NetConnection;
         friend NetListener;
+        friend struct Disconnecting;
         template <typename D, typename P>
         friend class NetChannel;
 

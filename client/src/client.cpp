@@ -22,13 +22,13 @@ namespace v {
         window_ctx_ = engine_.add_ctx<WindowContext>();
         window_     = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
-        render_ctx_ = engine_.add_ctx<RenderContext>("./resources/shaders");
+        // render_ctx_ = engine_.add_ctx<RenderContext>("./resources/shaders");
         net_ctx_    = engine_.add_ctx<NetworkContext>(1.0 / 500);
         // auto async_ctx = engine_.add_ctx<AsyncContext>();
 
         // Add triangle render domain
-        engine.add_domain<DefaultRenderDomain>();
-        engine_.add_domain<TriangleRenderDomain>();
+        // engine.add_domain<DefaultRenderDomain>();
+        // engine_.add_domain<TriangleRenderDomain>();
 
 
         // Setup network connection
@@ -45,11 +45,11 @@ namespace v {
         channel.send(msg);
 
         // windows update task does not depend on anything
-        engine_.on_tick.connect({}, {}, "windows", [this]() { window_ctx_->update(); });
+        // engine_.on_tick.connect({}, {}, "windows", [this]() { window_ctx_->update(); });
 
-        // render depends on windows task to be finished
-        engine_.on_tick.connect(
-            { "windows" }, {}, "render", [this]() { render_ctx_->update(); });
+        // // render depends on windows task to be finished
+        // engine_.on_tick.connect(
+        //    { "windows" }, {}, "render", [this]() { render_ctx_->update(); });
 
         // network update task does not depend on anything
         engine_.on_tick.connect({}, {}, "network", [this]() { net_ctx_->update(); });

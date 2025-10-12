@@ -261,7 +261,7 @@ namespace v {
                 // is still valid. Queue connection close event for main thread processing
                 auto con = (NetConnection*)(peer->data);
 
-                con->remote_disconnected_ = true;
+                con->fsm_context_.remote_disconnected = true;
 
                 if (con->shared_con_)
                 {
@@ -315,7 +315,9 @@ namespace v {
 
                     event.connection->c_insts_.clear();
                     event.connection->recv_c_ids_.clear();
-                    event.connection->recv_c_info_.clear();
+                    event.connection->channel_fsms_.clear();
+                    event.connection->local_channel_fsms_.clear();
+                    event.connection->pending_channel_packets_.clear();
 
                     event.connection->shared_con_.reset();
                 }
@@ -339,33 +341,6 @@ namespace v {
                         .connection = event.connection,
                     };
                     event_queue_.enqueue(std::move(destroy_event));
-                }
-                break;
-
-            case NetworkEventType::ChannelLink:
-                auto& c_insts = event.connection->c_insts_;
-                auto  inst    = c_insts.find(event.created_channel.name);
-
-                {
-                    auto  lock = event.connection->map_lock_.write();
-                    auto& info = event.connection->recv_c_info_.at(
-                        event.created_channel.remote_uid);
-
-                    if (inst != c_insts.end())
-                    {
-                        // the channel instance already exists locally
-                        LOG_DEBUG(
-                            "Found existing channel {}:{} locally",
-                            event.created_channel.name, event.created_channel.remote_uid);
-                        info.channel = inst->second;
-                        info.drain_queue(info.channel);
-                    }
-                    else
-                    {
-                        if (!info.before_creation_packets)
-                            info.before_creation_packets = std::make_unique<
-                                moodycamel::ConcurrentQueue<ENetPacket*>>();
-                    }
                 }
                 break;
             }
