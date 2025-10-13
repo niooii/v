@@ -147,9 +147,10 @@ namespace v {
         // This will be rebuilt when render domains are added/removed
         render_graph = daxa::TaskGraph(
             {
-                .device    = daxa_resources_->device,
-                .swapchain = swapchain,
-                .name      = "main loop graph",
+                .device                   = daxa_resources_->device,
+                .swapchain                = swapchain,
+                .record_debug_information = true,
+                .name                     = "main loop graph",
             });
 
         render_graph.use_persistent_image(task_swapchain_image);
@@ -231,6 +232,14 @@ namespace v {
         task_swapchain_image.set_images({ .images = std::span{ &swapchain_img, 1 } });
 
         render_graph.execute({});
+
+        // If rebuild requested a debug print, dump it now after execute
+        if (render_ctx_ && render_ctx_->debug_print_after_execute_)
+        {
+            auto dbg = render_graph.get_debug_string();
+            LOG_INFO("TaskGraph debug (post-rebuild):\n{}", dbg);
+            render_ctx_->debug_print_after_execute_ = false;
+        }
     }
 
     void WindowRenderResources::resize() { resize_queued = true; }

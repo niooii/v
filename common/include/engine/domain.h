@@ -47,6 +47,11 @@ namespace v {
         FORCEINLINE entt::entity entity() const { return entity_; }
         FORCEINLINE std::string_view name() const { return name_; }
 
+        // TODO! make a bunch of conveneint shorthands for entity registry methods
+        /// Shorthand to attach a component to the domain (its entity)
+        template<typename T, typename... Args>
+        T& attach(Args&&... args);
+
     protected:
         /// A reference to the engine instance
         Engine& engine_;

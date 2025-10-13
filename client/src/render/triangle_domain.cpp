@@ -43,7 +43,9 @@ namespace v {
             daxa::Task::Raster("rainbow_triangle")
                 // Specify view type so TaskGraph generates a valid image_view for runtime
                 // swapchain images
-                .color_attachment.writes(daxa::ImageViewType::REGULAR_2D, swapchain_image)
+                .color_attachment.reads_writes(daxa::ImageViewType::REGULAR_2D, swapchain_image)
+                // Depend on the order token to run after clears
+                .raster_shader.reads(render_ctx_->order_token())
                 .executes(
                     [this](daxa::TaskInterface ti)
                     {
@@ -56,8 +58,8 @@ namespace v {
                         .color_attachments = {
                             {
                                 .image_view = image_view,
-                                .load_op = daxa::AttachmentLoadOp::CLEAR,
-                                .clear_value = std::array<f32, 4>{ 0.1f, 0.1f, 0.1f, 1.0f },
+                                .load_op = daxa::AttachmentLoadOp::LOAD,
+                                //.clear_value = std::array<f32, 4>{ 0.1f, 0.1f, 0.1f, 0.0f },
                             },
                         },
                         .render_area = {

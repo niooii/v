@@ -27,8 +27,6 @@ namespace v {
         Window* win = window_ctx->get_window();
         window_resources_ =
             std::make_unique<WindowRenderResources>(win, daxa_resources_.get(), this);
-
-        engine_.on_tick.connect({}, {}, "test", [] { LOG_INFO("tet"); });
     }
 
     RenderContext::~RenderContext() = default;
@@ -60,14 +58,23 @@ namespace v {
         // Create new task graph
         window_resources_->render_graph = daxa::TaskGraph(
             {
-                .device    = daxa_resources_->device,
-                .swapchain = window_resources_->swapchain,
-                .name      = "main loop graph",
+                .device                  = daxa_resources_->device,
+                .swapchain               = window_resources_->swapchain,
+                .record_debug_information = true,
+                .name                    = "main loop graph",
             });
 
         // Re-register persistent resources
         window_resources_->render_graph.use_persistent_image(
             window_resources_->task_swapchain_image);
+
+        // Create a small transient token buffer to allow domains to enforce
+        // explicit ordering via RAW edges when needed.
+        order_token_ = window_resources_->render_graph.create_transient_buffer(
+            daxa::TaskTransientBufferInfo{
+                .size = 4,
+                .name = "order_token",
+            });
 
         // Add tasks from all render domains
         for (auto* domain : render_domains_)
@@ -79,6 +86,9 @@ namespace v {
         window_resources_->render_graph.submit({});
         window_resources_->render_graph.present({});
         window_resources_->render_graph.complete({});
+
+        // Request debug print on next execute so we see actual permutation
+        debug_print_after_execute_ = true;
     }
 
     void RenderContext::update()

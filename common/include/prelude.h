@@ -10,6 +10,7 @@
 #include <engine/serial/compress.h>
 #include <engine/serial/serde.h>
 #include <entt/entt.hpp>
+#include <engine/components.h>
 
 // engine subsystems
 #include <rand.h>
