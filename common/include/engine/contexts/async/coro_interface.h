@@ -21,7 +21,8 @@ namespace v {
 
         void await_suspend(std::coroutine_handle<> handle);
 
-        // Returns true to allow usage in while loops: while (co_await ci.sleep(100)) { ... }
+        // Returns true to allow usage in while loops: while (co_await ci.sleep(100)) {
+        // ... }
         bool await_resume() const noexcept { return true; }
     };
 

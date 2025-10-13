@@ -6,8 +6,8 @@
 #include <engine/contexts/async/scheduler.h>
 
 namespace v {
-    void FinalAwaitable::await_suspend(std::coroutine_handle<> handle) noexcept {
+    void FinalAwaitable::await_suspend(std::coroutine_handle<> handle) noexcept
+    {
         scheduler.schedule_finish(handle);
     }
-}
-
+} // namespace v

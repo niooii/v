@@ -232,14 +232,6 @@ namespace v {
         task_swapchain_image.set_images({ .images = std::span{ &swapchain_img, 1 } });
 
         render_graph.execute({});
-
-        // If rebuild requested a debug print, dump it now after execute
-        if (render_ctx_ && render_ctx_->debug_print_after_execute_)
-        {
-            auto dbg = render_graph.get_debug_string();
-            LOG_INFO("TaskGraph debug (post-rebuild):\n{}", dbg);
-            render_ctx_->debug_print_after_execute_ = false;
-        }
     }
 
     void WindowRenderResources::resize() { resize_queued = true; }

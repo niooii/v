@@ -142,7 +142,7 @@ namespace v {
 
         /// Remove component T from entity, returns number of components removed
         template <typename T>
-        FORCEINLINE std::size_t remove_component(entt::entity entity)
+        FORCEINLINE usize remove_component(entt::entity entity)
         {
             return registry_.remove<T>(entity);
         }

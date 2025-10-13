@@ -32,16 +32,19 @@ int main(int argc, char** argv)
 
     // attempts to update every 1ms
     auto net_ctx = engine.add_ctx<NetworkContext>(1.0 / 1000.0);
-    
+
     auto async = engine.add_ctx<AsyncContext>(8);
 
     // Test 2: While loop with co_await
-    async->spawn([](CoroutineInterface& ci) -> Coroutine<void> {
-        int count = 0;
-        while (co_await ci.sleep(100)) {
-            LOG_INFO("Hi {}", ++count);
-        }
-    });
+    async->spawn(
+        [](CoroutineInterface& ci) -> Coroutine<void>
+        {
+            int count = 0;
+            while (co_await ci.sleep(100))
+            {
+                LOG_INFO("Hi {}", ++count);
+            }
+        });
 
     ServerConfig config{ "127.0.0.1", 25566 };
     engine.add_domain<ServerDomain>(config);

@@ -14,15 +14,17 @@
 
 namespace v {
     /// Contains state that a coroutine needs throughout its lifetime
-    /// If i don't heap allocate this a bunch of issues come up due to how C++ handles coroutines internally
+    /// If i don't heap allocate this a bunch of issues come up due to how C++ handles
+    /// coroutines internally
     struct CoroutineState {
-        std::shared_ptr<void>               lambda;     // The coroutine lambda
-        std::shared_ptr<CoroutineInterface> iface;      // The interface (scheduler/engine access)
+        std::shared_ptr<void> lambda; // The coroutine lambda
+        std::shared_ptr<CoroutineInterface>
+            iface; // The interface (scheduler/engine access)
 
-        template<typename F>
-        CoroutineState(F&& func, CoroutineScheduler& scheduler, Engine& engine)
-            : lambda(std::make_shared<std::decay_t<F>>(std::forward<F>(func)))
-            , iface(std::make_shared<CoroutineInterface>(scheduler, engine))
+        template <typename F>
+        CoroutineState(F&& func, CoroutineScheduler& scheduler, Engine& engine) :
+            lambda(std::make_shared<std::decay_t<F>>(std::forward<F>(func))),
+            iface(std::make_shared<CoroutineInterface>(scheduler, engine))
         {}
     };
 
@@ -127,7 +129,8 @@ namespace v {
                 std::forward<F>(coro_fn), scheduler_, engine_);
 
             // Call from the stable heap locations
-            auto coro = (*std::static_pointer_cast<std::decay_t<F>>(state->lambda))(*state->iface);
+            auto coro = (*std::static_pointer_cast<std::decay_t<F>>(state->lambda))(
+                *state->iface);
 
             // Store the state to keep everything alive
             scheduler_.store_lambda(coro.handle(), state);
@@ -144,7 +147,8 @@ namespace v {
                 std::forward<F>(coro_fn), scheduler_, engine_);
 
             // Call from the stable heap locations
-            auto coro = (*std::static_pointer_cast<std::decay_t<F>>(state->lambda))(*state->iface);
+            auto coro = (*std::static_pointer_cast<std::decay_t<F>>(state->lambda))(
+                *state->iface);
 
             // Store the state to keep everything alive
             scheduler_.store_lambda(coro.handle(), state);

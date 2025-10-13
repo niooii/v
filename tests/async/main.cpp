@@ -17,12 +17,7 @@ int main()
     auto* async_ctx = engine->add_ctx<AsyncContext>(4);
 
     // Register coroutine scheduler update
-    engine->on_tick.connect(
-        {}, {}, "async_coro",
-        [async_ctx]()
-        {
-            async_ctx->update();
-        });
+    engine->on_tick.connect({}, {}, "async_coro", [async_ctx]() { async_ctx->update(); });
 
     // task creation and execution
     {
@@ -476,7 +471,7 @@ int main()
 
     // Multiple co_awaits in single coroutine
     {
-        int step = 0;
+        int  step = 0;
         auto coro = async_ctx->spawn(
             [&step](CoroutineInterface& ci) -> Coroutine<void>
             {
@@ -502,8 +497,8 @@ int main()
 
     // While loop with co_await
     {
-        int tick_count = 0;
-        auto coro = async_ctx->spawn(
+        int  tick_count = 0;
+        auto coro       = async_ctx->spawn(
             [&tick_count](CoroutineInterface& ci) -> Coroutine<void>
             {
                 while (co_await ci.sleep(50))

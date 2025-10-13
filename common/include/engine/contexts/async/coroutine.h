@@ -76,7 +76,10 @@ namespace v {
 
             std::suspend_never initial_suspend() noexcept { return {}; }
 
-            FinalAwaitable final_suspend() noexcept { return { .scheduler = scheduler_ }; }
+            FinalAwaitable final_suspend() noexcept
+            {
+                return { .scheduler = scheduler_ };
+            }
 
             void unhandled_exception()
             {

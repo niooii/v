@@ -8,10 +8,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp> 
+#include <glm/gtx/quaternion.hpp>
 
 /// A bunch of commonly used component definitions
-/// TODO! before this gets too messy, prefer 
+/// TODO! before this gets too messy, prefer
 /// strong typedefs instead?
 
 struct Pos2d {
@@ -24,26 +24,20 @@ struct Size2d {
 
 struct Pos3d {
     glm::vec3 val;
-    
+
     /// Returns the homogenous translation matrix
-    FORCEINLINE glm::mat4 matrix() {
-        return glm::translate({}, val);
-    }
+    FORCEINLINE glm::mat4 matrix() { return glm::translate({}, val); }
 };
 
 struct Size3d {
     glm::vec3 val;
 
-    FORCEINLINE glm::mat4 matrix() {
-        return glm::scale({}, val);
-    }
+    FORCEINLINE glm::mat4 matrix() { return glm::scale({}, val); }
 };
 
 struct Rotation {
     glm::quat val;
 
     /// Returns the rotation matrix
-    FORCEINLINE glm::mat4 matrix() {
-        return glm::toMat4(val);
-    }
+    FORCEINLINE glm::mat4 matrix() { return glm::toMat4(val); }
 };

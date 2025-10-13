@@ -91,11 +91,6 @@ namespace v {
             return window_resources_->swapchain.get_format();
         }
 
-        /// Transient per-build token to enforce ordering between tasks when
-        /// resource hazards are not sufficient to imply order. Created fresh in
-        /// rebuild_graph() and valid only for the current TaskGraph.
-        daxa::TaskBufferView order_token() const { return order_token_; }
-
         /// Mark the task graph as dirty, forcing a rebuild on the next frame.
         /// Automatically called when render domains are added/removed, or when
         /// swapchain is resized. Call manually if resources are reallocated in ways
@@ -132,12 +127,5 @@ namespace v {
         /// Set to true when graph structure must be rebuilt (domain changes, resize,
         /// etc.)
         bool graph_dirty_ = false;
-
-        /// If true, print TaskGraph debug string after next execute. Set during
-        /// rebuild to correlate debug output with the freshly built graph.
-        bool debug_print_after_execute_ = false;
-
-        /// Transient ordering token created during rebuild.
-        daxa::TaskBufferView order_token_ = {};
     };
 } // namespace v

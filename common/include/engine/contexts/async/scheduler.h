@@ -18,7 +18,8 @@ namespace v {
     /// Manages sleeping coroutines via min-heap for efficient wake-up.
     /// Owns all coroutine handles and destroys them when completed.
     class CoroutineScheduler {
-    friend struct FinalAwaitable;
+        friend struct FinalAwaitable;
+
     public:
         CoroutineScheduler() = default;
 

@@ -6,11 +6,11 @@
 #pragma once
 
 #include <defs.h>
+#include <engine/components.h>
 #include <engine/engine.h>
 #include <engine/serial/compress.h>
 #include <engine/serial/serde.h>
 #include <entt/entt.hpp>
-#include <engine/components.h>
 
 // engine subsystems
 #include <rand.h>

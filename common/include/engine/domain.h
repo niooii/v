@@ -48,9 +48,37 @@ namespace v {
         FORCEINLINE std::string_view name() const { return name_; }
 
         // TODO! make a bunch of conveneint shorthands for entity registry methods
+
+        /// Check if the domain's entity has component T
+        template <typename T>
+        bool has() const;
+
+        /// Try to get component T from the domain's entity, returns nullptr if not found
+        template <typename T>
+        T* try_get();
+
+        /// Try to get component T from the domain's entity (const version), returns
+        /// nullptr if not found
+        template <typename T>
+        const T* try_get() const;
+
+        /// Get component T from the domain's entity, throws if component doesn't exist
+        template <typename T>
+        T& get();
+
+        /// Get component T from the domain's entity (const version), throws if component
+        /// doesn't exist
+        template <typename T>
+        const T& get() const;
+
         /// Shorthand to attach a component to the domain (its entity)
-        template<typename T, typename... Args>
+        template <typename T, typename... Args>
         T& attach(Args&&... args);
+
+        /// Remove component T from the domain's entity, returns number of components
+        /// removed
+        template <typename T>
+        usize remove();
 
     protected:
         /// A reference to the engine instance
