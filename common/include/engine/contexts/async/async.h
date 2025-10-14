@@ -133,7 +133,7 @@ namespace v {
                 *state->iface);
 
             // Store the state to keep everything alive
-            scheduler_.store_lambda(coro.handle(), state);
+            scheduler_.store_heap_state(coro.handle(), state);
 
             return coro;
         }
@@ -151,7 +151,7 @@ namespace v {
                 *state->iface);
 
             // Store the state to keep everything alive
-            scheduler_.store_lambda(coro.handle(), state);
+            scheduler_.store_heap_state(coro.handle(), state);
 
             return coro;
         }

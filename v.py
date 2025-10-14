@@ -28,15 +28,21 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parent
 BUILD_DIR_DEBUG = ROOT / "cmake-build-debug"
+BUILD_DIR_DEBUG_NOSAN = ROOT / "cmake-build-debug-nosan"
 BUILD_DIR_RELEASE = ROOT / "cmake-build-release"
 
 
-def _preset(release: bool) -> str:
-    return "release" if release else "debug"
+def _preset(release: bool, no_sanitize: bool = False) -> str:
+    if release:
+        return "release"
+    elif no_sanitize:
+        return "debug-nosan"
+    else:
+        return "debug"
 
 
-def _build_preset(target: str | None, release: bool) -> str:
-    base = _preset(release)
+def _build_preset(target: str | None, release: bool, no_sanitize: bool = False) -> str:
+    base = _preset(release, no_sanitize)
     if target:
         # Only main targets have individual presets
         if target in ["vclient", "vserver", "vlib"]:
@@ -47,8 +53,13 @@ def _build_preset(target: str | None, release: bool) -> str:
     return f"{base}-build"
 
 
-def _build_dir(release: bool) -> Path:
-    return BUILD_DIR_RELEASE if release else BUILD_DIR_DEBUG
+def _build_dir(release: bool, no_sanitize: bool = False) -> Path:
+    if release:
+        return BUILD_DIR_RELEASE
+    elif no_sanitize:
+        return BUILD_DIR_DEBUG_NOSAN
+    else:
+        return BUILD_DIR_DEBUG
 
 
 def _get_build_env(release: bool, verbose: bool = False) -> dict[str, str]:
@@ -73,12 +84,12 @@ def _run(
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, env=env, check=True)
 
 
-def _detect_cmake_targets(release: bool = False) -> dict[str, str]:
+def _detect_cmake_targets(release: bool = False, no_sanitize: bool = False) -> dict[str, str]:
     """Detect available CMake targets and classify them.
 
     Returns: Dict mapping target_name -> target_type ('exe', 'lib', 'test', 'utility')
     """
-    bdir = _build_dir(release)
+    bdir = _build_dir(release, no_sanitize)
     targets = {}
 
     targets.update(_targets_static())
@@ -155,8 +166,8 @@ def _targets_static() -> dict[str, str]: return {
     }
 
 
-def _find_target_fuzzy(partial: str, release: bool = False) -> str:
-    targets = _detect_cmake_targets(release)
+def _find_target_fuzzy(partial: str, release: bool = False, no_sanitize: bool = False) -> str:
+    targets = _detect_cmake_targets(release, no_sanitize)
     target_names = list(targets.keys())
 
     # First try exact match
@@ -194,8 +205,8 @@ def _is_executable_target(target: str, target_type: str, release: bool = False) 
     return target_type in ["exe", "test"]
 
 
-def _configure_cmake(release: bool) -> None:
-    preset = _preset(release)
+def _configure_cmake(release: bool, no_sanitize: bool = False) -> None:
+    preset = _preset(release, no_sanitize)
     cmd = ["cmake", "--preset", preset]
     vcpkg = os.environ.get("VCPKG_ROOT")
     if vcpkg:
@@ -204,10 +215,10 @@ def _configure_cmake(release: bool) -> None:
     _run(cmd)
 
 
-def _ensure_configured(release: bool) -> None:
-    bdir = _build_dir(release)
+def _ensure_configured(release: bool, no_sanitize: bool = False) -> None:
+    bdir = _build_dir(release, no_sanitize)
     if not (bdir.exists() and (bdir / "build.ninja").exists()):
-        _configure_cmake(release)
+        _configure_cmake(release, no_sanitize)
 
 
 @arguably.command
@@ -217,18 +228,20 @@ def build(
     release: bool = False,
     verbose: bool = False,
     full: bool = False,
+    no_sanitize: bool = False,
 ) -> None:
     """Build targets via CMake presets
 
     :param target: Optional target name (supports fuzzy matching). If omitted, builds all. Use 'targets' command to list available targets
     :param release: Build in Release mode (default Debug)
     :param full: Show full build output (not just fatal)
+    :param no_sanitize: Build without AddressSanitizer (default False)
     """
     # Resolve fuzzy target matching
     if target:
-        target = _find_target_fuzzy(target, release)
-    _ensure_configured(release)
-    preset = _build_preset(target, release)
+        target = _find_target_fuzzy(target, release, no_sanitize)
+    _ensure_configured(release, no_sanitize)
+    preset = _build_preset(target, release, no_sanitize)
     cmd = ["cmake", "--build", "--preset", preset]
 
     # Get centralized environment
@@ -304,51 +317,54 @@ def run(
     release: bool = False,
     verbose: bool = False,
     full: bool = False,
+    no_sanitize: bool = False,
 ) -> None:
     """Run any executable target
 
     :param target: Target name (supports fuzzy matching, e.g., 'domain' → 'vtest-domain')
     :param release: Use Release build dir
     :param full: Show full build output (not just fatal)
+    :param no_sanitize: Build without AddressSanitizer (default False)
     """
     # Resolve fuzzy target matching
-    target = _find_target_fuzzy(target, release)
+    target = _find_target_fuzzy(target, release, no_sanitize)
 
     # Detect all targets and find the requested one
-    targets = _detect_cmake_targets(release)
+    targets = _detect_cmake_targets(release, no_sanitize)
     target_type = targets[target]
     if not _is_executable_target(target, target_type, release):
         raise ValueError(f"Target '{target}' is not executable (type: {target_type})")
 
     # Build the target
-    build(target=target, release=release, full=full, verbose=verbose)
+    build(target=target, release=release, full=full, verbose=verbose, no_sanitize=no_sanitize)
 
     # Determine executable path based on target type
     if target_type == "test":
         # Test targets: vtest-domain → executable vtest-domain
-        exe = _build_dir(release) / "tests" / _exe_name(target)
+        exe = _build_dir(release, no_sanitize) / "tests" / _exe_name(target)
     elif target.startswith("vexp"):
         # Experiment targets are in experiments/ subdirectory
-        exe = _build_dir(release) / "experiments" / _exe_name(target)
+        exe = _build_dir(release, no_sanitize) / "experiments" / _exe_name(target)
     else:
-        exe = _build_dir(release) / _exe_name(target)
+        exe = _build_dir(release, no_sanitize) / _exe_name(target)
 
     if not exe.exists():
         raise FileNotFoundError(f"Executable not found: {exe}")
 
     # Get centralized environment
     env = _get_build_env(release, verbose)
-    _run([str(exe)], cwd=_build_dir(release), env=env)
+    _run([str(exe)], cwd=_build_dir(release, no_sanitize), env=env)
 
 
 @arguably.command
-def clean(*, all: bool = False, release: bool = False, verbose: bool = False) -> None:
+def clean(*, all: bool = False, release: bool = False, verbose: bool = False, no_sanitize: bool = False) -> None:
     """Clean build directory
 
     :param all: If true, remove the entire build directory; else partial clean
     :param release: Clean release build dir instead of debug
+    :param no_sanitize: Clean no-sanitize build dir instead of normal debug
     """
-    bdir = _build_dir(release)
+    bdir = _build_dir(release, no_sanitize)
     if not bdir.exists():
         print(f"[clean] build dir does not exist: {bdir}")
         return
@@ -368,21 +384,23 @@ def clean(*, all: bool = False, release: bool = False, verbose: bool = False) ->
 
 
 @arguably.command
-def reload(*, release: bool = False, verbose: bool = False) -> None:
+def reload(*, release: bool = False, verbose: bool = False, no_sanitize: bool = False) -> None:
     """Reconfigure CMake cache for the current preset"""
     env = _get_build_env(release, verbose)
-    _configure_cmake(release)
+    _configure_cmake(release, no_sanitize)
 
 
 @arguably.command
-def targets(*, release: bool = False) -> None:
+def targets(*, release: bool = False, no_sanitize: bool = False) -> None:
     """List all available CMake targets in this project
 
     :param release: Use Release build configuration for detection
+    :param no_sanitize: Use no-sanitizer debug configuration for detection
     """
-    print(f"[targets] Discovering targets using {'Release' if release else 'Debug'} configuration...")
+    config_name = "Release" if release else ("Debug (No Sanitizer)" if no_sanitize else "Debug")
+    print(f"[targets] Discovering targets using {config_name} configuration...")
 
-    discovered_targets = _detect_cmake_targets(release)
+    discovered_targets = _detect_cmake_targets(release, no_sanitize)
 
     if not discovered_targets:
         print("[targets] No targets found")
@@ -423,9 +441,9 @@ def targets(*, release: bool = False) -> None:
 
 
 @arguably.command
-def list_targets(*, release: bool = False) -> None:
+def list_targets(*, release: bool = False, no_sanitize: bool = False) -> None:
     """Alias for targets command"""
-    targets(release=release)
+    targets(release=release, no_sanitize=no_sanitize)
 
 
 def _collect_files(target: str | None) -> list[Path]:
@@ -502,33 +520,35 @@ def profile(
     release: bool = False,
     verbose: bool = False,
     full: bool = False,
+    no_sanitize: bool = False,
 ) -> None:
     """Profile any executable target with Tracy
 
     :param target: Target name (supports fuzzy matching)
     :param release: Use Release build (default False)
     :param full: Show full build output (not just fatal)
+    :param no_sanitize: Build without AddressSanitizer (default False)
     """
     # Resolve fuzzy target matching
-    target = _find_target_fuzzy(target, release)
+    target = _find_target_fuzzy(target, release, no_sanitize)
 
     # Detect all targets and find the requested one
-    targets = _detect_cmake_targets(release)
+    targets = _detect_cmake_targets(release, no_sanitize)
     target_type = targets[target]
     if not _is_executable_target(target, target_type, release):
         raise ValueError(f"Target '{target}' is not executable (type: {target_type})")
 
     # Build the target
     print(f"[profile] Building target '{target}'...")
-    build(target=target, release=release, full=full, verbose=verbose)
+    build(target=target, release=release, full=full, verbose=verbose, no_sanitize=no_sanitize)
 
     # Determine executable path
     if target_type == "test":
-        exe = _build_dir(release) / "tests" / _exe_name(target)
+        exe = _build_dir(release, no_sanitize) / "tests" / _exe_name(target)
     elif target.startswith("vexp"):
-        exe = _build_dir(release) / "experiments" / _exe_name(target)
+        exe = _build_dir(release, no_sanitize) / "experiments" / _exe_name(target)
     else:
-        exe = _build_dir(release) / _exe_name(target)
+        exe = _build_dir(release, no_sanitize) / _exe_name(target)
 
     if not exe.exists():
         raise FileNotFoundError(f"Executable not found: {exe}")
@@ -542,24 +562,25 @@ def profile(
     env = _get_build_env(release, verbose)
 
     try:
-        _run([str(exe)], cwd=_build_dir(release), env=env)
+        _run([str(exe)], cwd=_build_dir(release, no_sanitize), env=env)
     except KeyboardInterrupt:
         print("\n[profile] Profiling stopped by user")
 
 
 @arguably.command
-def test(*, release: bool = False, verbose: bool = False, full: bool = False) -> None:
+def test(*, release: bool = False, verbose: bool = False, full: bool = False, no_sanitize: bool = False) -> None:
     """Build (if needed) and run all test targets
 
     :param release: Use Release build
     :param verbose: Pass --verbose to tests (enables TRACE output)
     :param full: Show full build output (not just fatal)
+    :param no_sanitize: Build without AddressSanitizer (default False)
     """
     # Build everything to ensure tests are up-to-date
-    build(target=None, release=release, verbose=verbose, full=full)
+    build(target=None, release=release, verbose=verbose, full=full, no_sanitize=no_sanitize)
 
     # Discover test targets using unified discovery
-    all_targets = _detect_cmake_targets(release)
+    all_targets = _detect_cmake_targets(release, no_sanitize)
     test_targets = [name for name, type_ in all_targets.items() if type_ == "test"]
 
     if not test_targets:
@@ -571,7 +592,7 @@ def test(*, release: bool = False, verbose: bool = False, full: bool = False) ->
         try:
             # Use run logic to execute the test
             target_type = all_targets[target]
-            exe = _build_dir(release) / "tests" / _exe_name(target)
+            exe = _build_dir(release, no_sanitize) / "tests" / _exe_name(target)
 
             if not exe.exists():
                 print(f"[test] SKIPPED: {target} (executable not found)")
@@ -582,7 +603,7 @@ def test(*, release: bool = False, verbose: bool = False, full: bool = False) ->
             env = _get_build_env(release, verbose)
             if not verbose and "V_LOG_LEVEL" not in os.environ:
                 env["V_LOG_LEVEL"] = "info"
-            _run([str(exe)], cwd=_build_dir(release), env=env)
+            _run([str(exe)], cwd=_build_dir(release, no_sanitize), env=env)
         except subprocess.CalledProcessError as e:
             failures += 1
             print(f"[test] FAILED: {target} (exit {e.returncode})")

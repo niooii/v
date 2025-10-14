@@ -10,10 +10,10 @@ namespace v {
         active_handles_.insert(handle);
     }
 
-    void CoroutineScheduler::store_lambda(
-        std::coroutine_handle<> handle, std::shared_ptr<void> lambda)
+    void CoroutineScheduler::store_heap_state(
+        std::coroutine_handle<> handle, std::shared_ptr<CoroutineState> state)
     {
-        lambda_storage_[handle] = std::move(lambda);
+        heap_state_storage_[handle] = std::move(state);
     }
 
     void
@@ -27,7 +27,7 @@ namespace v {
         handle.destroy();
         // TODO! set some more state here?
         active_handles_.erase(handle);
-        lambda_storage_.erase(handle);
+        heap_state_storage_.erase(handle);
     }
 
     void CoroutineScheduler::tick(u64 current_time_ns)

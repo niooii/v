@@ -99,7 +99,7 @@ namespace v {
         using handle_type = std::coroutine_handle<promise_type>;
 
         explicit Coroutine(handle_type h, Engine& engine, CoroutineScheduler& scheduler) :
-            Future<T>(engine), handle_(h)
+            Future<T>(engine), handle_(h), scheduler_(scheduler)
         {
             h.promise().state_ = this->state_;
             scheduler.register_handle(h);
@@ -140,5 +140,6 @@ namespace v {
 
     private:
         handle_type handle_;
+        CoroutineScheduler& scheduler_;
     };
 } // namespace v

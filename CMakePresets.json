@@ -20,8 +20,22 @@
             }
         },
         {
+            "name": "debug-nosan",
+            "displayName": "Debug Configuration (No Sanitizer)",
+            "description": "Debug build without AddressSanitizer",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/cmake-build-debug-nosan",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_MAKE_PROGRAM": "ninja",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "ENABLE_SANITIZER": "OFF"
+            }
+        },
+        {
             "name": "release",
-            "displayName": "Release Configuration", 
+            "displayName": "Release Configuration",
             "description": "Release build with optimizations",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/cmake-build-release",
@@ -68,9 +82,36 @@
             "targets": ["vlib"]
         },
         {
+            "name": "debug-nosan-build",
+            "displayName": "Debug Build (No Sanitizer, All Targets)",
+            "description": "Build all targets in debug mode without sanitizer",
+            "configurePreset": "debug-nosan"
+        },
+        {
+            "name": "debug-nosan-vclient",
+            "displayName": "Debug Build (No Sanitizer, Client Only)",
+            "description": "Build vclient target in debug mode without sanitizer",
+            "configurePreset": "debug-nosan",
+            "targets": ["vclient"]
+        },
+        {
+            "name": "debug-nosan-vserver",
+            "displayName": "Debug Build (No Sanitizer, Server Only)",
+            "description": "Build vserver target in debug mode without sanitizer",
+            "configurePreset": "debug-nosan",
+            "targets": ["vserver"]
+        },
+        {
+            "name": "debug-nosan-vlib",
+            "displayName": "Debug Build (No Sanitizer, Library Only)",
+            "description": "Build vlib target in debug mode without sanitizer",
+            "configurePreset": "debug-nosan",
+            "targets": ["vlib"]
+        },
+        {
             "name": "release-vclient",
             "displayName": "Release Build (Client Only)",
-            "description": "Build vclient target in release mode", 
+            "description": "Build vclient target in release mode",
             "configurePreset": "release",
             "targets": ["vclient"]
         },

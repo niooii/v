@@ -91,6 +91,9 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 # CMAKE_BUILD_TYPE is now set by CMakePresets.json
 
+# Option to enable/disable address sanitizer
+option(ENABLE_SANITIZER "Enable AddressSanitizer for debug builds" ON)
+
 set(NO_WARNING_FLAGS "-Wno-unused-parameter -Wno-missing-braces -Wno-unused-variable -Wno-ignored-qualifiers -Wno-missing-field-initializers -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-sign-conversion")
 
 set(CMAKE_CXX_FLAGS "-Wall -W -Wextra ${NO_WARNING_FLAGS} -ffast-math -march=native -mavx2 -fcolor-diagnostics")
@@ -109,7 +112,13 @@ else()
     add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
     # clang flags
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Og -fno-omit-frame-pointer -fsanitize=address -fsanitize-recover=address -DDEBUG")
+    set(BASE_DEBUG_FLAGS "-g3 -Og -fno-omit-frame-pointer -DDEBUG")
+
+    if(ENABLE_SANITIZER)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BASE_DEBUG_FLAGS} -fsanitize=address -fsanitize-recover=address")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BASE_DEBUG_FLAGS}")
+    endif()
 endif()
 
 # Add subdirectories for each component
