@@ -81,7 +81,7 @@ namespace v {
 
         // Print debug info after graph rebuild
         auto dbg = window_resources_->render_graph.get_debug_string();
-        LOG_INFO("TaskGraph debug (post-rebuild):\n{}", dbg);
+        LOG_DEBUG("TaskGraph (post-rebuild):\n{}", dbg);
     }
 
     void RenderContext::update()

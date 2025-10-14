@@ -51,6 +51,22 @@ def _build_dir(release: bool) -> Path:
     return BUILD_DIR_RELEASE if release else BUILD_DIR_DEBUG
 
 
+def _get_build_env(release: bool, verbose: bool = False) -> dict[str, str]:
+    """Get environment variables for build/run based on build type."""
+    env = os.environ.copy()
+    if verbose:
+        env["V_LOG_LEVEL"] = "trace"
+
+    # Set ASAN_OPTIONS for debug builds to prevent immediate abort on errors
+    if not release:
+        if os.name == "nt":
+            env["ASAN_OPTIONS"] = "continue_on_error=1"
+        else:
+            env["ASAN_OPTIONS"] = "halt_on_error=0"
+
+    return env
+
+
 def _run(
     cmd: list[str], cwd: Path | None = None, env: dict[str, str] | None = None
 ) -> None:
@@ -215,15 +231,15 @@ def build(
     preset = _build_preset(target, release)
     cmd = ["cmake", "--build", "--preset", preset]
 
+    # Get centralized environment
+    env = _get_build_env(release, verbose)
+
     # For test targets, add --target to specify the specific target
     if target and target not in ["vclient", "vserver", "vlib"]:
         cmd.extend(["--target", target])
 
     print(f"[build] {' '.join(cmd)}")
     print("Starting build")
-    env = os.environ.copy()
-    if verbose:
-        env["V_LOG_LEVEL"] = "trace"
 
     if full:
         _run(cmd, env=env)
@@ -320,9 +336,8 @@ def run(
     if not exe.exists():
         raise FileNotFoundError(f"Executable not found: {exe}")
 
-    env = os.environ.copy()
-    if verbose:
-        env["V_LOG_LEVEL"] = "trace"
+    # Get centralized environment
+    env = _get_build_env(release, verbose)
     _run([str(exe)], cwd=_build_dir(release), env=env)
 
 
@@ -355,9 +370,7 @@ def clean(*, all: bool = False, release: bool = False, verbose: bool = False) ->
 @arguably.command
 def reload(*, release: bool = False, verbose: bool = False) -> None:
     """Reconfigure CMake cache for the current preset"""
-    env = os.environ.copy()
-    if verbose:
-        env["V_LOG_LEVEL"] = "trace"
+    env = _get_build_env(release, verbose)
     _configure_cmake(release)
 
 
@@ -465,6 +478,7 @@ def format(target: str | None = None, *, verbose: bool = False) -> None:
     print(f"[format] Formatting {len(files)} files...")
     for i, f in enumerate(files, 1):
         print(f"  [{i}/{len(files)}] {f}")
+        # For format, we don't need ASAN_OPTIONS but we do want V_LOG_LEVEL
         env = os.environ.copy()
         if verbose:
             env["V_LOG_LEVEL"] = "trace"
@@ -525,9 +539,7 @@ def profile(
     print("[profile] Tracy will capture call stacks automatically via sampling")
     print("[profile] Press Ctrl+C to stop profiling...")
 
-    env = os.environ.copy()
-    if verbose:
-        env["V_LOG_LEVEL"] = "trace"
+    env = _get_build_env(release, verbose)
 
     try:
         _run([str(exe)], cwd=_build_dir(release), env=env)
@@ -565,12 +577,11 @@ def test(*, release: bool = False, verbose: bool = False, full: bool = False) ->
                 print(f"[test] SKIPPED: {target} (executable not found)")
                 continue
 
-            env = os.environ.copy()
+            # For tests, we want different default V_LOG_LEVEL behavior
             # Default tests omit debug & trace logs unless verbose
-            if "V_LOG_LEVEL" not in env:
+            env = _get_build_env(release, verbose)
+            if not verbose and "V_LOG_LEVEL" not in os.environ:
                 env["V_LOG_LEVEL"] = "info"
-            if verbose:
-                env["V_LOG_LEVEL"] = "trace"
             _run([str(exe)], cwd=_build_dir(release), env=env)
         except subprocess.CalledProcessError as e:
             failures += 1

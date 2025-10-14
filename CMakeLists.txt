@@ -109,7 +109,7 @@ else()
     add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
     # clang flags
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Og -fno-omit-frame-pointer -fsanitize=address -DDEBUG")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Og -fno-omit-frame-pointer -fsanitize=address -fsanitize-recover=address -DDEBUG")
 endif()
 
 # Add subdirectories for each component

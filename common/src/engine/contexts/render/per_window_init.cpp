@@ -156,34 +156,40 @@ namespace v {
         render_graph.use_persistent_image(task_swapchain_image);
 
         // add a clear screen task to grey as default for now
-        render_graph.add_task({
-            .attachments = {
-                daxa::inl_attachment(daxa::TaskAccessConsts::COLOR_ATTACHMENT,
-                daxa::ImageViewType::REGULAR_2D, task_swapchain_image),
-            },
-            .task = [=](daxa::TaskInterface ti)
-            {
-                auto& render_target = task_swapchain_image;
-                auto const size =
-                ti.device.info(ti.get(render_target).ids[0]).value().size;
-        
-                daxa::RenderCommandRecorder render_recorder =
-                std::move(ti.recorder).begin_renderpass({
-                    .color_attachments = std::array{
-                        daxa::RenderAttachmentInfo{
-                            .image_view = ti.get(render_target).view_ids[0],
-                            .load_op = daxa::AttachmentLoadOp::CLEAR,
-                            .clear_value = std::array<daxa::f32, 4>{0.1f, 0.1f,
-                            0.1f, 1.0f},
-                        },
-                    },
-                    .render_area = {.width = size.x, .height = size.y},
-                });
-        
-                ti.recorder = std::move(render_recorder).end_renderpass();
-            },
-            .name = "default_clear",
-        });
+        auto& swapchain_image = task_swapchain_image;
+        render_graph.add_task(
+            daxa::Task::Raster("default_clear")
+                .color_attachment.writes(daxa::ImageViewType::REGULAR_2D, swapchain_image)
+                .executes(
+                    [swapchain_image](daxa::TaskInterface ti)
+                    {
+                        auto const size =
+                            ti.device.info(ti.get(swapchain_image).ids[0]).value().size;
+
+                        daxa::RenderCommandRecorder render_recorder =
+                            std::move(ti.recorder)
+                                .begin_renderpass(
+                                    {
+                                        .color_attachments =
+                                            std::array{
+                                                daxa::RenderAttachmentInfo{
+                                                    .image_view = ti.get(swapchain_image)
+                                                                      .view_ids[0],
+                                                    .load_op =
+                                                        daxa::AttachmentLoadOp::CLEAR,
+                                                    .clear_value =
+                                                        std::array<daxa::f32, 4>{
+                                                            0.1f, 0.1f, 0.1f, 1.0f, },
+                                                },
+                                            },
+                                        .render_area = { 
+                                            .width  = size.x,
+                                            .height = size.y, 
+                                        },
+                                    });
+
+                        ti.recorder = std::move(render_recorder).end_renderpass();
+                    }));
 
         render_graph.submit({});
         render_graph.present({});
