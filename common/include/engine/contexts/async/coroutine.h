@@ -38,9 +38,7 @@ namespace v {
             auto  guard                   = derived->state_->lock.write();
             derived->state_->is_completed = true;
             if (derived->state_->callback)
-            {
                 derived->state_->engine.post_tick(derived->state_->callback);
-            }
         }
     };
 
@@ -55,6 +53,8 @@ namespace v {
         void await_resume() const noexcept {}
     };
 
+    /// TODO because this extends future, the Future methods come with the overhead
+    /// of a lock acquisition, maybe change this or find some way to avoid this?
     template <typename T>
     class Coroutine : public Future<T> {
     public:
@@ -105,9 +105,29 @@ namespace v {
             scheduler.register_handle(h);
         }
 
-        ~Coroutine() = default;
+        /// TODO! actually should kill this on destroy, force raii
+        ~Coroutine() {
+            stop();
+        }
 
-        bool done() const { return this->state_->is_completed; }
+        /// If the coroutine has finished executing normally
+        /// via a thrown exception or return 
+        FORCEINLINE bool done() const { return this->state_->is_completed; }
+
+        /// If the coroutine is still alive and running. 
+        /// This is different from done(), as done() will return false for
+        /// a manually killed coroutine. 
+        FORCEINLINE bool alive() const { TODO() }
+
+        // TODO! pause, resume, stop
+        
+        /// Kills the coroutine since if this is called it is guarenteed to be yielded. (OR NOT?? is this correct usage??)
+        /// use await_transform probably
+        FORCEINLINE void stop() { TODO() }
+
+        FORCEINLINE void pause() { TODO() }
+
+        FORCEINLINE void resume() { TODO() }
 
         // Get the underlying coroutine handle
         std::coroutine_handle<> handle() const { return handle_; }

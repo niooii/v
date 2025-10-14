@@ -38,6 +38,10 @@ namespace v {
             auto entry = sleeping_.top();
             sleeping_.pop();
             entry.handle.resume();
+            // TODO! make it so that the same coroutine can't be woken twice
+            // in a single tick (key by tuple<wake_time, tick_slept> but 
+            // still sort by wake_time, just check if tick_slept == tick(), if not dont
+            // resume that task and keep going up SO MAYBE need diff data structure?)
         }
     }
 } // namespace v

@@ -4,6 +4,12 @@
 
 layout(location = 0) out vec3 v_color;
 
+struct PushConstants {
+    vec2 mouse_pos;
+};
+
+DAXA_DECL_PUSH_CONSTANT(PushConstants, pc);
+
 void main() {
     // Hardcoded triangle vertices (NDC space)
     const vec2 positions[3] = vec2[](
@@ -19,7 +25,7 @@ void main() {
         vec3(0.0, 0.0, 1.0)   // Blue
     );
 
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+    gl_Position = vec4(positions[gl_VertexIndex] + sin(pc.mouse_pos.x + pc.mouse_pos.y)/10.f, 0.0, 1.0);
     v_color = colors[gl_VertexIndex];
 }
 
