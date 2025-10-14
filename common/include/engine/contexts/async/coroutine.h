@@ -8,24 +8,24 @@
 #include <coroutine>
 #include <defs.h>
 #include <engine/contexts/async/coro_interface.h>
+#include <engine/contexts/async/coroutine_state.h>
 #include <engine/contexts/async/future.h>
 #include <engine/contexts/async/scheduler.h>
 #include <engine/engine.h>
 
 namespace v {
 
-    // Base for promise return handling - CRTP
-    template <typename T, typename Derived>
+    // TODO! why not just merge these lol
+    template <typename Ret, typename Derived>
     struct PromiseReturnBase {
-        void return_value(T value)
+        void return_value(Ret value)
         {
-            auto* derived                 = static_cast<Derived*>(this);
-            auto  guard                   = derived->state_->lock.write();
-            derived->state_->is_completed = true;
-            if (derived->state_->callback)
+            auto* derived = static_cast<Derived*>(this);
+            derived->coro_state_->is_completed = true;
+            derived->coro_state_->value        = value;
+            if (derived->coro_state_->callback)
             {
-                derived->state_->engine.post_tick(
-                    std::bind(derived->state_->callback, value));
+                derived->coro_state_->callback(value);
             }
         }
     };
@@ -34,11 +34,10 @@ namespace v {
     struct PromiseReturnBase<void, Derived> {
         void return_void()
         {
-            auto* derived                 = static_cast<Derived*>(this);
-            auto  guard                   = derived->state_->lock.write();
-            derived->state_->is_completed = true;
-            if (derived->state_->callback)
-                derived->state_->engine.post_tick(derived->state_->callback);
+            auto* derived = static_cast<Derived*>(this);
+            derived->coro_state_->is_completed = true;
+            if (derived->coro_state_->callback)
+                derived->coro_state_->callback();
         }
     };
 
@@ -53,22 +52,20 @@ namespace v {
         void await_resume() const noexcept {}
     };
 
-    /// TODO because this extends future, the Future methods come with the overhead
-    /// of a lock acquisition, maybe change this or find some way to avoid this?
-    template <typename T>
-    class Coroutine : public Future<T> {
+    template <typename Ret>
+    class Coroutine : public FutureBase<Coroutine<Ret>, Ret> {
     public:
-        using value_type = T;
+        using value_type = Ret;
 
-        struct promise_type : PromiseReturnBase<T, promise_type> {
+        struct promise_type : PromiseReturnBase<Ret, promise_type> {
             promise_type(CoroutineInterface& ci) :
                 engine_(ci.engine()), scheduler_(ci.scheduler())
             {}
 
-            Coroutine<T> get_return_object()
+            Coroutine<Ret> get_return_object()
             {
                 auto handle = std::coroutine_handle<promise_type>::from_promise(*this);
-                return Coroutine<T>(handle, engine_, scheduler_);
+                return Coroutine<Ret>(handle, engine_, scheduler_);
             }
 
             Engine&             engine_;
@@ -83,54 +80,56 @@ namespace v {
 
             void unhandled_exception()
             {
-                auto guard               = state_->lock.write();
-                state_->is_completed     = true;
-                state_->stored_exception = std::current_exception();
-                if (state_->error_callback)
-                {
-                    state_->engine.post_tick(
-                        std::bind(state_->error_callback, state_->stored_exception));
-                }
+                coro_state_->is_completed     = true;
+                coro_state_->stored_exception = std::current_exception();
+                if (coro_state_->error_callback)
+                    coro_state_->error_callback(coro_state_->stored_exception);
             }
 
-            std::shared_ptr<FutureState<T>> state_;
+            std::shared_ptr<CoroutineState<Ret>> coro_state_;
         };
 
         using handle_type = std::coroutine_handle<promise_type>;
 
         explicit Coroutine(handle_type h, Engine& engine, CoroutineScheduler& scheduler) :
-            Future<T>(engine), handle_(h), scheduler_(scheduler)
+            FutureBase<Coroutine<Ret>, Ret>(),
+            coro_state_(std::make_shared<CoroutineState<Ret>>(engine)), handle_(h),
+            scheduler_(scheduler)
         {
-            h.promise().state_ = this->state_;
+            h.promise().coro_state_ = coro_state_;
             scheduler.register_handle(h);
         }
 
         /// TODO! actually should kill this on destroy, force raii
-        ~Coroutine() {
-            stop();
+        ~Coroutine()
+        {
+            // stop();
         }
 
         /// If the coroutine has finished executing normally
-        /// via a thrown exception or return 
-        FORCEINLINE bool done() const { return this->state_->is_completed; }
+        /// via a thrown exception or return
+        FORCEINLINE bool done() const { return coro_state_->is_completed; }
 
-        /// If the coroutine is still alive and running. 
+        /// If the coroutine is still alive and running.
         /// This is different from done(), as done() will return false for
-        /// a manually killed coroutine. 
+        /// a manually killed coroutine.
         FORCEINLINE bool alive() const { TODO() }
 
         // TODO! pause, resume, stop
-        
-        /// Kills the coroutine since if this is called it is guarenteed to be yielded. (OR NOT?? is this correct usage??)
-        /// use await_transform probably
-        FORCEINLINE void stop() { TODO() }
 
-        FORCEINLINE void pause() { TODO() }
+        /// Kills the coroutine since if this is called it is guarenteed to be yielded.
+        /// (OR NOT?? is this correct usage??) use await_transform probably
+        FORCEINLINE void stop(){ TODO() }
 
-        FORCEINLINE void resume() { TODO() }
+        FORCEINLINE void pause(){ TODO() }
+
+        FORCEINLINE void resume(){ TODO() }
 
         // Get the underlying coroutine handle
-        std::coroutine_handle<> handle() const { return handle_; }
+        std::coroutine_handle<> handle() const
+        {
+            return handle_;
+        }
 
         // Delete copy, default move
         Coroutine(const Coroutine&)            = delete;
@@ -138,8 +137,67 @@ namespace v {
         Coroutine(Coroutine&&)                 = default;
         Coroutine& operator=(Coroutine&&)      = default;
 
+        // CRTP interface implementations
+        template <typename Callback>
+        Coroutine& then_impl(Callback&& callback)
+        {
+            if constexpr (std::is_void_v<Ret>)
+            {
+                static_assert(
+                    std::is_invocable_v<Callback>,
+                    "Callback for Coroutine<void>.then() must be callable with no "
+                    "arguments: [](){ ... }");
+            }
+            else
+            {
+                static_assert(
+                    std::is_invocable_v<Callback, Ret>,
+                    "Callback for Coroutine<T>.then() must be callable with T as "
+                    "argument: [](T value){ ... }");
+            }
+
+            if (coro_state_->is_completed && !coro_state_->stored_exception)
+            {
+                if constexpr (std::is_void_v<Ret>)
+                    callback();
+                else
+                    callback(*coro_state_->value);
+            }
+            else
+            {
+                coro_state_->callback = callback;
+            }
+            return *this;
+        }
+
+        template <typename Callback>
+        Coroutine& or_else_impl(Callback&& callback)
+        {
+            static_assert(
+                std::is_invocable_v<Callback, std::exception_ptr>,
+                "Callback for .or_else() must be callable with std::exception_ptr: "
+                "[](std::exception_ptr e){ ... }");
+
+            if (coro_state_->is_completed && coro_state_->stored_exception)
+                // immediately execute error callback since this all happens on the main
+                // thread
+                callback(coro_state_->stored_exception);
+            else
+                coro_state_->error_callback = callback;
+            return *this;
+        }
+
+        Ret get_impl()
+        {
+            if (coro_state_->stored_exception)
+                std::rethrow_exception(coro_state_->stored_exception);
+            if constexpr (!std::is_void_v<Ret>)
+                return *coro_state_->value;
+        }
+
     private:
-        handle_type handle_;
-        CoroutineScheduler& scheduler_;
+        std::shared_ptr<CoroutineState<Ret>> coro_state_;
+        handle_type                          handle_;
+        CoroutineScheduler&                  scheduler_;
     };
 } // namespace v

@@ -39,9 +39,9 @@ int main()
 
     // multiple concurrent tasks
     {
-        constexpr int            num_tasks = 10;
-        std::vector<Future<int>> futures;
-        std::atomic<int>         tasks_executed{ 0 };
+        constexpr int          num_tasks = 10;
+        std::vector<Task<int>> futures;
+        std::atomic<int>       tasks_executed{ 0 };
 
         for (int i = 0; i < num_tasks; ++i)
         {

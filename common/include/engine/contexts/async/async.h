@@ -10,19 +10,35 @@
 #include <engine/contexts/async/coroutine.h>
 #include <engine/contexts/async/future.h>
 #include <engine/contexts/async/scheduler.h>
+#include <engine/contexts/async/task.h>
+#include <optional>
 #include "taskflow/taskflow.hpp"
 
 namespace v {
-    /// Contains state that a coroutine needs throughout its lifetime
-    /// If i don't heap allocate this a bunch of issues come up due to how C++ handles
-    /// coroutines internally
-    struct CoroutineState {
+    // Extended CoroutineState that includes the lambda and interface storage
+    template <typename T>
+    struct ExtendedCoroutineState : public CoroutineState<T> {
         std::shared_ptr<void> lambda; // The coroutine lambda
         std::shared_ptr<CoroutineInterface>
             iface; // The interface (scheduler/engine access)
 
         template <typename F>
-        CoroutineState(F&& func, CoroutineScheduler& scheduler, Engine& engine) :
+        ExtendedCoroutineState(F&& func, CoroutineScheduler& scheduler, Engine& engine) :
+            CoroutineState<T>(engine),
+            lambda(std::make_shared<std::decay_t<F>>(std::forward<F>(func))),
+            iface(std::make_shared<CoroutineInterface>(scheduler, engine))
+        {}
+    };
+
+    template <>
+    struct ExtendedCoroutineState<void> : public CoroutineState<void> {
+        std::shared_ptr<void> lambda; // The coroutine lambda
+        std::shared_ptr<CoroutineInterface>
+            iface; // The interface (scheduler/engine access)
+
+        template <typename F>
+        ExtendedCoroutineState(F&& func, CoroutineScheduler& scheduler, Engine& engine) :
+            CoroutineState<void>(engine),
             lambda(std::make_shared<std::decay_t<F>>(std::forward<F>(func))),
             iface(std::make_shared<CoroutineInterface>(scheduler, engine))
         {}
@@ -58,10 +74,10 @@ namespace v {
         void update() { scheduler_.tick(v::time::ns()); }
 
         template <typename Ret>
-        Future<Ret> task(std::function<Ret(void)> func)
+        Task<Ret> task(std::function<Ret(void)> func)
         {
-            Future<Ret> ret{ engine_ };
-            auto        state = ret.state_;
+            Task<Ret> ret{ engine_ };
+            auto      state = ret.state_;
 
             auto f = executor_.async(
                 [func, state]()
@@ -107,25 +123,28 @@ namespace v {
                         throw; // throw again to keep std::future exception semantics
                     }
                 });
-            ret.future_ = std::move(f);
+            ret.set_future(std::move(f));
 
             return std::move(ret);
         }
 
         // Template argument deduction helper
         template <typename F>
-        auto task(F&& func) -> Future<std::invoke_result_t<F>>
+        auto task(F&& func) -> Task<std::invoke_result_t<F>>
         {
             using Ret = std::invoke_result_t<F>;
             return task<Ret>(std::function<Ret(void)>(std::forward<F>(func)));
         }
 
         /// Spawn a coroutine that runs on the main thread.
-        template <typename Ret, typename F>
-        Coroutine<Ret> spawn(F&& coro_fn)
+        template <typename CoroRet, typename F>
+        CoroRet spawn(F&& coro_fn)
         {
+            // Extract the inner type from CoroRet (e.g., void from Coroutine<void>)
+            using InnerRet = typename CoroRet::value_type;
+
             // Create centralized state (heap-allocates lambda and interface)
-            auto state = std::make_shared<CoroutineState>(
+            auto state = std::make_shared<ExtendedCoroutineState<InnerRet>>(
                 std::forward<F>(coro_fn), scheduler_, engine_);
 
             // Call from the stable heap locations
@@ -142,19 +161,10 @@ namespace v {
         template <typename F>
         auto spawn(F&& coro_fn)
         {
-            // Create centralized state (heap-allocates lambda and interface)
-            auto state = std::make_shared<CoroutineState>(
-                std::forward<F>(coro_fn), scheduler_, engine_);
-
-            // Call from the stable heap locations
-            auto coro = (*std::static_pointer_cast<std::decay_t<F>>(state->lambda))(
-                *state->iface);
-
-            // Store the state to keep everything alive
-            scheduler_.store_heap_state(coro.handle(), state);
-
-            return coro;
+            using CoroRet = std::invoke_result_t<F, CoroutineInterface&>;
+            return spawn<CoroRet>(std::forward<F>(coro_fn));
         }
+
 
         /// Get the coroutine scheduler
         CoroutineScheduler& scheduler() { return scheduler_; }

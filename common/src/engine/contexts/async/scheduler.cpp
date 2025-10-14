@@ -10,11 +10,6 @@ namespace v {
         active_handles_.insert(handle);
     }
 
-    void CoroutineScheduler::store_heap_state(
-        std::coroutine_handle<> handle, std::shared_ptr<CoroutineState> state)
-    {
-        heap_state_storage_[handle] = std::move(state);
-    }
 
     void
     CoroutineScheduler::schedule_sleep(std::coroutine_handle<> handle, u64 wake_time_ns)
@@ -39,7 +34,7 @@ namespace v {
             sleeping_.pop();
             entry.handle.resume();
             // TODO! make it so that the same coroutine can't be woken twice
-            // in a single tick (key by tuple<wake_time, tick_slept> but 
+            // in a single tick (key by tuple<wake_time, tick_slept> but
             // still sort by wake_time, just check if tick_slept == tick(), if not dont
             // resume that task and keep going up SO MAYBE need diff data structure?)
         }

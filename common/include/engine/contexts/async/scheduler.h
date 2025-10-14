@@ -13,12 +13,11 @@
 #include <queue>
 #include <vector>
 
-namespace v {
-    // Forward declaration
-    struct CoroutineState;
-}
 
 namespace v {
+
+    template <typename T>
+    struct CoroutineState;
     /// Scheduler for coroutines running on the main thread.
     /// Manages sleeping coroutines via min-heap for efficient wake-up.
     /// Owns all coroutine handles and destroys them when completed.
@@ -31,8 +30,13 @@ namespace v {
         /// Register a coroutine handle for lifetime management
         void register_handle(std::coroutine_handle<> handle);
 
-        /// Store heap-allocated coroutine state (including lambda and interface) to keep it alive for the duration of the coroutine
-        void store_heap_state(std::coroutine_handle<> handle, std::shared_ptr<CoroutineState> state);
+        /// Store heap-allocated coroutine state (including lambda and interface) to keep
+        /// it alive for the duration of the coroutine
+        template <typename T>
+        void store_heap_state(std::coroutine_handle<> handle, std::shared_ptr<T> state)
+        {
+            heap_state_storage_[handle] = std::static_pointer_cast<void>(state);
+        }
 
         /// Schedule a coroutine to sleep until the given wake time (nanoseconds)
         void schedule_sleep(std::coroutine_handle<> handle, u64 wake_time_ns);
@@ -65,6 +69,6 @@ namespace v {
         v::ud_set<std::coroutine_handle<>> active_handles_;
 
         // We need to heap allocate stuff like lambdas and other temporary objects
-        v::ud_map<std::coroutine_handle<>, std::shared_ptr<CoroutineState>> heap_state_storage_;
+        v::ud_map<std::coroutine_handle<>, std::shared_ptr<void>> heap_state_storage_;
     };
 } // namespace v
