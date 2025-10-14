@@ -86,6 +86,7 @@ namespace v {
 
         glm::mat4 perspective_;
 
+        // recalculates persp matrix bc it doesnt change a lot i'd hope
         FORCEINLINE void recalc_static_matrices()
         {
             perspective_ = glm::perspective(fov_, aspect_, near_, far_);
