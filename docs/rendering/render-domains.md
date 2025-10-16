@@ -120,7 +120,7 @@ private:
 
 ## Basic Usage Example
 
-Here's a complete example based on the TriangleRenderDomain in the codebase:
+Here's a complete example based on the TriangleRenderer in the codebase:
 
 ### Header File
 ```cpp
@@ -131,10 +131,10 @@ Here's a complete example based on the TriangleRenderDomain in the codebase:
 #include <daxa/daxa.hpp>
 
 namespace game {
-    class TriangleRenderDomain : public v::RenderDomain<TriangleRenderDomain> {
+    class TriangleRenderer : public v::RenderDomain<TriangleRenderer> {
     public:
-        TriangleRenderDomain(v::Engine& engine);
-        ~TriangleRenderDomain() override = default;
+        TriangleRenderer(v::Engine& engine);
+        ~TriangleRenderer() override = default;
 
         void add_render_tasks(daxa::TaskGraph& graph) override;
 
@@ -151,7 +151,7 @@ namespace game {
 #include <engine/contexts/render/ctx.h>
 
 namespace game {
-    TriangleRenderDomain::TriangleRenderDomain(v::Engine& engine)
+    TriangleRenderer::TriangleRenderer(v::Engine& engine)
         : RenderDomain(engine, "Triangle")
     {
         // Get Daxa resources from RenderContext
@@ -183,7 +183,7 @@ namespace game {
         }).value();
     }
 
-    void TriangleRenderDomain::add_render_tasks(daxa::TaskGraph& graph) {
+    void TriangleRenderer::add_render_tasks(daxa::TaskGraph& graph) {
         // Get swapchain image from RenderContext
         auto& swapchain_image = render_ctx_->swapchain_image();
 
@@ -230,7 +230,7 @@ namespace game {
 auto* render_ctx = engine.add_ctx<v::RenderContext>("./resources/shaders");
 
 // Add render domain - automatically registers with RenderContext
-engine.add_domain<game::TriangleRenderDomain>();
+engine.add_domain<game::TriangleRenderer>();
 
 // Graph will be built automatically on first frame
 ```

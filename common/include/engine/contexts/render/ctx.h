@@ -26,7 +26,6 @@ namespace v {
 
     struct RenderComponent {
         std::function<RenderComponentFnRender> pre_render{};
-        std::function<RenderComponentFnRender> render{};
         std::function<RenderComponentFnRender> post_render{};
         std::function<RenderComponentFnRender> resize{};
     };
@@ -89,6 +88,13 @@ namespace v {
         daxa::Format get_swapchain_format() const
         {
             return window_resources_->swapchain.get_format();
+        }
+
+        /// Get the swapchain extent (dimensions)
+        /// @note Useful for creating images that match swapchain size
+        daxa::Extent2D get_swapchain_extent() const
+        {
+            return window_resources_->swapchain.get_surface_extent();
         }
 
         /// Mark the task graph as dirty, forcing a rebuild on the next frame.

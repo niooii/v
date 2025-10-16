@@ -16,6 +16,7 @@ namespace v {
     class NetworkContext;
     class NetConnection;
     class Window;
+    class Camera;
 
     class Client : public Context {
     public:
@@ -32,6 +33,7 @@ namespace v {
         NetworkContext* net_ctx_;
 
         Window* window_;
+
         // Connection to a server
         std::shared_ptr<NetConnection> connection_;
 

@@ -8,8 +8,7 @@
 #include <render/triangle_domain.h>
 
 namespace v {
-    TriangleRenderDomain::TriangleRenderDomain(Engine& engine) :
-        RenderDomain(engine, "Triangle")
+    TriangleRenderer::TriangleRenderer(Engine& engine) : RenderDomain(engine, "Triangle")
     {
         auto& daxa = render_ctx_->daxa_resources();
 
@@ -32,10 +31,10 @@ namespace v {
             .name = "triangle_pipeline",
         }).value();
 
-        LOG_INFO("TriangleRenderDomain initialized");
+        LOG_INFO("TriangleRenderer initialized");
     }
 
-    void TriangleRenderDomain::add_render_tasks(daxa::TaskGraph& graph)
+    void TriangleRenderer::add_render_tasks(daxa::TaskGraph& graph)
     {
         auto& swapchain_image = render_ctx_->swapchain_image();
 

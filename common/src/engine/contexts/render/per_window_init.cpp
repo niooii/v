@@ -105,7 +105,8 @@ namespace v {
                             }
                         },
                         .present_mode = present_mode,
-                        .image_usage  = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
+                        .image_usage  = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
+                            daxa::ImageUsageFlagBits::TRANSFER_DST,
                         .max_allowed_frames_in_flight = FRAMES_IN_FLIGHT,
                         .name                         = "swapchain",
                     });
@@ -137,8 +138,13 @@ namespace v {
         } };
 
         // resize swapchain on window resize
-
-        window->on_resize.connect<&WindowRenderResources::resize>(this);
+        auto* window_ctx = render_ctx->engine_.get_ctx<WindowContext>();
+        if (window_ctx)
+        {
+            WindowComponent& win_comp =
+                window_ctx->create_window_component(window->entity());
+            win_comp.on_resize = [this](glm::uvec2) { this->resize(); };
+        }
 
 
         LOG_TRACE("created swapchain, creating task graph now");

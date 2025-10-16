@@ -128,9 +128,9 @@ WindowRenderResources (per-window, window lifetime)
 **Purpose**: Modular GPU rendering system where each domain manages its own GPU resources and tasks.
 
 ```cpp
-class TriangleRenderDomain : public v::RenderDomain<TriangleRenderDomain> {
+class TriangleRenderer : public v::RenderDomain<TriangleRenderer> {
 public:
-    TriangleRenderDomain(v::Engine& engine)
+    TriangleRenderer(v::Engine& engine)
         : v::RenderDomain(engine, "Triangle") {
 
         // Access Daxa resources from RenderContext
@@ -420,5 +420,5 @@ auto* mod_ctx = engine.add_ctx<ModContext>();
 - `common/include/engine/sink.h` - Task dependency management
 
 ### Examples
-- `client/src/render/triangle_domain.cpp` - Complete RenderDomain example
+- `client/src/render/triangle_domain.cpp` - Complete TriangleRenderer example
 - `experiments/voxel-rendering/main.cpp` - Minimal application setup

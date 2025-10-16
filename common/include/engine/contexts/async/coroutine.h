@@ -20,7 +20,7 @@ namespace v {
     struct PromiseReturnBase {
         void return_value(Ret value)
         {
-            auto* derived = static_cast<Derived*>(this);
+            auto* derived                      = static_cast<Derived*>(this);
             derived->coro_state_->is_completed = true;
             derived->coro_state_->value        = value;
             if (derived->coro_state_->callback)
@@ -34,7 +34,7 @@ namespace v {
     struct PromiseReturnBase<void, Derived> {
         void return_void()
         {
-            auto* derived = static_cast<Derived*>(this);
+            auto* derived                      = static_cast<Derived*>(this);
             derived->coro_state_->is_completed = true;
             if (derived->coro_state_->callback)
                 derived->coro_state_->callback();

@@ -79,9 +79,8 @@ namespace v {
         window_resources_->render_graph.present({});
         window_resources_->render_graph.complete({});
 
-        // Print debug info after graph rebuild
-        auto dbg = window_resources_->render_graph.get_debug_string();
-        LOG_DEBUG("TaskGraph (post-rebuild):\n{}", dbg);
+        LOG_TRACE(
+            "Task graph rebuilt successfully with {} domains", render_domains_.size());
     }
 
     void RenderContext::update()

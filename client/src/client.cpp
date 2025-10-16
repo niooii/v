@@ -3,12 +3,14 @@
 //
 
 #include <client.h>
+#include <engine/camera.h>
 #include <engine/contexts/net/connection.h>
 #include <engine/contexts/net/ctx.h>
 #include <engine/contexts/render/ctx.h>
 #include <engine/contexts/window/sdl.h>
 #include <engine/contexts/window/window.h>
 #include <net/channels.h>
+#include <render/mandelbulb_renderer.h>
 #include <render/triangle_domain.h>
 #include <world/world.h>
 #include "engine/contexts/async/async.h"
@@ -23,6 +25,19 @@ namespace v {
         window_ctx_ = engine_.add_ctx<WindowContext>();
         window_     = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
+        auto default_keybinds = [&](Key k)
+        {
+            switch (k)
+            {
+            case Key::R:
+                window_->capture_mouse(!window_->capturing_mouse());
+            default:
+            }
+        };
+
+        KeyComponent& key_comp  = window_ctx_->create_key_component(engine_.entity());
+        key_comp.on_key_pressed = default_keybinds;
+
         render_ctx_ = engine_.add_ctx<RenderContext>("./resources/shaders");
         net_ctx_    = engine_.add_ctx<NetworkContext>(1.0 / 500);
 
@@ -36,9 +51,13 @@ namespace v {
                     LOG_DEBUG("500ms hi");
             });
 
-        // Add triangle render domain
-        engine_.add_domain<TriangleRenderDomain>();
+        // test rendering via domains
+        // TODO! this should be order independent, but how? like if i add
+        // triangle domain before a clearing domain, the clear should still come first?
+        // manual graph ordering maybe?
+        // engine_.add_domain<TriangleRenderer>();
         engine_.add_domain<DefaultRenderDomain>();
+        auto* mandelbulb = engine_.add_domain<MandelbulbRenderer>();
 
         // Setup network connection
         LOG_INFO("Connecting to server...");
@@ -58,11 +77,11 @@ namespace v {
             {}, {}, "windows",
             [this]()
             {
-                sdl_ctx_->update();
                 window_ctx_->update();
+                sdl_ctx_->update();
             });
 
-        // render depends on windows task to be finished
+        // render depends on the window input update task to be finished
         engine_.on_tick.connect(
             { "windows" }, {}, "render", [this]() { render_ctx_->update(); });
 

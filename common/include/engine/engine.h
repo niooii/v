@@ -270,3 +270,5 @@ namespace v {
         }
     };
 } // namespace v
+
+#include <engine/domain.inl>
