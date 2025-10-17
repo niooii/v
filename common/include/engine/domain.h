@@ -79,7 +79,7 @@ namespace v {
         /// removed
         template <typename T>
         usize remove();
-
+        
     protected:
         /// A reference to the engine instance
         Engine& engine_;

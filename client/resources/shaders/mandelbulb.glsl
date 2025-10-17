@@ -21,7 +21,7 @@ float mandelbulb_de(vec3 pos)
     vec3 z = pos;
     float dr = 1.0;
     float r = 0.0;
-    float POWER = push.time - 5;
+    float POWER = sin(push.time / 10) * 4 + 6;
 
     for (int i = 0; i < 15; i++)
     {
