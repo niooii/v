@@ -11,6 +11,7 @@
 #include <defs.h>
 #include <engine/traits.h>
 #include <entt/entt.hpp>
+#include <mem/owned_ptr.h>
 #include <memory>
 
 namespace v {
@@ -39,15 +40,14 @@ namespace v {
         DomainBase(Engine& engine, std::string name);
         virtual ~DomainBase();
 
-        /// Override this method to add components TODO! is this necessary?
-        virtual void init_standard_components() {}
-        /// TODO!
-        virtual void init_render_components(/*RenderContext* ctx*/) {}
+        // Domains are non-copyable and non-movable
+        DomainBase(const DomainBase&)            = delete;
+        DomainBase& operator=(const DomainBase&) = delete;
+        DomainBase(DomainBase&&)                 = delete;
+        DomainBase& operator=(DomainBase&&)      = delete;
 
         FORCEINLINE entt::entity entity() const { return entity_; }
         FORCEINLINE std::string_view name() const { return name_; }
-
-        // TODO! make a bunch of conveneint shorthands for entity registry methods
 
         /// Check if the domain's entity has component T
         template <typename T>
@@ -91,7 +91,7 @@ namespace v {
     };
 
     template <typename Derived>
-    class Domain : public DomainBase, public QueryBy<std::unique_ptr<Derived>> {
+    class Domain : public DomainBase, public QueryBy<mem::owned_ptr<Derived>> {
     public:
         Domain(Engine& engine, std::string name = std::string{ type_name<Derived>() }) :
             DomainBase(engine, std::move(name))

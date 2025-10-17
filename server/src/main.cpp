@@ -27,15 +27,14 @@ int main(int argc, char** argv)
 
     Engine engine{};
 
-    // Shared world domain (authoritative on server)
-    auto world = engine.add_domain<WorldDomain>();
+    // TODO! world iis useless rn its just here for fun
+    auto& world = engine.add_domain<WorldDomain>();
 
     // attempts to update every 1ms
     auto net_ctx = engine.add_ctx<NetworkContext>(1.0 / 1000.0);
 
     auto async = engine.add_ctx<AsyncContext>(8);
 
-    // Test 2: While loop with co_await
     async->spawn(
         [](CoroutineInterface& ci) -> Coroutine<void>
         {
@@ -58,15 +57,12 @@ int main(int argc, char** argv)
     {
         stopwatch.reset();
 
-        // Update network context to process events
         net_ctx->update();
 
         async->update();
 
-        // Update engine
         engine.tick();
 
-        // Sleep to maintain update rate
         if (const auto sleep_time = stopwatch.until(SERVER_UPDATE_RATE); sleep_time > 0)
             time::sleep_ms(sleep_time * 1000);
     }

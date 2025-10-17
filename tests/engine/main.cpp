@@ -96,27 +96,26 @@ int main()
 
     // Test domain management
     {
-        auto* domain = engine->add_domain<TestDomain>();
-        tctx.assert_now(domain != nullptr, "Domain added successfully");
-        tctx.assert_now(domain->counter == 0, "Domain has expected initial counter");
+        auto& domain = engine->add_domain<TestDomain>();
+        tctx.assert_now(domain.counter == 0, "Domain has expected initial counter");
 
         auto* retrieved_domain = engine->get_domain<TestDomain>();
         tctx.assert_now(
-            retrieved_domain == domain, "Retrieved domain is the same instance");
+            retrieved_domain == &domain, "Retrieved domain is the same instance");
 
         // Test domain entity
         tctx.assert_now(
-            engine->is_valid_entity(domain->entity()), "Domain entity is valid");
+            engine->is_valid_entity(domain.entity()), "Domain entity is valid");
     }
 
     // Test multiple domains
     {
-        auto* domain1 = engine->add_domain<TestDomain>("Domain1");
-        auto* domain2 = engine->add_domain<TestDomain>("Domain2");
+        auto& domain1 = engine->add_domain<TestDomain>("Domain1");
+        auto& domain2 = engine->add_domain<TestDomain>("Domain2");
 
-        tctx.assert_now(domain1 != domain2, "Multiple domains are different instances");
-        tctx.assert_now(domain1->name() == "Domain1", "Domain1 has correct name");
-        tctx.assert_now(domain2->name() == "Domain2", "Domain2 has correct name");
+        tctx.assert_now(&domain1 != &domain2, "Multiple domains are different instances");
+        tctx.assert_now(domain1.name() == "Domain1", "Domain1 has correct name");
+        tctx.assert_now(domain2.name() == "Domain2", "Domain2 has correct name");
 
         // Test view functionality
         auto view = engine->view<TestDomain>();
@@ -136,16 +135,15 @@ int main()
 
     // Test singleton domain behavior
     {
-        auto* singleton1 = engine->add_domain<TestSingletonDomain>();
-        tctx.assert_now(singleton1 != nullptr, "Singleton domain added successfully");
+        auto& singleton1 = engine->add_domain<TestSingletonDomain>();
 
-        auto* singleton2 = engine->add_domain<TestSingletonDomain>();
+        auto& singleton2 = engine->add_domain<TestSingletonDomain>();
         tctx.assert_now(
-            singleton2 == singleton1, "Singleton domain returns existing instance");
+            &singleton2 == &singleton1, "Singleton domain returns existing instance");
 
         auto* retrieved = engine->get_domain<TestSingletonDomain>();
         tctx.assert_now(
-            retrieved == singleton1, "Retrieved singleton is the same instance");
+            retrieved == &singleton1, "Retrieved singleton is the same instance");
     }
 
     // Test component management on engine entity
@@ -205,8 +203,8 @@ int main()
 
     // Test domain lifecycle management
     {
-        auto* domain        = engine->add_domain<TestDomain>("LifecycleTest");
-        auto  domain_entity = domain->entity();
+        auto& domain        = engine->add_domain<TestDomain>("LifecycleTest");
+        auto  domain_entity = domain.entity();
 
         tctx.assert_now(
             engine->is_valid_entity(domain_entity), "Domain entity is valid initially");

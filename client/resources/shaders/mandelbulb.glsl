@@ -1,11 +1,19 @@
 #include <shared.inl>
 
+struct MandelbulbPush
+{
+    daxa_ImageViewId image_id;
+    daxa_u32vec2 frame_dim;
+    daxa_f32mat4x4 inv_view_proj;
+    daxa_f32vec3 camera_pos;
+    daxa_f32 time;
+};
+
 DAXA_DECL_PUSH_CONSTANT(MandelbulbPush, push)
 
 #define MAX_STEPS 512
 #define MAX_DIST 100.0
-#define SURF_DIST 0.001
-#define POWER 8.0
+#define SURF_DIST 0.0001
 
 // Mandelbulb distance estimator
 float mandelbulb_de(vec3 pos)
@@ -13,6 +21,7 @@ float mandelbulb_de(vec3 pos)
     vec3 z = pos;
     float dr = 1.0;
     float r = 0.0;
+    float POWER = push.time - 5;
 
     for (int i = 0; i < 15; i++)
     {
@@ -108,14 +117,16 @@ void main()
         // Ambient occlusion approximation
         float ao = 1.0 - float(d) / MAX_DIST;
 
-        // Color based on normal for visual interest
-        vec3 base_color = normal * 0.5 + 0.5;
+        // Monochrome scheme - convert normal to grayscale
+        float gray = length(normal * 0.5 + 0.5) / sqrt(3.0);
+        gray = pow(gray, 1.5);
+        vec3 base_color = vec3(gray);
         col = base_color * (diff * 0.8 + 0.2) * ao;
     }
     else
     {
-        // background
-        col = mix(vec3(0.1, 0.1, 0.15), vec3(0.0), 0.00);
+        // Background - pure black
+        col = vec3(0.0);
     }
 
     imageStore(daxa_image2D(push.image_id), ivec2(pixel_i.xy), vec4(col, 1.0));

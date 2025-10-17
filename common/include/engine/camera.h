@@ -70,7 +70,6 @@ namespace v {
         /// Add to yaw (rotation around Y axis) in radians
         FORCEINLINE void add_yaw(f32 angle)
         {
-            LOG_DEBUG(angle);
             yaw_ += angle;
             rebuild_rotation();
         }

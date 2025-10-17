@@ -468,13 +468,13 @@ namespace v {
         }
         try
         {
-            Window* window = engine_.add_domain<Window>(name, size, pos);
+            Window& window = engine_.add_domain<Window>(name, size, pos);
 
-            if (const auto id = SDL_GetWindowID(window->sdl_window_))
+            if (const auto id = SDL_GetWindowID(window.sdl_window_))
             {
-                windows_[id] = window;
-                singleton_   = window;
-                return window;
+                windows_[id] = &window;
+                singleton_   = &window;
+                return &window;
             }
         }
         catch (std::runtime_error& e)

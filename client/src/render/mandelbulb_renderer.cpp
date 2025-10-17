@@ -8,6 +8,7 @@
 #include <engine/contexts/window/window.h>
 #include <engine/engine.h>
 #include <render/mandelbulb_renderer.h>
+#include <util/devcam.h>
 
 namespace v {
     MandelbulbRenderer::MandelbulbRenderer(Engine& engine) :
@@ -23,10 +24,8 @@ namespace v {
                                     })
                                 .value();
 
-        camera_                   = engine_.add_domain<Camera>();
-        camera_->get<Pos3d>().val = glm::vec3(0.0f, 0.0f, 5.0f);
-
-        window_ = engine_.get_domain<Window>();
+        auto& devcam                     = attach<DevCamera>();
+        devcam.camera().get<Pos3d>().val = glm::vec3(0.0f, 0.0f, 5.0f);
 
         LOG_INFO("MandelbulbRenderer initialized");
     }
@@ -99,37 +98,11 @@ namespace v {
                         auto& daxa       = render_ctx_->daxa_resources();
                         auto  image_info = daxa.device.info(render_image_).value();
 
-                        // update camera stuff
-                        if (!window_ || !camera_)
-                            return;
-
-                        const f32 move_speed       = 1.5f * engine_.delta_time();
-                        const f32 look_sensitivity = 0.02f;
-
-                        auto& pos = camera_->get<Pos3d>().val;
-
-                        if (window_->is_key_down(Key::W))
-                            pos += camera_->forward() * move_speed;
-                        if (window_->is_key_down(Key::S))
-                            pos -= camera_->forward() * move_speed;
-                        if (window_->is_key_down(Key::A))
-                            pos -= camera_->right() * move_speed;
-                        if (window_->is_key_down(Key::D))
-                            pos += camera_->right() * move_speed;
-                        if (window_->is_key_down(Key::Q))
-                            pos += camera_->up() * move_speed;
-                        if (window_->is_key_down(Key::E))
-                            pos -= camera_->up() * move_speed;
-
-                        glm::vec2 delta = glm::vec2(window_->get_mouse_delta());
-
-                        camera_->add_yaw(-delta.x * look_sensitivity);
-                        camera_->add_pitch(delta.y * look_sensitivity);
-
+                        auto& camera = get<DevCamera>().camera();
                         ti.recorder.set_pipeline(*compute_pipeline_);
 
-                        glm::mat4 inv_view_proj = glm::inverse(camera_->matrix());
-                        glm::vec3 camera_pos    = camera_->get<Pos3d>().val;
+                        glm::mat4 inv_view_proj = glm::inverse(camera.matrix());
+                        glm::vec3 camera_pos    = camera.get<Pos3d>().val;
 
                         // Push constants with camera and image info
                         struct MandelbulbPush {

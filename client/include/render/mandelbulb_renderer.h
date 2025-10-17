@@ -29,8 +29,6 @@ namespace v {
 
         daxa::Extent2D last_extent_{};
 
-        Camera*   camera_ = nullptr;
-        Window*   window_ = nullptr;
         Stopwatch sw_{};
     };
 } // namespace v

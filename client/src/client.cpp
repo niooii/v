@@ -57,7 +57,7 @@ namespace v {
         // manual graph ordering maybe?
         // engine_.add_domain<TriangleRenderer>();
         engine_.add_domain<DefaultRenderDomain>();
-        auto* mandelbulb = engine_.add_domain<MandelbulbRenderer>();
+        auto& mandelbulb = engine_.add_domain<MandelbulbRenderer>();
 
         // Setup network connection
         LOG_INFO("Connecting to server...");

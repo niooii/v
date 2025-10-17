@@ -76,14 +76,6 @@ namespace v {
             return view.template get<query_transform_t<T>>(*view.begin()).get();
         }
 
-        /// Try to get domain T from entity, returns nullptr if not found
-        template <DerivedFromDomain T>
-        FORCEINLINE T* try_get_domain(entt::entity entity)
-        {
-            auto ptr = registry_.try_get<query_transform_t<T>>(entity);
-            return ptr ? ptr->get() : nullptr;
-        }
-
         /// Directly query the entt registry
         template <typename... Components>
         FORCEINLINE auto raw_view()
@@ -110,21 +102,47 @@ namespace v {
         template <typename T>
         FORCEINLINE bool has_component(entt::entity entity)
         {
-            return registry_.all_of<T>(entity);
+            return registry_.all_of<query_transform_t<T>>(entity);
         }
 
         /// Try to get component T from entity, returns nullptr if not found
         template <typename T>
-        FORCEINLINE T* try_get_component(entt::entity entity)
+        FORCEINLINE auto try_get_component(entt::entity entity)
         {
-            return registry_.try_get<T>(entity);
+            return to_return_ptr<T>(registry_.try_get<query_transform_t<T>>(entity));
         }
 
         /// Add/replace component T to entity
-        template <typename T, typename... Args>
-        FORCEINLINE T& add_component(entt::entity entity, Args&&... args)
+        /// [SPECIALIZATION FOR DOMAINS]
+        /// erm is this bad.. magic cases for one type uhh ill deal with it if it beceoms
+        /// an issue later
+        template <DerivedFromDomain T, typename... Args>
+        FORCEINLINE auto& add_component(entt::entity entity, Args&&... args)
         {
-            return registry_.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
+            // Check if this is a singleton domain and if it already exists
+            if constexpr (DerivedFromSDomain<T>)
+            {
+                if (auto existing = get_domain<T>())
+                {
+                    LOG_WARN(
+                        "Singleton domain {} already exists, returning existing instance",
+                        type_name<T>());
+                    return *existing;
+                }
+            }
+
+            auto& component = registry_.emplace_or_replace<query_transform_t<T>>(
+                entity, *this, std::forward<Args>(args)...);
+
+            return *component.get();
+        }
+
+        template <typename T, typename... Args>
+            requires(!DerivedFromDomain<T>)
+        FORCEINLINE auto& add_component(entt::entity entity, Args&&... args)
+        {
+            return registry_.emplace_or_replace<query_transform_t<T>>(
+                entity, std::forward<Args>(args)...);
         }
 
         /// Check if entity is valid
@@ -135,20 +153,19 @@ namespace v {
 
         /// Get component T from entity, throws if component doesn't exist
         template <typename T>
-        FORCEINLINE T& get_component(entt::entity entity)
+        FORCEINLINE auto& get_component(entt::entity entity)
         {
-            return registry_.get<T>(entity);
+            return *to_return_ptr<T>(&registry_.get<query_transform_t<T>>(entity));
         }
 
         /// Remove component T from entity, returns number of components removed
         template <typename T>
         FORCEINLINE usize remove_component(entt::entity entity)
         {
-            return registry_.remove<T>(entity);
+            return registry_.remove<query_transform_t<T>>(entity);
         }
 
         /// Adds a context to the engine, retrievable by type.
-        /// @note Single-threaded engine - contexts are not thread-safe.
         template <DerivedFromContext T, typename... Args>
         T* add_ctx(Args&&... args)
         {
@@ -165,15 +182,14 @@ namespace v {
             return nullptr;
         }
 
-        /// Create a new domain owned by the Engine, retrievable using
+        /// Create a domain with it's own lifetime, retrievable using
         /// domain convenience methods.
         /// e.g. engine.view<T>() or engine.get_domain<T>().
         /// @note Pointers to Domains may be stored, as they are heap allocated.
         /// Pointer stability is guaranteed UNTIL Engine::queue_destroy_domain
         /// has been called on it. After that, pointers are no longer guaranteed to exist.
-        /// Single-threaded engine - domains are not thread-safe.
         template <DerivedFromDomain T, typename... Args>
-        T* add_domain(Args&&... args)
+        T& add_domain(Args&&... args)
         {
             // Check if this is a singleton domain and if it already exists
             if constexpr (DerivedFromSDomain<T>)
@@ -182,23 +198,18 @@ namespace v {
                 {
                     LOG_WARN(
                         "Singleton domain {} already exists, returning existing instance",
-                        typeid(T).name());
-                    return existing;
+                        type_name<T>());
+                    return *existing;
                 }
             }
 
-            std::unique_ptr<T> domain =
-                std::make_unique<T>(*this, std::forward<Args>(args)...);
-            T* ptr = domain.get();
+            mem::owned_ptr<T> domain(*this, std::forward<Args>(args)...);
+            T*                ptr = domain.get();
 
-            ptr->init_standard_components();
-            // TODO!
-            // ptr->init_render_components();
-
-            // Attach the unique ptr for lifetime management
+            // Attach the owned_ptr for lifetime management
             registry_.emplace<query_transform_t<T>>(ptr->entity(), std::move(domain));
 
-            return ptr;
+            return *ptr;
         }
 
         FORCEINLINE void queue_destroy_domain(const entt::entity domain_id)

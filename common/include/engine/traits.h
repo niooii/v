@@ -41,4 +41,43 @@ namespace v {
     template <typename T>
     using query_transform_t = typename query_transform<T>::type;
 
+    /// Concept to detect if a type has a .get() method that returns a pointer
+    template <typename T>
+    concept HasGetMethod = requires(T& t) {
+        { t.get() };
+    };
+
+    /// Utility to convert a pointer to a type's storage type (from query_transform_t)
+    /// to a raw pointer.
+    /// Automatically handles owned_ptr, unique_ptr, raw pointers, etc.
+    template <typename T>
+    auto to_return_ptr(query_transform_t<T>* storage_ptr)
+    {
+        if constexpr (InheritsFromQueryBy<T>)
+        {
+            if constexpr (HasGetMethod<query_transform_t<T>>)
+            {
+                // is a smart pointer or a type that implements .get()
+                // TODO! should check if get actually returns a raw pointer?
+                return storage_ptr ? storage_ptr->get() : nullptr;
+            }
+            else if constexpr (std::is_pointer_v<query_transform_t<T>>)
+            {
+                // dereference a double pointer
+                return storage_ptr ? *storage_ptr : nullptr;
+            }
+            else
+            {
+                static_assert(
+                    false,
+                    "QueryBy type must either have a .get() method that returns a raw "
+                    "pointer T*, or be a raw pointer");
+            }
+        }
+        else
+        {
+            return storage_ptr;
+        }
+    }
+
 } // namespace v
