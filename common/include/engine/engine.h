@@ -27,7 +27,6 @@ template <typename T>
 concept DerivedFromSDomain = std::is_base_of_v<v::SDomain<T>, T>;
 
 namespace v {
-
     class Engine {
     public:
         // Engine is non-copyable
@@ -100,7 +99,7 @@ namespace v {
 
         /// Check if entity has component T
         template <typename T>
-        FORCEINLINE bool has_component(entt::entity entity)
+        FORCEINLINE bool has_component(entt::entity entity) const
         {
             return registry_.all_of<query_transform_t<T>>(entity);
         }
@@ -108,6 +107,13 @@ namespace v {
         /// Try to get component T from entity, returns nullptr if not found
         template <typename T>
         FORCEINLINE auto try_get_component(entt::entity entity)
+        {
+            return to_return_ptr<T>(registry_.try_get<query_transform_t<T>>(entity));
+        }
+
+        /// Try to get component T from entity, returns nullptr if not found (const)
+        template <typename T>
+        FORCEINLINE auto try_get_component(entt::entity entity) const
         {
             return to_return_ptr<T>(registry_.try_get<query_transform_t<T>>(entity));
         }
@@ -131,10 +137,7 @@ namespace v {
                 }
             }
 
-            auto& component = registry_.emplace_or_replace<query_transform_t<T>>(
-                entity, *this, std::forward<Args>(args)...);
-
-            return *component.get();
+            return _init_domain<T>(entity, std::forward<Args>(args)...);
         }
 
         template <typename T, typename... Args>
@@ -154,6 +157,13 @@ namespace v {
         /// Get component T from entity, throws if component doesn't exist
         template <typename T>
         FORCEINLINE auto& get_component(entt::entity entity)
+        {
+            return *to_return_ptr<T>(&registry_.get<query_transform_t<T>>(entity));
+        }
+
+        /// Get component T from entity, throws if component doesn't exist (const)
+        template <typename T>
+        FORCEINLINE auto& get_component(entt::entity entity) const
         {
             return *to_return_ptr<T>(&registry_.get<query_transform_t<T>>(entity));
         }
@@ -191,7 +201,6 @@ namespace v {
         template <DerivedFromDomain T, typename... Args>
         T& add_domain(Args&&... args)
         {
-            // Check if this is a singleton domain and if it already exists
             if constexpr (DerivedFromSDomain<T>)
             {
                 if (auto existing = get_domain<T>())
@@ -203,13 +212,8 @@ namespace v {
                 }
             }
 
-            mem::owned_ptr<T> domain(*this, std::forward<Args>(args)...);
-            T*                ptr = domain.get();
-
-            // Attach the owned_ptr for lifetime management
-            registry_.emplace<query_transform_t<T>>(ptr->entity(), std::move(domain));
-
-            return *ptr;
+            // Pass nullopt so domain creates and owns its own entity
+            return _init_domain<T>(std::nullopt, std::forward<Args>(args)...);
         }
 
         FORCEINLINE void queue_destroy_domain(const entt::entity domain_id)
@@ -258,6 +262,24 @@ namespace v {
         /// start. In other words, the 'deltaTime' variable
         f64 prev_tick_span_{ 0 };
         u64 current_tick_{ 0 };
+
+        /// Helper to create and initialize a domain, called
+        /// every time on domain creation
+        /// If entity is provided, domain is owned by that entity (add_component behavior)
+        /// If entity is nullopt, domain owns itself 
+        template <DerivedFromDomain T, typename... Args>
+        T& _init_domain(std::optional<entt::entity> owner, Args&&... args)
+        {
+            mem::owned_ptr<T> domain(std::forward<Args>(args)...);
+            T*                ptr = domain.get();
+
+            ptr->init_first(*this, owner);
+            ptr->init();
+
+            registry_.emplace_or_replace<query_transform_t<T>>(ptr->entity(), std::move(domain));
+
+            return *ptr;
+        }
 
         template <typename T, typename... Args>
         T* _add_context(Args&&... args)

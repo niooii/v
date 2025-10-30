@@ -7,7 +7,10 @@
 #include <engine/engine.h>
 
 namespace v {
-    RenderDomainBase::RenderDomainBase(Engine& engine)
+    RenderDomainBase::RenderDomainBase()
+    {}
+
+    void RenderDomainBase::init_render(Engine& engine)
     {
         render_ctx_ = engine.get_ctx<RenderContext>();
         if (!render_ctx_)

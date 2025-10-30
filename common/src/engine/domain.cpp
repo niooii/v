@@ -6,10 +6,13 @@
 #include <engine/engine.h>
 
 namespace v {
-    DomainBase::DomainBase(Engine& engine, std::string name) :
-        engine_(engine), name_(std::move(name))
+    DomainBase::DomainBase(std::string name) : name_(std::move(name))
+    {}
+
+    void DomainBase::init_first(Engine& engine, std::optional<entt::entity> entity)
     {
-        entity_ = engine_.registry().create();
+        engine_ = &engine;
+        entity_ = entity.value_or(engine.registry().create());
     }
 
     DomainBase::~DomainBase()

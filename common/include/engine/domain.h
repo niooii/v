@@ -19,25 +19,53 @@ namespace v {
 
     /// Base class for all domains.
     ///
-    /// IMPORTANT: When creating derived Domain classes, the constructor MUST
-    /// accept Engine& as its first parameter. The engine reference is automatically
-    /// passed by Engine::add_domain() - do not pass it manually when calling
-    /// add_domain().
+    /// The engine reference is set internally, the constructor should not
+    /// reference the engine in any form, including the attach<>, get<> and other
+    /// ECS methods.
+    /// Engine-dependent initialization must be done in the init() method.
     ///
     /// Example:
     ///   class MyDomain : public Domain<MyDomain> {
     ///   public:
-    ///       MyDomain(Engine& engine, int my_param) : Domain(engine) { ... }
+    ///       MyDomain(int my_param) : my_param_(my_param) {}
+    ///       void init() override { attach<SomeComponent>(); }
+    ///   private:
+    ///       int my_param_;
     ///   };
     ///
-    ///   // Correct usage:
-    ///   engine.add_domain<MyDomain>(42);  // Engine& is passed automatically
-    ///
-    ///   // WRONG - will cause compile error:
-    ///   engine.add_domain<MyDomain>(engine, 42);  // Don't pass engine manually!
+    ///   engine.add_domain<MyDomain>(42);
     class DomainBase {
+        friend class Engine;
+
+    protected:
+        DomainBase(std::string name);
+
+        void
+        init_first(Engine& engine, std::optional<entt::entity> entity = std::nullopt);
+
+        Engine& engine()
+        {
+#if !defined(V_RELEASE)
+            if (UNLIKELY(!engine_))
+            {
+                LOG_CRITICAL("Domain::engine() cannot be accessed during construction");
+                throw std::logic_error(
+                    "Domain::engine() cannot be accessed during construction");
+            }
+#endif
+            return *engine_;
+        }
+
+        const Engine& engine() const
+        {
+#if !defined(V_RELEASE)
+            if (UNLIKELY(!engine_))
+                throw std::logic_error("Domain::engine() called before initialization");
+#endif
+            return *engine_;
+        }
+
     public:
-        DomainBase(Engine& engine, std::string name);
         virtual ~DomainBase();
 
         // Domains are non-copyable and non-movable
@@ -79,36 +107,43 @@ namespace v {
         /// removed
         template <typename T>
         usize remove();
-        
+
+        /// Convenience method to get a context from the engine
+        template <typename T>
+        T* get_ctx();
+
+        template <typename T>
+        const T* get_ctx() const;
+
     protected:
-        /// A reference to the engine instance
-        Engine& engine_;
-        /// The name of the domain
-        std::string name_;
-        /// The entity this domain is registered as in the engine's
-        /// registry
-        entt::entity entity_;
+        mutable Engine* engine_ = nullptr;
+        std::string     name_;
+        entt::entity    entity_;
     };
 
     template <typename Derived>
     class Domain : public DomainBase, public QueryBy<mem::owned_ptr<Derived>> {
-    public:
-        Domain(Engine& engine, std::string name = std::string{ type_name<Derived>() }) :
-            DomainBase(engine, std::move(name))
+    protected:
+        Domain(std::string name = std::string{ type_name<Derived>() }) :
+            DomainBase(std::move(name))
         {}
 
+    public:
         virtual ~Domain() = default;
+
+        virtual void init() {}
     };
 
     /// A singleton domain which does not permit the creation of multiple
     /// instances of itself in the same Engine container.
     template <typename Derived>
     class SDomain : public Domain<Derived> {
-    public:
-        SDomain(
-            Engine&            engine,
-            const std::string& name = std::string{ type_name<Derived>() }) :
-            Domain<Derived>(engine, name)
+    protected:
+        SDomain(const std::string& name = std::string{ type_name<Derived>() }) :
+            Domain<Derived>(name)
         {}
+
+    public:
+        virtual void init() override {}
     };
 } // namespace v

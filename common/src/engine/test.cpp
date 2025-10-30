@@ -6,26 +6,25 @@
 #include <engine/test.h>
 
 namespace v {
-    CountTo10Domain::CountTo10Domain(Engine& engine, const std::string& name) :
-        Domain<CountTo10Domain>(engine, name), counter_(1)
+    CountTo10Domain::CountTo10Domain(const std::string& name) :
+        Domain<CountTo10Domain>(name), counter_(1)
     {}
 
     void CountTo10Domain::update()
     {
         if (counter_ <= 10)
         {
-            // LOG_INFO("{}", counter_);
             counter_++;
         }
 
         if (counter_ > 10)
         {
-            const entt::entity id = entity_;
-            engine_.post_tick(
+            const entt::entity id = entity();
+            engine().post_tick(
                 [this, id]()
                 {
-                    if (engine_.registry().valid(id))
-                        engine_.registry().destroy(id);
+                    if (engine().registry().valid(id))
+                        engine().registry().destroy(id);
                 });
         }
     }

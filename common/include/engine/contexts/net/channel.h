@@ -202,7 +202,7 @@ namespace v {
         {
             conn_ = c;
             entt_conn_ =
-                conn_->engine_.registry()
+                conn_->engine().registry()
                     .on_destroy<NetDestructionTracker>()
                     .connect<&NetChannel<
                         Derived, Payload>::cleanup_component_on_entity_destroy>(this);

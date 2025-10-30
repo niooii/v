@@ -12,9 +12,10 @@ namespace v {
     /// Simple rainbow triangle render domain for testing the RenderDomain API
     class TriangleRenderer : public RenderDomain<TriangleRenderer> {
     public:
-        explicit TriangleRenderer(Engine& engine);
+        TriangleRenderer() = default;
         ~TriangleRenderer() override = default;
 
+        void init() override;
         void add_render_tasks(daxa::TaskGraph& graph) override;
 
     private:

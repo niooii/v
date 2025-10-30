@@ -60,8 +60,8 @@ namespace v {
     public:
         static constexpr i32 k_size = SparseVoxelOctree128::size; // 128
 
-        ChunkDomain(Engine& engine, ChunkPos pos, const std::string& name = "Chunk") :
-            Domain(engine, name), pos_(pos)
+        ChunkDomain(ChunkPos pos, const std::string& name = "Chunk") :
+            Domain(name), pos_(pos)
         {}
 
         FORCEINLINE const ChunkPos&             pos() const { return pos_; }
@@ -92,8 +92,8 @@ namespace v {
     public:
         static constexpr i32 k_chunk_size = ChunkDomain::k_size; // 128
 
-        WorldDomain(Engine& engine, const std::string& name = "World") :
-            SDomain(engine, name)
+        WorldDomain(const std::string& name = "World") :
+            SDomain(name)
         {}
         ~WorldDomain() override = default;
 

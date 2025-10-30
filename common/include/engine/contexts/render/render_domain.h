@@ -26,13 +26,14 @@ namespace v {
     /// Example:
     ///   class ParticleRenderDomain : public RenderDomain<ParticleRenderDomain> {
     ///   public:
-    ///       ParticleRenderDomain(Engine& engine) : RenderDomain(engine) {
+    ///       ParticleRenderDomain() {}
+    ///       void init() override {
     ///           particle_buffer_ = create_buffer(...);
     ///       }
     ///
     ///       void add_render_tasks(daxa::TaskGraph& graph) override {
     ///           // Query other domains at GRAPH CONSTRUCTION time for dependencies
-    ///           auto* terrain = engine_.try_get_domain<TerrainRenderDomain>();
+    ///           auto* terrain = engine().try_get_domain<TerrainRenderDomain>();
     ///
     ///           graph.add_task({
     ///               .attachments = {
@@ -58,8 +59,11 @@ namespace v {
     class RenderDomainBase {
         friend class RenderContext;
 
+    protected:
+        RenderDomainBase();
+        void init_render(Engine& engine);
+
     public:
-        RenderDomainBase(Engine& engine);
         virtual ~RenderDomainBase();
 
         /// Add this domain's render tasks to the global task graph.
@@ -79,13 +83,18 @@ namespace v {
 
     template <typename Derived>
     class RenderDomain : public SDomain<Derived>, public RenderDomainBase {
-    public:
-        RenderDomain(
-            Engine&            engine,
-            const std::string& name = std::string{ type_name<Derived>() }) :
-            SDomain<Derived>(engine, name), RenderDomainBase(engine)
+    protected:
+        RenderDomain(const std::string& name = std::string{ type_name<Derived>() }) :
+            SDomain<Derived>(name), RenderDomainBase()
         {}
 
+    public:
         virtual ~RenderDomain() = default;
+
+        void init() override
+        {
+            SDomain<Derived>::init();
+            init_render(this->engine());
+        }
     };
 } // namespace v

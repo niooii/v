@@ -57,7 +57,7 @@ namespace v {
         template <DerivedFromChannel T>
         NetChannel<T, typename T::PayloadT>& create_channel()
         {
-            if (!engine_.is_valid_entity(entity_))
+            if (!engine().is_valid_entity(entity()))
             {
                 LOG_WARN("Connection is dead, not creating channel..");
                 // because entity is destroyed in handling DestroyConnection, which should
@@ -67,14 +67,14 @@ namespace v {
                 assert(false);
             }
 
-            if (auto comp = engine_.try_get_component<T*>(entity_))
+            if (auto comp = engine().try_get_component<T*>(entity()))
             {
                 LOG_WARN(
                     "Channel {} not created, as it already exists...", T::unique_name());
                 return static_cast<NetChannel<T, typename T::PayloadT>&>(**comp);
             }
 
-            auto& channel = engine_.add_component<T*>(entity_, new T());
+            auto& channel = engine().add_component<T*>(entity(), new T());
             channel->init(shared_con_);
 
             {

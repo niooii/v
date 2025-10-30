@@ -103,8 +103,10 @@ namespace v {
         friend class WindowContext;
 
     public:
-        Window(Engine& engine, std::string name, glm::ivec2 size, glm::ivec2 pos);
+        Window(std::string name, glm::ivec2 size, glm::ivec2 pos);
         ~Window();
+
+        void init() override;
 
         // Window input states
 

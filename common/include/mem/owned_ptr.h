@@ -13,16 +13,15 @@ namespace v::mem {
     struct owned_ptr {
         std::unique_ptr<T> ptr;
 
-        // Default constructor - creates null pointer
-        constexpr owned_ptr() noexcept : ptr(nullptr) {}
-
         // Forwarding constructor - construct T in-place with args
-        // Only enabled when args are provided
         template <typename... Args>
-            requires(sizeof...(Args) > 0)
+            requires(sizeof...(Args) > 0 || std::is_default_constructible_v<T>)
         explicit owned_ptr(Args&&... args) :
             ptr(std::make_unique<T>(std::forward<Args>(args)...))
         {}
+
+        // Explicit nullptr constructor
+        explicit owned_ptr(std::nullptr_t) noexcept : ptr(nullptr) {}
 
         owned_ptr(owned_ptr&&) noexcept            = default;
         owned_ptr& operator=(owned_ptr&&) noexcept = default;

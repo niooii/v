@@ -8,11 +8,12 @@
 #include <render/triangle_domain.h>
 
 namespace v {
-    TriangleRenderer::TriangleRenderer(Engine& engine) : RenderDomain(engine, "Triangle")
+    void TriangleRenderer::init()
     {
+        RenderDomain::init();
+
         auto& daxa = render_ctx_->daxa_resources();
 
-        // Create raster pipeline for triangle rendering
         pipeline_ = daxa.pipeline_manager.add_raster_pipeline2({
             .vertex_shader_info   = daxa::ShaderCompileInfo2{
                 .source = daxa::ShaderFile{ "triangle.glsl" },

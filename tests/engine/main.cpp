@@ -18,8 +18,8 @@ public:
 // Test domain for domain management
 class TestDomain : public Domain<TestDomain> {
 public:
-    TestDomain(Engine& engine, std::string name = "TestDomain") :
-        Domain(engine, std::move(name))
+    TestDomain(std::string name = "TestDomain") :
+        Domain(std::move(name))
     {}
 
     int  counter = 0;
@@ -29,8 +29,8 @@ public:
 // Test singleton domain
 class TestSingletonDomain : public SDomain<TestSingletonDomain> {
 public:
-    TestSingletonDomain(Engine& engine, std::string name = "TestSingletonDomain") :
-        SDomain(engine, std::move(name))
+    TestSingletonDomain(std::string name = "TestSingletonDomain") :
+        SDomain(std::move(name))
     {}
     std::string data = "singleton";
 };

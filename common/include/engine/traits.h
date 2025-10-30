@@ -80,4 +80,35 @@ namespace v {
         }
     }
 
+    /// Const overload
+    template <typename T>
+    auto to_return_ptr(const query_transform_t<T>* storage_ptr)
+    {
+        if constexpr (InheritsFromQueryBy<T>)
+        {
+            if constexpr (HasGetMethod<query_transform_t<T>>)
+            {
+                // is a smart pointer or a type that implements .get()
+                // TODO! should check if get actually returns a raw pointer?
+                return storage_ptr ? storage_ptr->get() : nullptr;
+            }
+            else if constexpr (std::is_pointer_v<query_transform_t<T>>)
+            {
+                // dereference a double pointer
+                return storage_ptr ? *storage_ptr : nullptr;
+            }
+            else
+            {
+                static_assert(
+                    false,
+                    "QueryBy type must either have a .get() method that returns a raw "
+                    "pointer T*, or be a raw pointer");
+            }
+        }
+        else
+        {
+            return storage_ptr;
+        }
+    }
+
 } // namespace v

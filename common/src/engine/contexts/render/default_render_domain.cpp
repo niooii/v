@@ -7,11 +7,6 @@
 #include <engine/engine.h>
 
 namespace v {
-    DefaultRenderDomain::DefaultRenderDomain(Engine& engine) :
-        RenderDomain(engine, "DefaultRender")
-    {
-        LOG_INFO("DefaultRenderDomain initialized");
-    }
 
     void DefaultRenderDomain::add_render_tasks(daxa::TaskGraph& graph)
     {

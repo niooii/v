@@ -154,6 +154,7 @@ namespace v {
 
         auto con = std::shared_ptr<NetConnection>(
             new NetConnection(this, host, port, connection_timeout));
+        con->init_first(engine_);
         con->shared_con_ = con;
         auto res = connections_.write()->emplace(const_cast<ENetPeer*>(con->peer()), con);
 
@@ -217,6 +218,7 @@ namespace v {
 
                     auto con = std::shared_ptr<NetConnection>(
                         new NetConnection(this, event.peer));
+                    con->init_first(engine_);
                     con->shared_con_ = con;
 
                     auto res = connections_.write()->emplace(

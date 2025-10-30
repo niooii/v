@@ -16,9 +16,10 @@ namespace v {
 
     class MandelbulbRenderer : public RenderDomain<MandelbulbRenderer> {
     public:
-        explicit MandelbulbRenderer(Engine& engine);
+        MandelbulbRenderer() = default;
         ~MandelbulbRenderer() override;
 
+        void init() override;
         void add_render_tasks(daxa::TaskGraph& graph) override;
 
     private:

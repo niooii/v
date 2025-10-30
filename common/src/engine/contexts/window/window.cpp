@@ -19,17 +19,20 @@ namespace v {
 
     // Window object methods (public)
 
-    Window::Window(Engine& engine, std::string name, glm::ivec2 size, glm::ivec2 pos) :
-        Domain<Window>(engine, name), sdl_window_(nullptr), size_(size), pos_(pos),
+    Window::Window(std::string name, glm::ivec2 size, glm::ivec2 pos) :
+        Domain<Window>(name), sdl_window_(nullptr), size_(size), pos_(pos),
         name_(std::move(name)), curr_keys_{}, prev_keys_{}, curr_mbuttons{},
         prev_mbuttons{}, mouse_pos_(0, 0), mouse_delta_(0, 0)
+    {}
+
+    void Window::init()
     {
         const SDL_PropertiesID props = SDL_CreateProperties();
         SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, name_.c_str());
-        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, pos.x);
-        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, pos.y);
-        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.x);
-        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.y);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, pos_.x);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, pos_.y);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size_.x);
+        SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size_.y);
         SDL_SetNumberProperty(
             props, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
             SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_VULKAN);
@@ -41,17 +44,14 @@ namespace v {
         if (!sdl_window_)
             throw std::runtime_error(SDL_GetError());
 
-        // Explicitly show the window (SDL3 might create windows hidden)
         SDL_ShowWindow(sdl_window_);
 
-        // handle events that have the same window id as this one
         const Uint32 window_id = SDL_GetWindowID(sdl_window_);
-        if (auto sdl_ctx = engine_.get_ctx<SDLContext>())
+        if (auto sdl_ctx = engine().get_ctx<SDLContext>())
         {
             SDLComponent& sdl_comp = sdl_ctx->create_component(entity());
             sdl_comp.on_win_event  = [this, window_id](const SDL_Event& event)
             {
-                // Only handle events for this specific window
                 if (event.window.windowID == window_id)
                     this->process_event(event);
             };
@@ -239,7 +239,7 @@ namespace v {
         switch (event.type)
         {
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_close)
                     comp.on_close();
@@ -248,7 +248,7 @@ namespace v {
 
         case SDL_EVENT_WINDOW_RESIZED:
             size_ = { event.window.data1, event.window.data2 };
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_resize)
                     comp.on_resize(size_);
@@ -257,7 +257,7 @@ namespace v {
 
         case SDL_EVENT_WINDOW_MOVED:
             pos_ = { event.window.data1, event.window.data2 };
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_moved)
                     comp.on_moved(pos_);
@@ -268,7 +268,7 @@ namespace v {
         case SDL_EVENT_WINDOW_FOCUS_LOST:
             {
                 const bool gained = event.type == SDL_EVENT_WINDOW_FOCUS_GAINED;
-                for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+                for (auto [_entity, comp] : engine().view<WindowComponent>().each())
                 {
                     if (comp.on_focus)
                         comp.on_focus(gained);
@@ -277,7 +277,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_MINIMIZED:
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_minimized)
                     comp.on_minimized();
@@ -285,7 +285,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_MAXIMIZED:
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_maximized)
                     comp.on_maximized();
@@ -293,7 +293,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_RESTORED:
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_restored)
                     comp.on_restored();
@@ -301,7 +301,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_ENTER:
-            for (auto [_entity, comp] : engine_.view<MouseComponent>().each())
+            for (auto [_entity, comp] : engine().view<MouseComponent>().each())
             {
                 if (comp.on_mouse_enter)
                     comp.on_mouse_enter();
@@ -309,7 +309,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-            for (auto [_entity, comp] : engine_.view<MouseComponent>().each())
+            for (auto [_entity, comp] : engine().view<MouseComponent>().each())
             {
                 if (comp.on_mouse_leave)
                     comp.on_mouse_leave();
@@ -317,7 +317,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_fullscreen_enter)
                     comp.on_fullscreen_enter();
@@ -325,7 +325,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_fullscreen_leave)
                     comp.on_fullscreen_leave();
@@ -333,7 +333,7 @@ namespace v {
             break;
 
         case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
-            for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
             {
                 if (comp.on_display_changed)
                     comp.on_display_changed();
@@ -344,7 +344,7 @@ namespace v {
             curr_keys_[event.key.scancode] = true;
             {
                 const Key key = sdl_to_key(event.key.scancode);
-                for (auto [_entity, comp] : engine_.view<KeyComponent>().each())
+                for (auto [_entity, comp] : engine().view<KeyComponent>().each())
                 {
                     if (comp.on_key_pressed)
                         comp.on_key_pressed(key);
@@ -356,7 +356,7 @@ namespace v {
             curr_keys_[event.key.scancode] = false;
             {
                 const Key key = sdl_to_key(event.key.scancode);
-                for (auto [_entity, comp] : engine_.view<KeyComponent>().each())
+                for (auto [_entity, comp] : engine().view<KeyComponent>().each())
                 {
                     if (comp.on_key_released)
                         comp.on_key_released(key);
@@ -368,7 +368,7 @@ namespace v {
             curr_mbuttons[event.button.button - 1] = true;
             {
                 const MouseButton button = sdl_to_mbutton(event.button.button);
-                for (auto [_entity, comp] : engine_.view<MouseComponent>().each())
+                for (auto [_entity, comp] : engine().view<MouseComponent>().each())
                 {
                     if (comp.on_mouse_pressed)
                         comp.on_mouse_pressed(button);
@@ -380,7 +380,7 @@ namespace v {
             curr_mbuttons[event.button.button - 1] = false;
             {
                 const MouseButton button = sdl_to_mbutton(event.button.button);
-                for (auto [_entity, comp] : engine_.view<MouseComponent>().each())
+                for (auto [_entity, comp] : engine().view<MouseComponent>().each())
                 {
                     if (comp.on_mouse_released)
                         comp.on_mouse_released(button);
@@ -393,7 +393,7 @@ namespace v {
                 static_cast<int>(event.motion.x), static_cast<int>(event.motion.y));
             mouse_delta_ = glm::ivec2(
                 static_cast<int>(event.motion.xrel), static_cast<int>(event.motion.yrel));
-            for (auto [_entity, comp] : engine_.view<MouseComponent>().each())
+            for (auto [_entity, comp] : engine().view<MouseComponent>().each())
             {
                 if (comp.on_mouse_moved)
                     comp.on_mouse_moved(mouse_pos_, mouse_delta_);
@@ -404,7 +404,7 @@ namespace v {
             {
                 const glm::ivec2 wheel_delta = glm::ivec2(
                     static_cast<int>(event.wheel.x), static_cast<int>(event.wheel.y));
-                for (auto [_entity, comp] : engine_.view<MouseComponent>().each())
+                for (auto [_entity, comp] : engine().view<MouseComponent>().each())
                 {
                     if (comp.on_mouse_wheel)
                         comp.on_mouse_wheel(wheel_delta);
@@ -415,7 +415,7 @@ namespace v {
         case SDL_EVENT_TEXT_INPUT:
             {
                 const std::string text = std::string(event.text.text);
-                for (auto [_entity, comp] : engine_.view<KeyComponent>().each())
+                for (auto [_entity, comp] : engine().view<KeyComponent>().each())
                 {
                     if (comp.on_text_input)
                         comp.on_text_input(text);
@@ -426,7 +426,7 @@ namespace v {
         case SDL_EVENT_DROP_FILE:
             {
                 const std::string file_path = std::string(event.drop.data);
-                for (auto [_entity, comp] : engine_.view<WindowComponent>().each())
+                for (auto [_entity, comp] : engine().view<WindowComponent>().each())
                 {
                     if (comp.on_file_dropped)
                         comp.on_file_dropped(file_path);

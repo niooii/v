@@ -16,7 +16,7 @@ namespace v {
     // create an outgoing connection
     NetConnection::NetConnection(
         NetworkContext* ctx, const std::string& host, u16 port, f64 connection_timeout) :
-        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing), Domain(ctx->engine_),
+        net_ctx_(ctx), conn_type_(ConnectionType::Outgoing),
         connection_timeout_(connection_timeout)
     {
         ENetAddress address;
@@ -43,8 +43,7 @@ namespace v {
 
     // just an incoming connection, its whatever
     NetConnection::NetConnection(NetworkContext* ctx, ENetPeer* peer) :
-        net_ctx_(ctx), peer_(peer), conn_type_(ConnectionType::Incoming),
-        Domain(ctx->engine_)
+        net_ctx_(ctx), peer_(peer), conn_type_(ConnectionType::Incoming)
     {
         peer_->data = (void*)this;
 

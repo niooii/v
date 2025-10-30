@@ -14,28 +14,32 @@ namespace v {
     /// A singleton server domain
     class ServerDomain : public SDomain<ServerDomain> {
     public:
-        ServerDomain(
-            Engine& engine, ServerConfig& conf,
-            const std::string& name = "Server Domain") : SDomain(engine, name)
+        ServerDomain(ServerConfig& conf, const std::string& name = "Server Domain") :
+            SDomain(name), conf_(conf)
+        {}
+
+        void init() override
         {
-            auto net_ctx = engine.get_ctx<NetworkContext>();
+            SDomain::init();
+
+            auto net_ctx = engine().get_ctx<NetworkContext>();
             if (!net_ctx)
             {
                 LOG_WARN("Created default network context");
-                net_ctx = engine.add_ctx<NetworkContext>(1 / 500.0);
+                net_ctx = engine().add_ctx<NetworkContext>(1 / 500.0);
             }
 
-            listener_ = net_ctx->listen_on(conf.host, conf.port);
+            listener_ = net_ctx->listen_on(conf_.host, conf_.port);
 
-            ServerComponent& server_comp = listener_->create_component(entity_);
+            ServerComponent& server_comp = listener_->create_component(entity());
 
-            server_comp.on_connect = [this, &engine](std::shared_ptr<NetConnection> con)
+            server_comp.on_connect = [this](std::shared_ptr<NetConnection> con)
             {
                 LOG_INFO("Client connected successfully!");
 
                 auto& connection_channel = con->create_channel<ConnectServerChannel>();
 
-                auto& conn_comp = connection_channel.create_component(entity_);
+                auto& conn_comp = connection_channel.create_component(entity());
 
                 conn_comp.on_recv = [](const ConnectServerChannel::PayloadT& req)
                 { LOG_INFO("New player {}", req.uuid); };
@@ -43,14 +47,14 @@ namespace v {
                 // test some quick channel stuff via chat channel
                 auto& cc = con->create_channel<ChatChannel>();
 
-                auto& cc_comp = cc.create_component(entity_);
+                auto& cc_comp = cc.create_component(entity());
 
-                cc_comp.on_recv = [&engine](const ChatMessage& msg)
+                cc_comp.on_recv = [this](const ChatMessage& msg)
                 {
                     LOG_INFO("Got message {} from client", msg.msg);
                     // bounce to the other open channels (TODO! include exlcuding the
                     // current one somehow)
-                    for (auto [e, channel] : engine.view<ChatChannel>().each())
+                    for (auto [e, channel] : engine().view<ChatChannel>().each())
                     {
                         ChatMessage payload = { .msg = msg.msg };
                         channel->send(payload);
@@ -62,10 +66,11 @@ namespace v {
 
             // register a bunch of on ticks and stuff
 
-            LOG_INFO("Listening on {}:{}", conf.host, conf.port);
+            LOG_INFO("Listening on {}:{}", conf_.host, conf_.port);
         }
 
     private:
+        ServerConfig                 conf_;
         std::shared_ptr<NetListener> listener_;
     };
 } // namespace v

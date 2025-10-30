@@ -9,42 +9,54 @@ namespace v {
     template <typename T>
     bool DomainBase::has() const
     {
-        return engine_.has_component<T>(entity_);
+        return engine().has_component<T>(entity());
     }
 
     template <typename T>
     T* DomainBase::try_get()
     {
-        return engine_.try_get_component<T>(entity_);
+        return engine().try_get_component<T>(entity());
     }
 
     template <typename T>
     const T* DomainBase::try_get() const
     {
-        return engine_.try_get_component<T>(entity_);
+        return engine().try_get_component<T>(entity());
     }
 
     template <typename T>
     T& DomainBase::get()
     {
-        return engine_.get_component<T>(entity_);
+        return engine().get_component<T>(entity());
     }
 
     template <typename T>
     const T& DomainBase::get() const
     {
-        return engine_.get_component<T>(entity_);
+        return engine().get_component<T>(entity());
     }
 
     template <typename T, typename... Args>
     T& DomainBase::attach(Args&&... args)
     {
-        return engine_.add_component<T>(entity_, std::forward<Args>(args)...);
+        return engine().add_component<T>(entity(), std::forward<Args>(args)...);
     }
 
     template <typename T>
     usize DomainBase::remove()
     {
-        return engine_.remove_component<T>(entity_);
+        return engine().remove_component<T>(entity());
+    }
+
+    template <typename T>
+    T* DomainBase::get_ctx()
+    {
+        return engine().get_ctx<T>();
+    }
+
+    template <typename T>
+    const T* DomainBase::get_ctx() const
+    {
+        return engine().get_ctx<T>();
     }
 } // namespace v

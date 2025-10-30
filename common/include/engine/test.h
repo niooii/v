@@ -9,7 +9,7 @@
 namespace v {
     class CountTo10Domain : public Domain<CountTo10Domain> {
     public:
-        CountTo10Domain(Engine& engine, const std::string& name);
+        CountTo10Domain(const std::string& name);
         ~CountTo10Domain() override { LOG_TRACE("Destroying CountTo10Domain."); };
 
         void update();

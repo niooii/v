@@ -61,7 +61,7 @@ namespace v {
 
         std::string name = "Chunk(" + std::to_string(cp.x) + "," + std::to_string(cp.y) +
             "," + std::to_string(cp.z) + ")";
-        auto& chunk = engine_.add_domain<ChunkDomain>(cp, name);
+        auto& chunk = engine().add_domain<ChunkDomain>(cp, name);
         chunks_.emplace(cp, &chunk);
         return chunk;
     }
@@ -74,11 +74,11 @@ namespace v {
         if (it->second)
         {
             entt::entity id = it->second->entity();
-            engine_.post_tick(
+            engine().post_tick(
                 [this, id]()
                 {
-                    if (engine_.registry().valid(id))
-                        engine_.registry().destroy(id);
+                    if (engine().registry().valid(id))
+                        engine().registry().destroy(id);
                 });
         }
         chunks_.erase(it);

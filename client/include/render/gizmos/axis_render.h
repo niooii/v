@@ -16,9 +16,10 @@ namespace v {
 
     class WorldAxesRenderer : public RenderDomain<WorldAxesRenderer> {
     public:
-        explicit WorldAxesRenderer(Engine& engine);
+        WorldAxesRenderer() = default;
         ~WorldAxesRenderer() override;
 
+        void init() override;
         void add_render_tasks(daxa::TaskGraph& graph) override;
 
     private:

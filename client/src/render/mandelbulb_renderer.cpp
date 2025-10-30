@@ -11,9 +11,10 @@
 #include <util/devcam.h>
 
 namespace v {
-    MandelbulbRenderer::MandelbulbRenderer(Engine& engine) :
-        RenderDomain(engine, "Mandelbulb")
+    void MandelbulbRenderer::init()
     {
+        RenderDomain::init();
+
         auto& daxa = render_ctx_->daxa_resources();
 
         compute_pipeline_ = daxa.pipeline_manager
@@ -113,7 +114,7 @@ namespace v {
                             f32               time;
                         } push = {
                             .image_id      = render_image_.default_view(),
-                            .frame_dim     = { image_info.size.x, image_info.size.y },
+                            .frame_dim     = { image_info.size.x, image_info.size.y, },
                             .inv_view_proj = inv_view_proj,
                             .camera_pos    = camera_pos,
                             .time          = (f32)sw_.elapsed(),

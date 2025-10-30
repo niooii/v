@@ -7,15 +7,17 @@
 #include "engine/contexts/render/render_domain.h"
 
 namespace v {
-    WorldAxesRenderer::WorldAxesRenderer(Engine& engine) : RenderDomain(engine) {
+    void WorldAxesRenderer::init()
+    {
+        RenderDomain::init();
         TODO()
     }
 
     WorldAxesRenderer::~WorldAxesRenderer() {
 
     }
-    
+
     void WorldAxesRenderer::add_render_tasks(daxa::TaskGraph& graph) {
-        
+
     }
 }
