@@ -131,7 +131,7 @@ namespace v {
         graph.add_task(
             daxa::InlineTask::Transfer("mandelbulb_blit_to_swapchain")
                 .reads(task_render_image_)
-                .reads_writes(swapchain_image)
+                .writes(swapchain_image)
                 .executes(
                     [this](daxa::TaskInterface ti)
                     {

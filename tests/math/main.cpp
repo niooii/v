@@ -3,7 +3,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
-#include <math.h>
+#include <vmath.h>
 #include <test.h>
 
 using namespace v;

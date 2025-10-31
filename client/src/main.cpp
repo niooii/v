@@ -8,7 +8,7 @@
 #include <time/time.h>
 #include <tracy/Tracy.hpp>
 
-constexpr i32 TEMP_MAX_FPS = 240;
+constexpr i32 TEMP_MAX_FPS = 40;
 
 using namespace v;
 

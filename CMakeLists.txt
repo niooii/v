@@ -35,8 +35,8 @@ option(TRACY_CALLSTACK "Enable Tracy call stack sampling" ON)
 set(TRACY_CALLSTACK_DEPTH "32" CACHE STRING "Tracy call stack depth")
 
 if(TRACY_ENABLE)
-    add_library(TracyClient STATIC extern/tracy/public/TracyClient.cpp)
-    target_include_directories(TracyClient PUBLIC extern/tracy/public)
+    add_library(TracyClient STATIC common/src/tracy/TracyClientWrapper.cpp)
+    target_include_directories(TracyClient PUBLIC extern/tracy/public common/include)
     target_compile_definitions(TracyClient PUBLIC TRACY_ENABLE)
 
     if(TRACY_ON_DEMAND)
@@ -49,6 +49,7 @@ if(TRACY_ENABLE)
 
     # Disable warnings for Tracy
     target_compile_options(TracyClient PRIVATE -w)
+
 
     # Link against libdl for dladdr (needed for call stack resolution)
     target_link_libraries(TracyClient PRIVATE ${CMAKE_DL_LIBS})
@@ -92,7 +93,7 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 # CMAKE_BUILD_TYPE is now set by CMakePresets.json
 
 # Option to enable/disable address sanitizer
-option(ENABLE_SANITIZER "Enable AddressSanitizer for debug builds" ON)
+option(ENABLE_SANITIZER "Enable AddressSanitizer for debug builds" OFF)
 
 set(NO_WARNING_FLAGS "-Wno-unused-parameter -Wno-missing-braces -Wno-unused-variable -Wno-ignored-qualifiers -Wno-missing-field-initializers -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-sign-conversion")
 
@@ -116,6 +117,7 @@ else()
 
     if(ENABLE_SANITIZER)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BASE_DEBUG_FLAGS} -fsanitize=address -fsanitize-recover=address")
+        add_compile_definitions(_ITERATOR_DEBUG_LEVEL=0)
     else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BASE_DEBUG_FLAGS}")
     endif()

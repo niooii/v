@@ -140,7 +140,7 @@ namespace v {
         }
 
         /// Get the near plane distance
-        FORCEINLINE f32 near() const { return near_; }
+        FORCEINLINE f32 near_plane() const { return near_; }
 
         /// Set the near plane distance and recalculate perspective matrix
         FORCEINLINE void set_near(f32 new_near)
@@ -150,7 +150,7 @@ namespace v {
         }
 
         /// Get the far plane distance
-        FORCEINLINE f32 far() const { return far_; }
+        FORCEINLINE f32 far_plane() const { return far_; }
 
         /// Set the far plane distance and recalculate perspective matrix
         FORCEINLINE void set_far(f32 new_far)

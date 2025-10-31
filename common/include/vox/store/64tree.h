@@ -16,7 +16,7 @@
 // A node that actaully exists will always encode at least one non-air voxel.
 
 #include <defs.h>
-#include <math.h>
+#include <vmath.h>
 #include <vox/aabb.h>
 
 namespace v {
