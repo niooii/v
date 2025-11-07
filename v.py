@@ -115,6 +115,39 @@ def _detect_cmake_targets(release: bool = False, no_sanitize: bool = False) -> d
     return targets
 
 
+def _detect_all_cmake_targets() -> dict[str, str]:
+    """Detect targets across ALL available build directories (build-flag-agnostic).
+
+    Returns: Dict mapping target_name -> target_type ('exe', 'lib', 'test', 'utility')
+    """
+    all_targets = {}
+
+    # Always include static targets
+    all_targets.update(_targets_static())
+
+    # Search all possible build directories
+    for bdir in [BUILD_DIR_DEBUG, BUILD_DIR_DEBUG_NOSAN, BUILD_DIR_RELEASE]:
+        if not bdir.exists() or not (bdir / "build.ninja").exists():
+            continue
+
+        try:
+            result = subprocess.run(
+                ["ninja", "-t", "targets"],
+                cwd=bdir,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            for line in result.stdout.splitlines():
+                target = line.split(":")[0].strip()
+                if _is_project_target(target) and target not in all_targets:
+                    all_targets[target] = _classify_target(target)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+
+    return all_targets
+
+
 def _is_project_target(target: str) -> bool:
     """Check if a target belongs to this project (not external deps)."""
     # Exclude all external dependency and CMake utility targets
@@ -167,7 +200,8 @@ def _targets_static() -> dict[str, str]: return {
 
 
 def _find_target_fuzzy(partial: str, release: bool = False, no_sanitize: bool = False) -> str:
-    targets = _detect_cmake_targets(release, no_sanitize)
+    # Search across ALL build directories (flags are for building, not discovery)
+    targets = _detect_all_cmake_targets()
     target_names = list(targets.keys())
 
     # First try exact match
@@ -329,9 +363,9 @@ def run(
     # Resolve fuzzy target matching
     target = _find_target_fuzzy(target, release, no_sanitize)
 
-    # Detect all targets and find the requested one
-    targets = _detect_cmake_targets(release, no_sanitize)
-    target_type = targets[target]
+    # Get target type (search all dirs since target may not exist in requested build config yet)
+    all_targets = _detect_all_cmake_targets()
+    target_type = all_targets[target]
     if not _is_executable_target(target, target_type, release):
         raise ValueError(f"Target '{target}' is not executable (type: {target_type})")
 
@@ -532,9 +566,9 @@ def profile(
     # Resolve fuzzy target matching
     target = _find_target_fuzzy(target, release, no_sanitize)
 
-    # Detect all targets and find the requested one
-    targets = _detect_cmake_targets(release, no_sanitize)
-    target_type = targets[target]
+    # Get target type (search all dirs since target may not exist in requested build config yet)
+    all_targets = _detect_all_cmake_targets()
+    target_type = all_targets[target]
     if not _is_executable_target(target, target_type, release):
         raise ValueError(f"Target '{target}' is not executable (type: {target_type})")
 

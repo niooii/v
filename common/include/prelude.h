@@ -17,6 +17,9 @@
 #include <time/time.h>
 #include <tracy/Tracy.hpp>
 
+// expose the rendering stuff and other conexts
+#include <engine/contexts/render/render_domain.h>
+
 namespace spd = spdlog;
 
 namespace v {
