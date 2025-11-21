@@ -11,7 +11,7 @@ struct MandelbulbPush
 
 DAXA_DECL_PUSH_CONSTANT(MandelbulbPush, push)
 
-#define MAX_STEPS 512
+#define MAX_STEPS 64
 #define MAX_DIST 100.0
 #define SURF_DIST 0.0001
 
@@ -125,8 +125,7 @@ void main()
     }
     else
     {
-        // Background - pure black
-        col = vec3(0.0);
+        col = vec3(0.05);
     }
 
     imageStore(daxa_image2D(push.image_id), ivec2(pixel_i.xy), vec4(col, 1.0));

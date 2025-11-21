@@ -55,8 +55,8 @@ namespace v {
         // TODO! this should be order independent, but how? like if i add
         // triangle domain before a clearing domain, the clear should still come first?
         // manual graph ordering maybe?
-        // engine_.add_domain<TriangleRenderer>();
-        engine_.add_domain<DefaultRenderDomain>();
+        engine_.add_domain<TriangleRenderer>();
+        // engine_.add_domain<DefaultRenderDomain>();
         auto& mandelbulb = engine_.add_domain<MandelbulbRenderer>();
 
         // Setup network connection

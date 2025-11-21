@@ -58,7 +58,6 @@ namespace v {
                             {
                                 .image_view = image_view,
                                 .load_op = daxa::AttachmentLoadOp::LOAD,
-                                //.clear_value = std::array<f32, 4>{ 0.1f, 0.1f, 0.1f, 0.0f },
                             },
                         },
                         .render_area = {

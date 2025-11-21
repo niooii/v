@@ -55,7 +55,6 @@ namespace v {
     {
         LOG_TRACE("Rebuilding render graph (version {})", domain_version_);
 
-        // Create new task graph
         window_resources_->render_graph = daxa::TaskGraph(
             {
                 .device                   = daxa_resources_->device,
@@ -67,6 +66,35 @@ namespace v {
         // Re-register persistent resources
         window_resources_->render_graph.use_persistent_image(
             window_resources_->task_swapchain_image);
+
+        // Clear swapchain first (bc windows requires defined initial content)
+        window_resources_->render_graph.add_task(
+            daxa::Task::Raster("clear_swapchain")
+                .color_attachment.reads_writes(
+                    daxa::ImageViewType::REGULAR_2D,
+                    window_resources_->task_swapchain_image)
+                .executes(
+                    [this](daxa::TaskInterface ti)
+                    {
+                        auto image_id   = ti.get(window_resources_->task_swapchain_image).ids[0];
+                        auto image_view = ti.get(window_resources_->task_swapchain_image).view_ids[0];
+                        auto image_info = ti.device.image_info(image_id).value();
+
+                        auto render_recorder = std::move(ti.recorder).begin_renderpass({
+                            .color_attachments = {{
+                                .image_view = image_view,
+                                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                                .clear_value = std::array<f32, 4>{ 0.1f, 0.1f, 0.1f, 1.0f },
+                            }},
+                            .render_area = {
+                                .x = 0,
+                                .y = 0,
+                                .width = image_info.size.x,
+                                .height = image_info.size.y,
+                            },
+                        });
+                        ti.recorder = std::move(render_recorder).end_renderpass();
+                    }));
 
         // Add tasks from all render domains
         for (auto* domain : render_domains_)
