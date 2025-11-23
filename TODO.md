@@ -6,26 +6,8 @@ The net context has an implementation that allows each NetConnection (a domain) 
 1. This needs to be tested to see if it actaully works (destroys, everything)
 2. Maybe provide an abstraction for this? i see a use case, maybe each ChunkDomain distributes components as well, or enforce a design where the WorldDomain will distribute components and itll just pass in the chunkdomain accordingly. Think on this
 
-### DependentSink - FAST
-1. horrific name btw
-2. this has to be changed from taskflow to a custom graph building implementation, because
-SDL events need to be polled on the main thread in windows.
+### DependentSink
+0. horrific name btw
 
-### Async
-Plans:
-```cpp
-Future<T> future = engine.get_ctx<AsyncContext>().task([]{ return T(); });
-// Do some work
-// ...
-
-// This will be immediately queued to the engine's thread if the future has completed, or 
-// it will be queued whenever the future completes.
-future.then([](T result) { LOG_INFO("{}", T); });
-
-// Same w this
-future.or_else([](std::exception_ptr e) { ... });
-
-// This means that the functions passed into ::then() must 
-// somehow be queued when the future completes (i dont want a polling approach)
-// or it would be queued instantly.
-```
+### ergonomics
+add a get_or_create method (for singleton domains, or simply treats a domain like a singleton domain not necessarily jsut for SDomain)
