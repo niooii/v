@@ -2,6 +2,8 @@
 
 C++23 ECS-heavy voxel engine.
 
+## TODO most of this is AI generated slop i'll sit down and write documentation soon
+
 ## Quick Start
 
 ```bash
