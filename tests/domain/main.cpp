@@ -1,6 +1,4 @@
-// Domain system integration test using CountTo10Domain
-
-#include <engine/test.h>
+#include "testdomain.h"
 #include <test.h>
 
 using namespace v;
