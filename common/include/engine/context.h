@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <engine/traits.h>
+#include <memory>
+
 namespace v {
     /// The base class for any Context to be attached to the Engine.
     ///
@@ -12,7 +15,7 @@ namespace v {
     /// passed by Engine::add_ctx() - do not pass it manually when calling add_ctx().
     ///
     /// Example:
-    ///   class MyContext : public Context {
+    ///   class MyContext : public Context<MyContext> {
     ///   public:
     ///       MyContext(Engine& engine, double update_rate) : Context(engine) { ... }
     ///   };
@@ -22,7 +25,8 @@ namespace v {
     ///
     ///   // WRONG - will cause compile error:
     ///   engine.add_ctx<MyContext>(engine, 1.0 / 60.0);  // Don't pass engine manually!
-    class Context {
+    template <typename Derived>
+    class Context : public QueryBy<std::unique_ptr<Derived>> {
         friend class Engine;
 
     public:

@@ -186,7 +186,7 @@ namespace v {
         template <DerivedFromContext T>
         T* get_ctx()
         {
-            if (auto context = ctx_registry_.try_get<std::unique_ptr<T>>(ctx_entity_))
+            if (auto context = ctx_registry_.try_get<query_transform_t<T>>(ctx_entity_))
                 return context->get();
 
             return nullptr;
@@ -287,17 +287,17 @@ namespace v {
             using namespace std;
 
             // If the component already exists, remove it
-            if (ctx_registry_.all_of<std::unique_ptr<T>>(ctx_entity_))
+            if (ctx_registry_.all_of<query_transform_t<T>>(ctx_entity_))
             {
                 LOG_WARN("Adding duplicate context, removing old instance..");
-                ctx_registry_.remove<std::unique_ptr<T>>(ctx_entity_);
+                ctx_registry_.remove<query_transform_t<T>>(ctx_entity_);
             }
 
             auto context = std::make_unique<T>(*this, std::forward<Args>(args)...);
 
             T* ptr = context.get();
 
-            ctx_registry_.emplace<std::unique_ptr<T>>(ctx_entity_, std::move(context));
+            ctx_registry_.emplace<query_transform_t<T>>(ctx_entity_, std::move(context));
 
             return ptr;
         }

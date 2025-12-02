@@ -30,7 +30,7 @@ namespace v {
     };
 
     /// Context for managing SDL3 Events subsystem and global event handling
-    class SDLContext : public Context {
+    class SDLContext : public Context<SDLContext> {
     public:
         explicit SDLContext(Engine& engine);
         ~SDLContext();

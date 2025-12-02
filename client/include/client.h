@@ -18,7 +18,7 @@ namespace v {
     class Window;
     class Camera;
 
-    class Client : public Context {
+    class Client : public Context<Client> {
     public:
         explicit Client(Engine& engine);
 

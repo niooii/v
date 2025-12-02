@@ -44,7 +44,7 @@ namespace v {
         {}
     };
 
-    class AsyncContext : public Context {
+    class AsyncContext : public Context<AsyncContext> {
     public:
         AsyncContext(Engine& engine, u16 num_threads) :
             Context(engine), executor_(num_threads)

@@ -51,7 +51,7 @@ namespace v {
     };
 
     /// A context that creates and manages network connections.
-    class NetworkContext : public Context {
+    class NetworkContext : public Context<NetworkContext> {
         friend NetConnection;
         friend NetListener;
         template <typename D, typename P>

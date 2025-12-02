@@ -238,7 +238,7 @@ namespace v {
     /// easy to write a quick prototype of the rendering system.  revisit this if needed
     /// Kind of a special domain, in the sense that the 'components' (windows)
     /// are not tied to the lifetime of a particular domain
-    class WindowContext : public Context {
+    class WindowContext : public Context<WindowContext> {
         friend class SDLContext;
 
     public:

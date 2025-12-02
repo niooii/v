@@ -57,7 +57,7 @@ namespace v {
         bool resize_queued{};
     };
 
-    class RenderContext : public Context {
+    class RenderContext : public Context<RenderContext> {
         friend struct WindowRenderResources;
         friend class RenderDomainBase;
 
