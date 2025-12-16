@@ -16,11 +16,11 @@
 #include <vector>
 
 namespace v {
-    template <typename... Args>
+    template <typename T>
     class Signal;
 
     class SignalConnection {
-        template<typename ...Args>
+        template <typename T>
         friend class Signal;
 
     public:
@@ -58,24 +58,30 @@ namespace v {
             id_(id), dc_fn(disconnect_fn), dcd_(false)
         {}
 
-        u32  id_;
-        bool dcd_;
+        u32                      id_;
+        bool                     dcd_;
         std::function<bool(u32)> dc_fn;
     };
 
-    template <typename... Args>
+    template <typename T>
     class Signal {
     public:
-        virtual SignalConnection connect(std::function<void(Args...)> func) {
+        /// Connect a callback to run when the signal fires.
+        /// The callback will always run on the main thread.
+        virtual SignalConnection connect(std::function<void(T)> func)
+        {
             connections_.push_back(func);
 
-            // TODO! need some sort of invalidation flag, or to guarentee that the Signal outlives the SignalConnection
-            // MOST LIKELY we will just shove a 
-            // Rc<void> in here with the same control block,
-            // void so we don't need to make the SignalConnection class a template class
+            // TODO! need some sort of invalidation flag, or to guarentee that the Signal
+            // outlives the SignalConnection MOST LIKELY we will just shove a Rc<void> in
+            // here with the same control block, void so we don't need to make the
+            // SignalConnection class a template class
+            // TODO! also yea this is just really shaky idk how the memory stuff works
+            // too lua rotted rn
             return SignalConnection(connections_.size() - 1, this->disconnect_id);
         }
 
+        // TODO! not finished yet
         struct SigAwaitable {
             bool done = false;
 
@@ -84,21 +90,25 @@ namespace v {
             void await_suspend(std::coroutine_handle<> handle);
 
             /// Return the usual values that the signal fires
-            std::tuple<Args...> await_resume() const noexcept { return true; }
+            T await_resume() const noexcept { return true; }
         };
 
         /// Halts the current coroutine until the signal fires
         SigAwaitable await();
 
     protected:
-        std::vector<std::function<void(Args...)>> connections_{};
+        Signal() = default;
 
-        virtual void fire(Args&&... args)
+        std::vector<std::function<void(T)>> connections_{};
+
+        // internal util for firing
+        virtual void fire(T&& val)
         {
             for (auto& fn : connections_)
-                fn(args...);
+                fn(val);
         }
 
+        // internal util for disconncting
         bool disconnect_id(u32 id)
         {
             if (id >= connections_.size())
@@ -106,86 +116,115 @@ namespace v {
             // we trust the connection object validates it
             // for us
             // swap end and delete end
-            connections_[id] = connections_.pop_back();
+            connections_[id] = std::move(connections_.back());
+            connections_.pop_back();
         }
     };
 
-    template <typename... Args>
-    class ThreadSafeSignal : public Signal<Args...> {
+    template <typename T>
+    class ThreadSafeSignal : public Signal<T> {
     public:
-        virtual SignalConnection connect(std::function<void(Args...)> func) {
+        virtual SignalConnection connect(std::function<void(T)> func)
+        {
             conn_lock_.Lock();
-            SignalConnection conn = Signal<Args...>::connect(func);
+            SignalConnection conn = Signal<T>::connect(func);
             conn_lock_.Unlock();
 
             return conn;
         }
 
-        std::tuple<Args...> wait()
+        /// Halts the execution of the current thread until the signal is fired
+        T wait()
         {
-            //
-            // TODO! so how will this be done..
-            // we need osme sort of event thingy
+            u64 curr = gen_c_;
+
+            wait_.Await(
+                absl::Condition(
+                    +[&](ThreadSafeSignal* s) { return s->gen_c_ != gen_c_; }, this));
+
+            // TODO! could be diabolical race conditions here
+            // (vanishing payload/duplicate check later)
+            return most_recent_payload_;
         }
 
     private:
+        ThreadSafeSignal(Engine& engine) : engine_(engine) {
+
+        }
+
         Engine& engine_;
 
         absl::Mutex conn_lock_{};
 
+        absl::Mutex wait_{};
+        u64 gen_c_  ABSL_GUARDED_BY(wait_);
+        T           most_recent_payload_;
+
         bool disconnect_id(u32 id) override
         {
             conn_lock_.Lock();
-            bool res = Signal<Args...>::disconnect_id(id);
+            bool res = Signal<T>::disconnect_id(id);
             conn_lock_.Unlock();
 
             return res;
         }
 
-        void fire(Args&&... args) override
+        void fire(T&& val) override
         {
-            // TODO! first fire waiters for the
+            // first fire waiters for the
             // wait function (all waiters should resume in parallel, since we're on
             // multiple threads)
+            {
+                absl::MutexLock l(&wait_);
+                gen_c_++;
+                // might have to do some waiter queue shenanigans or remove themselves
+                // from a map idk gg AHHH
+                most_recent_payload_ = val;
+            }
 
-            auto fire_fn = std::bind(Signal<Args...>::fire, args...);
             engine_.post_tick(
-                [&]()
+                [this, v = std::move(val)]()
                 {
                     conn_lock_.Lock();
-                    fire_fn();
+                    Signal<T>::fire(std::move(v));
                     conn_lock_.Unlock();
                 });
         }
     };
 
-    template<typename ...Args>
+    /// An event type with an associated signal. Not thread safe
+    template <typename T>
     class Event {
-    using sigtype = Signal<Args...>;
-    public:
-        FORCEINLINE mem::Rc<sigtype> signal() {
-            return signal_;
-        }
+        using sigtype = Signal<T>;
 
-        FORCEINLINE void fire(Args&&... args) {
-            signal_->fire(args...);
-        }
+    public:
+        Event() = default;
+        
+        /// The signal associated with the event
+        FORCEINLINE mem::Rc<sigtype> signal() { return signal_; }
+
+        /// Fire the signal associated with the event
+        FORCEINLINE void fire(T&& val) { signal_->fire(val); }
 
     private:
-        mem::Rc<sigtype> signal_;
+        mem::Rc<sigtype> signal_{};
     };
 
-    template<typename ...Args>
+    /// An event type that can be used safely between multiple threads
+    template <typename T>
     class ThreadSafeEvent {
-    using sigtype = ThreadSafeSignal<Args...>;
+        using sigtype = ThreadSafeSignal<T>;
+
     public:
-        FORCEINLINE mem::Arc<sigtype> signal() {
-            return signal_;
+        ThreadSafeEvent(Engine& engine) : signal_(engine) {
+            
         }
 
-        FORCEINLINE void fire(Args&&... args) {
-            signal_->fire(args...);
-        }
+        /// The signal associated with the event
+        FORCEINLINE mem::Arc<sigtype> signal() { return signal_; }
+
+        /// Fire the signal associated with the event
+        FORCEINLINE void fire(T&& val) { signal_->fire(val); }
 
     private:
         mem::Rc<sigtype> signal_;
