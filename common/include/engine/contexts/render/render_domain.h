@@ -52,10 +52,10 @@ namespace v {
     ///       daxa::TaskBuffer particle_buffer_;
     ///   };
     ///
-    /// Use RenderComponent for CPU-side pre/post-render hooks:
-    ///   auto& rc = render_ctx->create_component(entity());
-    ///   rc.pre_render = [this](...) { /* upload uniforms */ };
-    ///   rc.post_render = [this](...) { /* readback data */ };
+    /// Use RenderContext signals for CPU-side pre/post-render hooks:
+    ///   render_ctx->prerender().connect([this](...) { /* upload uniforms */ });
+    ///   render_ctx->postrender().connect([this](...) { /* readback data */ });
+    ///   render_ctx->resized().connect([this](...) { /* handle resize */ });
     class RenderDomainBase {
         friend class RenderContext;
 

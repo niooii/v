@@ -8,6 +8,7 @@
 #include <engine/context.h>
 #include <engine/domain.h>
 #include <input/names.h>
+#include <signal.h>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
@@ -17,6 +18,7 @@
 #include <glm/vec2.hpp>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "SDL3/SDL_vulkan.h"
 
@@ -24,81 +26,7 @@ namespace v {
     class WindowContext;
     class SDLContext;
 
-    /// Component for window-related events (resize, close, focus, etc.)
-    struct WindowComponent {
-        WindowComponent() = default;
-
-        /// Called when the window is resized (new size)
-        std::function<void(glm::uvec2)> on_resize;
-
-        /// Called when the window is closed (user pressed 'X' or Alt-F4'd)
-        std::function<void()> on_close;
-
-        /// Called when focus is gained/lost (true if gained, false if lost)
-        std::function<void(bool)> on_focus;
-
-        /// Called when the window is moved (new position)
-        std::function<void(glm::ivec2)> on_moved;
-
-        /// Called when the window is minimized
-        std::function<void()> on_minimized;
-
-        /// Called when the window is maximized
-        std::function<void()> on_maximized;
-
-        /// Called when the window is restored from minimized/maximized
-        std::function<void()> on_restored;
-
-        /// Called when the window enters fullscreen mode
-        std::function<void()> on_fullscreen_enter;
-
-        /// Called when the window leaves fullscreen mode
-        std::function<void()> on_fullscreen_leave;
-
-        /// Called when the window is moved to a different display
-        std::function<void()> on_display_changed;
-
-        /// Called when a file is dropped onto the window (file path)
-        std::function<void(std::string)> on_file_dropped;
-    };
-
-    /// Component for mouse-related events
-    struct MouseComponent {
-        MouseComponent() = default;
-
-        /// Called when a mouse button is pressed (not held)
-        std::function<void(MouseButton)> on_mouse_pressed;
-
-        /// Called when a mouse button is released
-        std::function<void(MouseButton)> on_mouse_released;
-
-        /// Called when the mouse is moved (position, relative movement)
-        std::function<void(glm::ivec2, glm::ivec2)> on_mouse_moved;
-
-        /// Called when the mouse wheel is scrolled (x, y scroll amounts)
-        std::function<void(glm::ivec2)> on_mouse_wheel;
-
-        /// Called when the mouse cursor enters the window
-        std::function<void()> on_mouse_enter;
-
-        /// Called when the mouse cursor leaves the window
-        std::function<void()> on_mouse_leave;
-    };
-
-    /// Component for keyboard-related events
-    struct KeyComponent {
-        KeyComponent() = default;
-
-        /// Called when a key is pressed (not held)
-        std::function<void(Key)> on_key_pressed;
-
-        /// Called when a key is released
-        std::function<void(Key)> on_key_released;
-
-        /// Called when text is input (for UI text fields)
-        std::function<void(std::string)> on_text_input;
-    };
-
+    
     class Window : public Domain<Window> {
         friend class WindowContext;
 
@@ -214,6 +142,69 @@ namespace v {
         /// Get access to the underlying SDL window - needed for native handle extraction
         FORCEINLINE SDL_Window* get_sdl_window() const { return sdl_window_; }
 
+        // Window event signals
+        /// Signal fired when the window is resized (new size)
+        FORCEINLINE Signal<glm::uvec2>& resized() { return resize_event_.signal(); }
+
+        /// Signal fired when the window is closed (user pressed 'X' or Alt-F4'd)
+        FORCEINLINE Signal<void>& closed() { return close_event_.signal(); }
+
+        /// Signal fired when focus is gained/lost (true if gained, false if lost)
+        FORCEINLINE Signal<bool>& focus_changed() { return focus_event_.signal(); }
+
+        /// Signal fired when the window is moved (new position)
+        FORCEINLINE Signal<glm::ivec2>& moved() { return moved_event_.signal(); }
+
+        /// Signal fired when the window is minimized
+        FORCEINLINE Signal<void>& minimized() { return minimized_event_.signal(); }
+
+        /// Signal fired when the window is maximized
+        FORCEINLINE Signal<void>& maximized() { return maximized_event_.signal(); }
+
+        /// Signal fired when the window is restored from minimized/maximized
+        FORCEINLINE Signal<void>& restored() { return restored_event_.signal(); }
+
+        /// Signal fired when the window enters fullscreen mode
+        FORCEINLINE Signal<void>& fullscreen_entered() { return fullscreen_enter_event_.signal(); }
+
+        /// Signal fired when the window leaves fullscreen mode
+        FORCEINLINE Signal<void>& fullscreen_exited() { return fullscreen_leave_event_.signal(); }
+
+        /// Signal fired when the window is moved to a different display
+        FORCEINLINE Signal<void>& display_changed() { return display_changed_event_.signal(); }
+
+        /// Signal fired when a file is dropped onto the window (file path)
+        FORCEINLINE Signal<std::string>& file_dropped() { return file_dropped_event_.signal(); }
+
+        // Mouse event signals
+        /// Signal fired when a mouse button is pressed (not held)
+        FORCEINLINE Signal<MouseButton>& mouse_pressed() { return mouse_pressed_event_.signal(); }
+
+        /// Signal fired when a mouse button is released
+        FORCEINLINE Signal<MouseButton>& mouse_released() { return mouse_released_event_.signal(); }
+
+        /// Signal fired when the mouse is moved (position, relative movement)
+        FORCEINLINE Signal<std::pair<glm::ivec2, glm::ivec2>>& mouse_moved() { return mouse_moved_event_.signal(); }
+
+        /// Signal fired when the mouse wheel is scrolled (x, y scroll amounts)
+        FORCEINLINE Signal<glm::ivec2>& mouse_scrolled() { return mouse_wheel_event_.signal(); }
+
+        /// Signal fired when the mouse cursor enters the window
+        FORCEINLINE Signal<void>& mouse_entered() { return mouse_enter_event_.signal(); }
+
+        /// Signal fired when the mouse cursor leaves the window
+        FORCEINLINE Signal<void>& mouse_left() { return mouse_leave_event_.signal(); }
+
+        // Keyboard event signals
+        /// Signal fired when a key is pressed (not held)
+        FORCEINLINE Signal<Key>& key_pressed() { return key_pressed_event_.signal(); }
+
+        /// Signal fired when a key is released
+        FORCEINLINE Signal<Key>& key_released() { return key_released_event_.signal(); }
+
+        /// Signal fired when text is input (for UI text fields)
+        FORCEINLINE Signal<std::string>& text_input() { return text_input_event_.signal(); }
+
     private:
         /// Handles individual events and fires appropriate handlers
         void process_event(const SDL_Event& event);
@@ -231,6 +222,32 @@ namespace v {
         std::array<bool, 8> prev_mbuttons;
         glm::ivec2          mouse_pos_;
         glm::ivec2          mouse_delta_;
+
+        // Internal events
+        Event<glm::uvec2> resize_event_;
+        Event<void> close_event_;
+        Event<bool> focus_event_;
+        Event<glm::ivec2> moved_event_;
+        Event<void> minimized_event_;
+        Event<void> maximized_event_;
+        Event<void> restored_event_;
+        Event<void> fullscreen_enter_event_;
+        Event<void> fullscreen_leave_event_;
+        Event<void> display_changed_event_;
+        Event<std::string> file_dropped_event_;
+
+        // Mouse events
+        Event<MouseButton> mouse_pressed_event_;
+        Event<MouseButton> mouse_released_event_;
+        Event<std::pair<glm::ivec2, glm::ivec2>> mouse_moved_event_;
+        Event<glm::ivec2> mouse_wheel_event_;
+        Event<void> mouse_enter_event_;
+        Event<void> mouse_leave_event_;
+
+        // Keyboard events
+        Event<Key> key_pressed_event_;
+        Event<Key> key_released_event_;
+        Event<std::string> text_input_event_;
     };
 
     /// A context for managing windows and input related to windows.
@@ -257,15 +274,6 @@ namespace v {
 
         /// Destroy a window
         void destroy_window(const Window* window);
-
-        /// Create a WindowComponent that will be attached to the given entity
-        WindowComponent& create_window_component(entt::entity id);
-
-        /// Create a MouseComponent that will be attached to the given entity
-        MouseComponent& create_mouse_component(entt::entity id);
-
-        /// Create a KeyComponent that will be attached to the given entity
-        KeyComponent& create_key_component(entt::entity id);
 
         /// Updates windows, pumps events, etc. Should be called at the
         /// desired input update rate, and should be called first in an

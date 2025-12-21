@@ -138,13 +138,7 @@ namespace v {
         } };
 
         // resize swapchain on window resize
-        auto* window_ctx = render_ctx->engine_.get_ctx<WindowContext>();
-        if (window_ctx)
-        {
-            WindowComponent& win_comp =
-                window_ctx->create_window_component(window->entity());
-            win_comp.on_resize = [this](glm::uvec2) { this->resize(); };
-        }
+        window->resized().connect([this](glm::uvec2) { this->resize(); });
 
 
         LOG_TRACE("created swapchain, creating task graph now");

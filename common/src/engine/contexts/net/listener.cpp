@@ -28,57 +28,19 @@ namespace v {
     }
 
 
-    ServerComponent& NetListener::create_component(entt::entity id)
-    {
-        return net_ctx_->engine_.add_component<ServerComponent>(id);
-    }
-
     void NetListener::handle_new_connection(std::shared_ptr<NetConnection> con)
     {
         connected_.insert(const_cast<ENetPeer*>(con->peer()));
 
-        auto view = net_ctx_->engine_.view<ServerComponent>();
-
-        for (auto [entity, comp] : view.each())
-        {
-            if (comp.on_connect)
-                comp.on_connect(con);
-        }
+        // Fire the connect event
+        connect_event_.fire(con);
     }
 
     void NetListener::handle_disconnection(std::shared_ptr<NetConnection> con)
     {
         connected_.erase(const_cast<ENetPeer*>(con->peer()));
 
-        auto view = net_ctx_->engine_.view<ServerComponent>();
-
-        for (auto [entity, comp] : view.each())
-        {
-            if (comp.on_disconnect)
-                comp.on_disconnect(con);
-        }
-    }
-
-    void NetListener::update()
-    {
-        auto view = net_ctx_->engine_.view<ServerComponent>();
-
-        for (auto [entity, comp] : view.each())
-        {
-            if (UNLIKELY(!comp.new_only && comp.on_connect))
-            {
-
-                // the component has just been created this/previous frame,
-                // run on all previous connections
-                auto conns = net_ctx_->connections_.read();
-                for (ENetPeer* peer : connected_)
-                {
-                    auto con = conns->at(peer);
-                    comp.on_connect(con);
-                }
-
-                comp.new_only = true;
-            }
-        }
+        // Fire the disconnect event
+        disconnect_event_.fire(con);
     }
 } // namespace v

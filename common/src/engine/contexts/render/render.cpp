@@ -32,11 +32,7 @@ namespace v {
     RenderContext::~RenderContext() = default;
 
 
-    RenderComponent& RenderContext::create_component(entt::entity id)
-    {
-        return engine_.add_component<RenderComponent>(id);
-    }
-
+    
     void RenderContext::register_render_domain(RenderDomainBase* domain)
     {
         render_domains_.push_back(domain);

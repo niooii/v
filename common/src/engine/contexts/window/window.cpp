@@ -49,12 +49,11 @@ namespace v {
         const Uint32 window_id = SDL_GetWindowID(sdl_window_);
         if (auto sdl_ctx = engine().get_ctx<SDLContext>())
         {
-            SDLComponent& sdl_comp = sdl_ctx->create_component(entity());
-            sdl_comp.on_win_event  = [this, window_id](const SDL_Event& event)
+            sdl_ctx->window_event().connect([this, window_id](const SDL_Event& event)
             {
                 if (event.window.windowID == window_id)
                     this->process_event(event);
-            };
+            });
         }
     }
 
@@ -239,116 +238,64 @@ namespace v {
         switch (event.type)
         {
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_close)
-                    comp.on_close();
-            }
+            close_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_RESIZED:
             size_ = { event.window.data1, event.window.data2 };
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_resize)
-                    comp.on_resize(size_);
-            }
+            resize_event_.fire(size_);
             break;
 
         case SDL_EVENT_WINDOW_MOVED:
             pos_ = { event.window.data1, event.window.data2 };
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_moved)
-                    comp.on_moved(pos_);
-            }
+            moved_event_.fire(pos_);
             break;
 
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
         case SDL_EVENT_WINDOW_FOCUS_LOST:
             {
                 const bool gained = event.type == SDL_EVENT_WINDOW_FOCUS_GAINED;
-                for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-                {
-                    if (comp.on_focus)
-                        comp.on_focus(gained);
-                }
+                focus_event_.fire(gained);
             }
             break;
 
         case SDL_EVENT_WINDOW_MINIMIZED:
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_minimized)
-                    comp.on_minimized();
-            }
+            minimized_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_MAXIMIZED:
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_maximized)
-                    comp.on_maximized();
-            }
+            maximized_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_RESTORED:
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_restored)
-                    comp.on_restored();
-            }
+            restored_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_ENTER:
-            for (auto [_entity, comp] : engine().view<MouseComponent>().each())
-            {
-                if (comp.on_mouse_enter)
-                    comp.on_mouse_enter();
-            }
+            mouse_enter_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-            for (auto [_entity, comp] : engine().view<MouseComponent>().each())
-            {
-                if (comp.on_mouse_leave)
-                    comp.on_mouse_leave();
-            }
+            mouse_leave_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_fullscreen_enter)
-                    comp.on_fullscreen_enter();
-            }
+            fullscreen_enter_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_fullscreen_leave)
-                    comp.on_fullscreen_leave();
-            }
+            fullscreen_leave_event_.fire();
             break;
 
         case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
-            for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-            {
-                if (comp.on_display_changed)
-                    comp.on_display_changed();
-            }
+            display_changed_event_.fire();
             break;
 
         case SDL_EVENT_KEY_DOWN:
             curr_keys_[event.key.scancode] = true;
             {
                 const Key key = sdl_to_key(event.key.scancode);
-                for (auto [_entity, comp] : engine().view<KeyComponent>().each())
-                {
-                    if (comp.on_key_pressed)
-                        comp.on_key_pressed(key);
-                }
+                key_pressed_event_.fire(key);
             }
             break;
 
@@ -356,11 +303,7 @@ namespace v {
             curr_keys_[event.key.scancode] = false;
             {
                 const Key key = sdl_to_key(event.key.scancode);
-                for (auto [_entity, comp] : engine().view<KeyComponent>().each())
-                {
-                    if (comp.on_key_released)
-                        comp.on_key_released(key);
-                }
+                key_released_event_.fire(key);
             }
             break;
 
@@ -368,11 +311,7 @@ namespace v {
             curr_mbuttons[event.button.button - 1] = true;
             {
                 const MouseButton button = sdl_to_mbutton(event.button.button);
-                for (auto [_entity, comp] : engine().view<MouseComponent>().each())
-                {
-                    if (comp.on_mouse_pressed)
-                        comp.on_mouse_pressed(button);
-                }
+                mouse_pressed_event_.fire(button);
             }
             break;
 
@@ -380,11 +319,7 @@ namespace v {
             curr_mbuttons[event.button.button - 1] = false;
             {
                 const MouseButton button = sdl_to_mbutton(event.button.button);
-                for (auto [_entity, comp] : engine().view<MouseComponent>().each())
-                {
-                    if (comp.on_mouse_released)
-                        comp.on_mouse_released(button);
-                }
+                mouse_released_event_.fire(button);
             }
             break;
 
@@ -393,44 +328,28 @@ namespace v {
                 static_cast<int>(event.motion.x), static_cast<int>(event.motion.y));
             mouse_delta_ = glm::ivec2(
                 static_cast<int>(event.motion.xrel), static_cast<int>(event.motion.yrel));
-            for (auto [_entity, comp] : engine().view<MouseComponent>().each())
-            {
-                if (comp.on_mouse_moved)
-                    comp.on_mouse_moved(mouse_pos_, mouse_delta_);
-            }
+            mouse_moved_event_.fire({mouse_pos_, mouse_delta_});
             break;
 
         case SDL_EVENT_MOUSE_WHEEL:
             {
                 const glm::ivec2 wheel_delta = glm::ivec2(
                     static_cast<int>(event.wheel.x), static_cast<int>(event.wheel.y));
-                for (auto [_entity, comp] : engine().view<MouseComponent>().each())
-                {
-                    if (comp.on_mouse_wheel)
-                        comp.on_mouse_wheel(wheel_delta);
-                }
+                mouse_wheel_event_.fire(wheel_delta);
             }
             break;
 
         case SDL_EVENT_TEXT_INPUT:
             {
                 const std::string text = std::string(event.text.text);
-                for (auto [_entity, comp] : engine().view<KeyComponent>().each())
-                {
-                    if (comp.on_text_input)
-                        comp.on_text_input(text);
-                }
+                text_input_event_.fire(text);
             }
             break;
 
         case SDL_EVENT_DROP_FILE:
             {
                 const std::string file_path = std::string(event.drop.data);
-                for (auto [_entity, comp] : engine().view<WindowComponent>().each())
-                {
-                    if (comp.on_file_dropped)
-                        comp.on_file_dropped(file_path);
-                }
+                file_dropped_event_.fire(file_path);
             }
             break;
 
@@ -500,21 +419,6 @@ namespace v {
 
         if (singleton_ == window)
             singleton_ = nullptr;
-    }
-
-    WindowComponent& WindowContext::create_window_component(entt::entity id)
-    {
-        return engine_.add_component<WindowComponent>(id);
-    }
-
-    MouseComponent& WindowContext::create_mouse_component(entt::entity id)
-    {
-        return engine_.add_component<MouseComponent>(id);
-    }
-
-    KeyComponent& WindowContext::create_key_component(entt::entity id)
-    {
-        return engine_.add_component<KeyComponent>(id);
     }
 
     void WindowContext::update()

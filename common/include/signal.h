@@ -13,6 +13,7 @@
 #include <coroutine>
 #include <functional>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 namespace v {
@@ -42,13 +43,17 @@ namespace v {
         {
             if (LIKELY(!dcd_))
             {
-                bool res = dc_fn(id_);
-
-                if (LIKELY(res))
-                {
-                    dcd_ = true;
-                    return true;
+                // Try to disconnect, but handle case where signal is destroyed
+                if (dc_fn) {
+                    bool res = dc_fn(id_);
+                    if (LIKELY(res))
+                    {
+                        dcd_ = true;
+                        return true;
+                    }
                 }
+                dcd_ = true; // Mark as disconnected even if signal is gone
+                return false;
             }
             return false;
         }
@@ -78,7 +83,7 @@ namespace v {
             // SignalConnection class a template class
             // TODO! also yea this is just really shaky idk how the memory stuff works
             // too lua rotted rn
-            return SignalConnection(connections_.size() - 1, this->disconnect_id);
+            return SignalConnection(connections_.size() - 1, [this](u32 id) { return this->disconnect_id(id); });
         }
 
         // TODO! not finished yet
@@ -104,8 +109,13 @@ namespace v {
         // internal util for firing
         virtual void fire(T&& val)
         {
-            for (auto& fn : connections_)
-                fn(val);
+            if constexpr (std::is_void_v<T>) {
+                for (auto& fn : connections_)
+                    fn();
+            } else {
+                for (auto& fn : connections_)
+                    fn(std::forward<T>(val));
+            }
         }
 
         // internal util for disconncting
@@ -118,6 +128,7 @@ namespace v {
             // swap end and delete end
             connections_[id] = std::move(connections_.back());
             connections_.pop_back();
+            return true;
         }
     };
 
@@ -144,7 +155,11 @@ namespace v {
 
             // TODO! could be diabolical race conditions here
             // (vanishing payload/duplicate check later)
-            return most_recent_payload_;
+            if constexpr (std::is_void_v<T>) {
+                return;
+            } else {
+                return most_recent_payload_;
+            }
         }
 
     private:
@@ -158,7 +173,7 @@ namespace v {
 
         absl::Mutex wait_{};
         u64 gen_c_  ABSL_GUARDED_BY(wait_);
-        T           most_recent_payload_;
+        std::conditional_t<std::is_void_v<T>, char, T> most_recent_payload_;
 
         bool disconnect_id(u32 id) override
         {
@@ -179,35 +194,63 @@ namespace v {
                 gen_c_++;
                 // might have to do some waiter queue shenanigans or remove themselves
                 // from a map idk gg AHHH
-                most_recent_payload_ = val;
+                if constexpr (!std::is_void_v<T>) {
+                    most_recent_payload_ = val;
+                }
             }
 
-            engine_.post_tick(
-                [this, v = std::move(val)]()
-                {
-                    conn_lock_.Lock();
-                    Signal<T>::fire(std::move(v));
-                    conn_lock_.Unlock();
-                });
+            if constexpr (std::is_void_v<T>) {
+                engine_.post_tick(
+                    [this]()
+                    {
+                        conn_lock_.Lock();
+                        Signal<T>::fire();
+                        conn_lock_.Unlock();
+                    });
+            } else {
+                engine_.post_tick(
+                    [this, v = std::move(val)]()
+                    {
+                        conn_lock_.Lock();
+                        Signal<T>::fire(std::move(v));
+                        conn_lock_.Unlock();
+                    });
+            }
         }
+    };
+
+    // Concrete signal implementation
+    template <typename T>
+    class BasicSignal : public Signal<T> {
+    public:
+        BasicSignal() = default;
+
+        // Make fire method public
+        using Signal<T>::fire;
     };
 
     /// An event type with an associated signal. Not thread safe
     template <typename T>
     class Event {
-        using sigtype = Signal<T>;
+        using sigtype = BasicSignal<T>;
 
     public:
-        Event() = default;
-        
+        Event() : signal_(mem::make_rc<sigtype>()) {}
+
         /// The signal associated with the event
         FORCEINLINE mem::Rc<sigtype> signal() { return signal_; }
 
         /// Fire the signal associated with the event
-        FORCEINLINE void fire(T&& val) { signal_->fire(val); }
+        FORCEINLINE void fire(T&& val = {}) const {
+            if constexpr (std::is_void_v<T>) {
+                signal_->fire();
+            } else {
+                signal_->fire(std::forward<T>(val));
+            }
+        }
 
     private:
-        mem::Rc<sigtype> signal_{};
+        mem::Rc<sigtype> signal_;
     };
 
     /// An event type that can be used safely between multiple threads
@@ -217,16 +260,22 @@ namespace v {
 
     public:
         ThreadSafeEvent(Engine& engine) : signal_(engine) {
-            
+
         }
 
         /// The signal associated with the event
         FORCEINLINE mem::Arc<sigtype> signal() { return signal_; }
 
         /// Fire the signal associated with the event
-        FORCEINLINE void fire(T&& val) { signal_->fire(val); }
+        FORCEINLINE void fire(T&& val = {}) const {
+            if constexpr (std::is_void_v<T>) {
+                signal_->fire();
+            } else {
+                signal_->fire(std::forward<T>(val));
+            }
+        }
 
     private:
-        mem::Rc<sigtype> signal_;
+        mem::Arc<sigtype> signal_;
     };
 } // namespace v

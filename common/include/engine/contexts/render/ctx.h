@@ -14,6 +14,7 @@
 #include <engine/context.h>
 #include <engine/contexts/window/window.h>
 #include <engine/domain.h>
+#include <signal.h>
 #include <string>
 #include <vector>
 #include "engine/sink.h"
@@ -21,14 +22,7 @@
 namespace v {
     class RenderDomainBase;
     using RenderComponentFnRender = void(Engine*, class RenderContext*, Window*);
-
     using RenderComponentFnResize = void(Engine*, RenderContext*, Window*);
-
-    struct RenderComponent {
-        std::function<RenderComponentFnRender> pre_render{};
-        std::function<RenderComponentFnRender> post_render{};
-        std::function<RenderComponentFnRender> resize{};
-    };
 
     struct DaxaResources;
 
@@ -69,8 +63,15 @@ namespace v {
         /// Tasks that should run before the rendering of a frame
         DependentSink pre_render;
 
-        /// Creates and attaches a RenderComponent to an entity, usually a Domain
-        RenderComponent& create_component(entt::entity id);
+        // Render event signals
+        /// Signal fired before rendering a frame
+        FORCEINLINE Signal<Engine*, RenderContext*, Window*>& prerender() const { return pre_render_event_.signal(); }
+
+        /// Signal fired after rendering a frame
+        FORCEINLINE Signal<Engine*, RenderContext*, Window*>& postrender() const { return post_render_event_.signal(); }
+
+        /// Signal fired when window is resized
+        FORCEINLINE Signal<Engine*, RenderContext*, Window*>& resized() const { return resize_event_.signal(); }
 
         /// Get raw Daxa resources (device, pipeline manager, etc.)
         /// @note Returned reference is valid for the lifetime of RenderContext
@@ -133,5 +134,10 @@ namespace v {
         /// Set to true when graph structure must be rebuilt (domain changes, resize,
         /// etc.)
         bool graph_dirty_ = false;
+
+        // Internal events
+        mutable Event<Engine*, RenderContext*, Window*> pre_render_event_;
+        mutable Event<Engine*, RenderContext*, Window*> post_render_event_;
+        mutable Event<Engine*, RenderContext*, Window*> resize_event_;
     };
 } // namespace v

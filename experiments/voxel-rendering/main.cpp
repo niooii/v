@@ -31,9 +31,8 @@ int main(int argc, char** argv)
     // needs at least a default domain to show window on some systems
     engine.add_domain<DefaultRenderDomain>();
 
-    auto             sdl_comp = sdl_ctx->create_component(engine.entity());
-    std::atomic_bool running  = true;
-    sdl_comp.on_quit          = [&running]() { running = false; };
+    std::atomic_bool running = true;
+    sdl_ctx->quit().connect([&running]() { running = false; });
 
     window->capture_mouse(true);
 

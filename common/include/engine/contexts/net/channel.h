@@ -10,6 +10,7 @@
 #include <engine/contexts/net/connection.h>
 #include <engine/serial/serde.h>
 #include <engine/traits.h>
+#include <signal.h>
 #include <exception>
 #include <memory>
 #include "engine/contexts/net/listener.h"
@@ -41,20 +42,6 @@ namespace v {
         /// implementation of this function should be thread safe or isolated, as it
         /// runs on the networking io thread.
         static Bytes parse(const u8* bytes, u64 len) { return Bytes{ bytes, len }; }
-    };
-
-    template <typename Payload>
-    using OnRecvCallback = std::function<void(const Payload&)>;
-
-    template <typename Derived, typename Payload>
-    struct NetChannelComponent {
-        OnRecvCallback<Payload> on_recv;
-    };
-
-    // A fodder component to listen for the destruction of.
-    // has to have one field because entt does not allow 0 sized components
-    struct NetDestructionTracker {
-        u8 dummy;
     };
 
     class NetChannelBase {
@@ -98,24 +85,8 @@ namespace v {
             conn_.reset();
         }
 
-        NetChannelComponent<Derived, Payload>& create_component(entt::entity id)
-        {
-            Engine& engine = conn_->net_ctx_->engine_;
-
-            auto it = components_.find(id);
-            if (it != components_.end())
-            {
-                LOG_WARN("Entity already has a NetChannelComponent component");
-                return it->second;
-            }
-
-            components_[id] = NetChannelComponent<Derived, Payload>{};
-
-            // tag it so we can listen for its destruction
-            engine.add_component<NetDestructionTracker>(id);
-
-            return components_[id];
-        }
+        /// Get the signal for receiving payloads on this channel
+        FORCEINLINE Signal<Payload>& received() { return recv_event_.signal(); }
 
         /// Get the owning NetConnection.
         FORCEINLINE const class std::shared_ptr<NetConnection> connection_info()
@@ -201,33 +172,18 @@ namespace v {
         void init(std::shared_ptr<NetConnection> c)
         {
             conn_ = c;
-            entt_conn_ =
-                conn_->engine().registry()
-                    .on_destroy<NetDestructionTracker>()
-                    .connect<&NetChannel<
-                        Derived, Payload>::cleanup_component_on_entity_destroy>(this);
-            ;
         }
         std::shared_ptr<NetConnection> connection() const { return conn_; }
 
         /// Calls the listeners and hands packets back to the NetConnection.
         void update() override
         {
-            // call all the components
-            // i could avoid the nested loop but if i batch them users have to concern
-            // themselves with consistency so its whatever
-
             std::unique_ptr<std::tuple<Payload, ENetPacket*>> elem;
-
-            Engine& engine = conn_->net_ctx_->engine_;
 
             while (incoming_.try_dequeue(elem))
             {
-                for (auto& [entity, comp] : components_)
-                {
-                    if (comp.on_recv)
-                        comp.on_recv(std::get<Payload>(*elem));
-                }
+                // Fire the event with the received payload
+                recv_event_.fire(std::move(std::get<Payload>(*elem)));
 
                 // hand packet back to owning connection for destruction
                 conn_->packet_destroy_queue_.enqueue(std::get<ENetPacket*>(*elem));
@@ -272,23 +228,8 @@ namespace v {
         // channels are gone (will be destroyed when requesting a connection close)
         std::shared_ptr<NetConnection> conn_;
 
-        entt::connection entt_conn_;
-
-        // don't use the registry unfortunately, theres no way to make these components
-        // unique to each connection, so we keep the public API but implement it
-        // differently. for this reason we cannot query netchannelcomponents through the
-        // main registry
-        ud_map<entt::entity, NetChannelComponent<Derived, Payload>> components_{};
-
-        // called when any component of NetDestructionTracker is destroyed
-        void cleanup_component_on_entity_destroy(entt::registry& r, entt::entity e)
-        {
-            if (components_.contains(e))
-            {
-                LOG_TRACE("Cleaning up channel component for destroyed entity");
-                components_.erase(e);
-            }
-        };
+        // Event for receiving payloads
+        Event<Payload> recv_event_;
     };
 
     /// A channel to make sure the program builds correctly

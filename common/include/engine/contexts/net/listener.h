@@ -8,35 +8,21 @@
 #include <defs.h>
 #include <enet.h>
 #include <entt/entt.hpp>
+#include <signal.h>
 
 namespace v {
     class NetConnection;
-    using OnConnectCallback    = std::function<void(std::shared_ptr<NetConnection>)>;
-    using OnDisconnectCallback = std::function<void(std::shared_ptr<NetConnection>)>;
-
-    struct ServerComponent {
-        /// Set a callback to run when a new incoming connection is created.
-        OnConnectCallback on_connect{};
-        /// If new_only is false, the on_connect callback will run immediately for
-        /// all the incoming connections that already exist.
-        /// If new_only is true, the callback will only run for *future* connections.
-        /// new_only is false by default.
-        // This is internally set to true once all the old connections have been
-        // processed, btw.
-        bool new_only{};
-
-        /// Set a callback to run when an incoming connection has been disconnected.
-        /// The connection will most likely be dead.
-        OnDisconnectCallback on_disconnect{};
-    };
 
     /// A 'server' class.
     class NetListener {
         friend class NetworkContext;
 
     public:
-        /// Creates and attaches a ServerComponent to an entity, usually a Domain
-        ServerComponent& create_component(entt::entity id);
+        /// Signal fired when a new incoming connection is created
+        FORCEINLINE Signal<std::shared_ptr<NetConnection>>& connected() const { return connect_event_.signal(); }
+
+        /// Signal fired when an incoming connection has been disconnected
+        FORCEINLINE Signal<std::shared_ptr<NetConnection>>& disconnected() const { return disconnect_event_.signal(); }
 
     private:
         NetListener(
@@ -60,5 +46,9 @@ namespace v {
         ENetHost*       host_;
 
         ud_set<ENetPeer*> connected_;
+
+        // Internal events
+        mutable Event<std::shared_ptr<NetConnection>> connect_event_;
+        mutable Event<std::shared_ptr<NetConnection>> disconnect_event_;
     };
 } // namespace v

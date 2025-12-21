@@ -25,7 +25,7 @@ namespace v {
         window_ctx_ = engine_.add_ctx<WindowContext>();
         window_     = window_ctx_->create_window("hjey man!", { 600, 600 }, { 600, 600 });
 
-        auto default_keybinds = [&](Key k)
+        window_->key_pressed().connect([this](Key k)
         {
             switch (k)
             {
@@ -33,10 +33,7 @@ namespace v {
                 window_->capture_mouse(!window_->capturing_mouse());
             default:
             }
-        };
-
-        KeyComponent& key_comp  = window_ctx_->create_key_component(engine_.entity());
-        key_comp.on_key_pressed = default_keybinds;
+        });
 
         render_ctx_ = engine_.add_ctx<RenderContext>("./resources/shaders");
         net_ctx_    = engine_.add_ctx<NetworkContext>(1.0 / 500);
@@ -66,7 +63,11 @@ namespace v {
 
         // test channel kinda
         auto& channel = connection_->create_channel<ChatChannel>();
-        auto& comp    = channel.create_component(engine_.entity());
+
+        // Connect to receive messages
+        channel.received().connect([](const ChatMessage& msg) {
+            LOG_INFO("Received chat message: {}", msg.msg);
+        });
 
         ChatMessage msg;
         msg.msg = "hi server man";
@@ -92,8 +93,7 @@ namespace v {
         engine_.on_tick.connect({}, {}, "async", [async_ctx]() { async_ctx->update(); });
 
         // handle the sdl quit event (includes keyboard interrupt)
-        SDLComponent& sdl_comp = sdl_ctx_->create_component(engine_.entity());
-        sdl_comp.on_quit       = [this]() { running_ = false; };
+        sdl_ctx_->quit().connect([this]() { running_ = false; });
 
         // TODO! temporarily connect to the server with dummy info
         auto name = std::format("Player-{}", rand::irange(0, 1'000'000));

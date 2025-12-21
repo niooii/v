@@ -29,46 +29,29 @@ namespace v {
         // Poll and route events
         while (SDL_PollEvent(&event))
         {
-            // Call on_event callback for all events
-            for (auto [_entity, comp] : engine_.view<SDLComponent>().each())
-            {
-                if (comp.on_event)
-                    comp.on_event(event);
-            }
+            // Fire event for all events
+            event_.fire(event);
 
             if (has_window_id(event.type))
             {
-                // Call on_win_event callback for window-related events
-                for (auto [_entity, comp] : engine_.view<SDLComponent>().each())
-                {
-                    if (comp.on_win_event)
-                        comp.on_win_event(event);
-                }
-                continue;
+                // Fire window event for window-related events
+                window_event_.fire(event);
             }
-
-            // Handle global non-window related events
-            switch (event.type)
+            else
             {
-            case SDL_EVENT_QUIT:
+                // Handle global non-window related events
+                switch (event.type)
                 {
-                    for (auto [_entity, comp] : engine_.view<SDLComponent>().each())
-                    {
-                        if (comp.on_quit)
-                            comp.on_quit();
-                    }
+                case SDL_EVENT_QUIT:
+                    quit_event_.fire();
                     break;
+                default:;
                 }
-            default:;
             }
         }
     }
 
-    SDLComponent& SDLContext::create_component(entt::entity id) const
-    {
-        return engine_.add_component<SDLComponent>(id);
-    }
-
+    
     // NOTE: If this function is ever changed, update the doc comments for
     // SDLComponent::on_win_event to reflect the new list of events
     static bool has_window_id(Uint32 event_type)

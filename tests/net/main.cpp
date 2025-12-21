@@ -26,34 +26,36 @@ int main()
     std::atomic_bool client_got_echo{ false };
 
     // server component for connect + chat
-    auto& server_comp      = listener->create_component(engine->entity());
-    server_comp.on_connect = [&](std::shared_ptr<NetConnection> con)
+    listener->connected().connect([&](std::shared_ptr<NetConnection> con)
     {
         on_connect = true;
 
         auto& chat = con->create_channel<ChatChannel>();
-        auto& cc   = chat.create_component(engine->entity());
-        cc.on_recv = [&, eng = engine.get()](const ChatMessage& msg)
+        chat.received().connect([&, eng = engine.get()](const ChatMessage& msg)
         {
             server_got_chat = true;
             // echo message back to all channels
-            for (auto [e, channel] : eng->view<ChatChannel>().each())
-            {
-                ChatMessage payload{ .msg = msg.msg };
-                channel->send(payload);
+            auto& net_ctx = eng->get_ctx<NetworkContext>();
+            if (net_ctx) {
+                auto connections = net_ctx->connections_.read();
+                for (auto& [peer, con] : *connections) {
+                    if (auto channel = con->get_channel<ChatChannel>()) {
+                        ChatMessage payload{ .msg = msg.msg };
+                        channel->send(payload);
+                    }
+                }
             }
-        };
-    };
+        });
+    });
 
     // create client connection
     auto  client = net->create_connection(host, port);
     auto& cchat  = client->create_channel<ChatChannel>();
-    auto& ccc    = cchat.create_component(engine->entity());
-    ccc.on_recv  = [&](const ChatMessage& msg)
+    cchat.received().connect([&](const ChatMessage& msg)
     {
         if (msg.msg == "ping")
             client_got_echo = true;
-    };
+    });
 
     bool sent_ping = false;
 
